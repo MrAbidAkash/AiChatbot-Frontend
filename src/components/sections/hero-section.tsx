@@ -118,7 +118,7 @@ export function HeroSection() {
   }, [showContent]);
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden py-20">
+    <section ref={sectionRef} className="relative overflow-hidden py-20 lg:pb-40">
       {/* Background Effects */}
       <div
         className={`max-sm:hidden absolute inset-0 -z-10 overflow-hidden transition-opacity duration-1000 ${
@@ -178,8 +178,8 @@ export function HeroSection() {
                   : "opacity-0 translate-y-6"
               }`}
             >
-              Intelligent Conversations for{" "}
-              <span className="gradient-text">Modern Businesses</span>
+              5X Your Revenue{" "}
+              <span className="gradient-text">with the Power of WhatsApp</span>
             </h1>
 
             <p
