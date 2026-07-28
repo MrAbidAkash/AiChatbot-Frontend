@@ -16,11 +16,6 @@ import {
   Play,
 } from "lucide-react";
 
-const HeroBubbles = dynamic(
-  () => import("@/components/hero-bubbles").then((mod) => mod.HeroBubbles),
-  { ssr: false },
-);
-
 const stats = [
   { value: "5k+", label: "Messages Processed" },
   { value: "10+", label: "Active Businesses" },
@@ -50,17 +45,8 @@ function AnimatedBorder({
 
       {/* Animated border container */}
       <div className="relative rounded-2xl p-[2px] overflow-hidden">
-        {/* Rotating gradient border */}
-        <div className="absolute inset-0 rounded-2xl">
-          <div
-            className="absolute inset-0 rounded-2xl"
-            style={{
-              background:
-                "conic-gradient(from var(--border-angle, 0deg) at 50% 50%, oklch(0.70 0.18 180), oklch(0.68 0.16 330), oklch(0.65 0.20 280), oklch(0.70 0.18 180))",
-              animation: "rotate-border 4s linear infinite",
-            }}
-          />
-        </div>
+        {/* Smooth static gradient border instead of rotating conic gradient */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-primary/30 via-accent/30 to-primary/30 opacity-70 group-hover:opacity-100 transition-opacity duration-500" />
 
         {/* Inner content */}
         <div className="relative rounded-[14px] bg-card">{children}</div>
@@ -119,41 +105,19 @@ export function HeroSection() {
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden py-20 lg:pb-40">
-      {/* Background Effects */}
+      {/* Background Effects (Optimized CSS Mesh) */}
       <div
         className={`max-sm:hidden absolute inset-0 -z-10 overflow-hidden transition-opacity duration-1000 ${
           isLoaded ? "opacity-100" : "opacity-0"
         }`}
       >
-        {/* Animated floating bubble canvas with enhanced configuration */}
-        <HeroBubbles
-          bubbleCount={22}
-          minRadius={30}
-          maxRadius={180}
-          speed={0.7}
-          mouseInteraction={true}
-          mouseRadius={220}
-          colorTheme="mixed"
-          opacity={1}
-          enableGlow={true}
-          enableDepth={true}
-          enableConnections={true}
-          connectionDistance={160}
-          enableParticles={true}
-          particleCount={35}
-          enableMouseTrail={true}
-        />
-
         {/* Subtle grid overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,oklch(0.18_0.01_260/0.2)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.18_0.01_260/0.2)_1px,transparent_1px)] bg-[size:5rem_5rem] [mask-image:radial-gradient(ellipse_80%_70%_at_50%_30%,#000_50%,transparent_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,oklch(0.18_0.01_260/0.1)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.18_0.01_260/0.1)_1px,transparent_1px)] bg-[size:5rem_5rem] [mask-image:radial-gradient(ellipse_80%_70%_at_50%_30%,#000_50%,transparent_100%)]" />
 
-        {/* Radial vignette */}
-        <div className="absolute inset-0 [background:radial-gradient(ellipse_90%_80%_at_50%_40%,transparent_30%,oklch(0.05_0.005_260)_100%)]" />
-
-        {/* Floating orbs */}
-        <div className="absolute top-1/4 left-1/4 h-64 w-64 rounded-full bg-primary/10 blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 h-48 w-48 rounded-full bg-accent/10 blur-3xl animate-float-delayed" />
-        <div className="absolute top-1/2 right-1/3 h-32 w-32 rounded-full bg-primary/5 blur-2xl animate-float-slow" />
+        {/* CSS Mesh Gradient (Lightweight) */}
+        <div className="absolute top-0 right-0 -mr-40 -mt-40 h-[600px] w-[600px] rounded-full bg-primary/20 blur-[100px] opacity-60 mix-blend-screen" />
+        <div className="absolute bottom-0 left-0 -ml-40 -mb-40 h-[600px] w-[600px] rounded-full bg-accent/20 blur-[100px] opacity-60 mix-blend-screen" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[800px] w-[800px] rounded-full bg-primary/5 blur-[120px] opacity-40 mix-blend-screen" />
       </div>
 
       <div className="container mx-auto px-4">
@@ -260,7 +224,7 @@ export function HeroSection() {
           </div>
           {/* Right Column - Interactive Demo */}
           <div
-            className={`relative transition-all duration-1000 delay-300 ${
+            className={`relative group transition-all duration-1000 delay-300 ${
               showContent
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 translate-x-8"
