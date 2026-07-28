@@ -121,41 +121,40 @@ export function AnimatedCursor(props: CursorConfig = {}) {
     isClicking.current = false;
   }, []);
 
-  // Hover detection for interactive elements
-  const handleElementHover = useCallback(() => {
-    const interactiveElements = document.querySelectorAll(
+  // Hover detection using event delegation (High Performance)
+  const handleMouseOver = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    
+    const isInteractive = target.closest(
       'a, button, input, textarea, select, [role="button"], [tabindex]:not([tabindex="-1"]), .cursor-pointer'
     );
 
-    interactiveElements.forEach((el) => {
-      el.addEventListener("mouseenter", () => {
-        isHovering.current = true;
-        if (cursorRef.current) {
-          cursorRef.current.style.width = `${config.cursorSize * config.hoverScale}px`;
-          cursorRef.current.style.height = `${config.cursorSize * config.hoverScale}px`;
-          cursorRef.current.style.background = config.cursorColor.replace(")", " / 0.5)").replace("oklch(", "oklch(");
-        }
-        if (trailRef.current) {
-          trailRef.current.style.width = `${config.trailSize * config.hoverScale}px`;
-          trailRef.current.style.height = `${config.trailSize * config.hoverScale}px`;
-          trailRef.current.style.borderColor = "oklch(0.68 0.16 330 / 0.6)"; // accent color
-        }
-      });
-
-      el.addEventListener("mouseleave", () => {
-        isHovering.current = false;
-        if (cursorRef.current) {
-          cursorRef.current.style.width = `${config.cursorSize}px`;
-          cursorRef.current.style.height = `${config.cursorSize}px`;
-          cursorRef.current.style.background = config.cursorColor;
-        }
-        if (trailRef.current) {
-          trailRef.current.style.width = `${config.trailSize}px`;
-          trailRef.current.style.height = `${config.trailSize}px`;
-          trailRef.current.style.borderColor = config.trailBorderColor;
-        }
-      });
-    });
+    if (isInteractive) {
+      isHovering.current = true;
+      if (cursorRef.current) {
+        cursorRef.current.style.width = `${config.cursorSize * config.hoverScale}px`;
+        cursorRef.current.style.height = `${config.cursorSize * config.hoverScale}px`;
+        cursorRef.current.style.background = config.cursorColor.replace(")", " / 0.5)").replace("oklch(", "oklch(");
+      }
+      if (trailRef.current) {
+        trailRef.current.style.width = `${config.trailSize * config.hoverScale}px`;
+        trailRef.current.style.height = `${config.trailSize * config.hoverScale}px`;
+        trailRef.current.style.borderColor = "oklch(0.68 0.16 330 / 0.6)"; // accent color
+      }
+    } else {
+      isHovering.current = false;
+      if (cursorRef.current) {
+        cursorRef.current.style.width = `${config.cursorSize}px`;
+        cursorRef.current.style.height = `${config.cursorSize}px`;
+        cursorRef.current.style.background = config.cursorColor;
+      }
+      if (trailRef.current) {
+        trailRef.current.style.width = `${config.trailSize}px`;
+        trailRef.current.style.height = `${config.trailSize}px`;
+        trailRef.current.style.borderColor = config.trailBorderColor;
+      }
+    }
   }, [config]);
 
   useEffect(() => {
@@ -179,18 +178,8 @@ export function AnimatedCursor(props: CursorConfig = {}) {
     // Start animation loop
     rafId.current = requestAnimationFrame(animate);
 
-    // Setup hover detection
-    handleElementHover();
-
-    // Observe DOM changes to add hover listeners to new elements
-    const observer = new MutationObserver(() => {
-      handleElementHover();
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    // Setup event delegation for hover
+    document.addEventListener("mouseover", handleMouseOver);
 
     return () => {
       document.body.style.cursor = "";
@@ -199,12 +188,11 @@ export function AnimatedCursor(props: CursorConfig = {}) {
       document.removeEventListener("mouseenter", handleMouseEnter);
       document.removeEventListener("mousedown", handleMouseDown);
       document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mouseover", handleMouseOver);
       
       if (rafId.current) {
         cancelAnimationFrame(rafId.current);
       }
-      
-      observer.disconnect();
     };
   }, [
     animate,
@@ -213,7 +201,7 @@ export function AnimatedCursor(props: CursorConfig = {}) {
     handleMouseEnter,
     handleMouseDown,
     handleMouseUp,
-    handleElementHover,
+    handleMouseOver,
     config.showOnTouch,
   ]);
 
