@@ -8,6 +8,7 @@ import { IntegrationsSection } from "@/components/sections/integrations-section"
 import { DashboardPreview } from "@/components/sections/dashboard-preview";
 import { DocumentTrainingSection } from "@/components/sections/document-training-section";
 import { PricingSection } from "@/components/sections/pricing-section";
+import { SocialProofSection } from "@/components/sections/social-proof-section";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 
@@ -27,49 +28,49 @@ export default function ProductDesignOutline() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden ">
+    <div className="min-h-screen overflow-x-hidden">
       <div className="md:max-w-[90%] md:mx-auto px-4">
         <Header />
       </div>
 
       {/* Sticky Navigation */}
-      <div className="sticky top-16 px-4 z-40 border-b bg-background w-full md:max-w-[90%] md:mx-auto ">
-        <div className="container mx-auto flex flex-wrap gap-3 sm:gap-10 px-4 py-2 ">
+      <div className="sticky top-16 px-4 z-40 border-b bg-background w-full md:max-w-[90%] md:mx-auto">
+        <div className="container mx-auto flex flex-wrap gap-3 sm:gap-10 px-4 py-2">
           <button
             onClick={() => scrollToSection(overviewRef)}
-            className="hover:text-primary cursor-pointer"
+            className="hover:text-primary cursor-pointer text-sm text-muted-foreground transition-colors"
           >
             Overview
           </button>
           <button
             onClick={() => scrollToSection(featuresRef)}
-            className="hover:text-primary cursor-pointer"
+            className="hover:text-primary cursor-pointer text-sm text-muted-foreground transition-colors"
           >
-            Features
+            ফিচারসমূহ
           </button>
           <button
             onClick={() => scrollToSection(integrationsRef)}
-            className="hover:text-primary cursor-pointer"
+            className="hover:text-primary cursor-pointer text-sm text-muted-foreground transition-colors"
           >
-            Integrations
+            ইন্টিগ্রেশন
           </button>
           <button
             onClick={() => scrollToSection(dashboardRef)}
-            className="hover:text-primary cursor-pointer"
+            className="hover:text-primary cursor-pointer text-sm text-muted-foreground transition-colors"
           >
-            Dashboard
+            AI Desk
           </button>
           <button
             onClick={() => scrollToSection(trainingRef)}
-            className="hover:text-primary cursor-pointer"
+            className="hover:text-primary cursor-pointer text-sm text-muted-foreground transition-colors"
           >
-            AI Training
+            AI ট্রেনিং
           </button>
           <button
             onClick={() => scrollToSection(pricingRef)}
-            className="hover:text-primary cursor-pointer"
+            className="hover:text-primary cursor-pointer text-sm text-muted-foreground transition-colors"
           >
-            Pricing
+            মূল্য
           </button>
         </div>
       </div>
@@ -83,7 +84,7 @@ export default function ProductDesignOutline() {
 
         <section
           ref={featuresRef}
-          className="section-features section-noise px-4 "
+          className="section-features section-noise px-4"
         >
           <FeaturesSection />
         </section>
@@ -113,6 +114,13 @@ export default function ProductDesignOutline() {
           className="section-training section-noise px-4"
         >
           <DocumentTrainingSection />
+        </section>
+
+        <div className="section-divider" />
+
+        {/* Social Proof / Testimonials */}
+        <section className="section-noise px-4">
+          <SocialProofSection />
         </section>
 
         <div className="section-divider" />

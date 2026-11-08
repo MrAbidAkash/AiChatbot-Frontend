@@ -66,7 +66,9 @@ CORE RULES:
    - If the customer writes in Bengali (বাংলা) or Banglish, answer naturally in Bengali or Banglish.
    - If the customer writes in English, answer in English.
    - If another language is used, reply in that language.
-4. GREETINGS & SMALL TALK: For basic greetings (e.g., "Hi", "Hello", "Assalamu Alaikum", "কেমন আছেন"), respond warmly, introduce yourself as the AI assistant for ${businessName}, and ask how you can help them today.
+4. GREETINGS & QUESTIONS:
+   - If the customer sends ONLY a simple greeting (e.g., "Hi", "Hello", "Assalamu Alaikum", "কেমন আছেন"), respond warmly, introduce yourself as the AI assistant for ${businessName}, and ask how you can assist them today.
+   - If the customer asks ANY question (e.g., "Who is Abidur Rahman?", "Tell me about your experience", "What is your pricing?"), ANSWER their question directly, thoroughly, and politely using the provided Business Knowledge and Documents!
 5. CONCISENESS: Customers are reading on Facebook Messenger on mobile devices. Keep responses clear, easy to read, and well-spaced. Use bullet points when listing items or instructions. Avoid unnecessary walls of text.
 
 ${customInstructions ? `SPECIAL BUSINESS INSTRUCTIONS:\n${customInstructions}\n` : ""}
@@ -76,23 +78,44 @@ BUSINESS KNOWLEDGE & DOCUMENTS:
 ${businessKnowledge ? businessKnowledge : "No specific business documents uploaded yet. Rely on standard polite customer greeting and advise that a team member will assist."}
 =======================================`;
 
-  // Build conversation history for multi-turn context
+  // Build conversation history for multi-turn context (ensuring alternating user/model turns)
   const contents: GeminiMessage[] = [];
+  let lastRole: "user" | "model" | null = null;
 
-  // Add recent history (up to last 6 messages)
-  const recentHistory = conversationHistory.slice(-6);
-  for (const hist of recentHistory) {
-    contents.push({
-      role: hist.senderType === "customer" ? "user" : "model",
-      parts: [{ text: hist.text }],
-    });
+  // Add previous history (excluding duplicate of current customerMessage)
+  const previousHistory = conversationHistory
+    .filter(
+      (h, idx) =>
+        !(
+          idx === conversationHistory.length - 1 &&
+          h.senderType === "customer" &&
+          h.text.trim() === customerMessage.trim()
+        ),
+    )
+    .slice(-6);
+
+  for (const hist of previousHistory) {
+    const role: "user" | "model" = hist.senderType === "customer" ? "user" : "model";
+    if (role === lastRole && contents.length > 0) {
+      contents[contents.length - 1].parts[0].text += `\n${hist.text}`;
+    } else {
+      contents.push({
+        role,
+        parts: [{ text: hist.text }],
+      });
+      lastRole = role;
+    }
   }
 
   // Add current customer message
-  contents.push({
-    role: "user",
-    parts: [{ text: customerMessage }],
-  });
+  if (lastRole === "user" && contents.length > 0) {
+    contents[contents.length - 1].parts[0].text = customerMessage;
+  } else {
+    contents.push({
+      role: "user",
+      parts: [{ text: customerMessage }],
+    });
+  }
 
   const requestBody = {
     system_instruction: {

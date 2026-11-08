@@ -1,149 +1,110 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import AuthButton from "@/components/auth-button";
 import PricingButton from "@/components/pricing-button";
-import { Check, Sparkles, Zap, Building2, HelpCircle } from "lucide-react";
+import { Check, Sparkles, Zap, Gift, CreditCard, HelpCircle } from "lucide-react";
 
-const plans = [
+const rechargePackages = [
   {
-    name: "Free",
-    description: "Perfect for small businesses getting started",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    price: "৳0",
-    period: "/month",
-    features: [
-      "100 conversations/month",
-      "1 chatbot",
-      "WhatsApp integration",
-      "Basic analytics",
-      "Email support",
-      "Website widget",
-      "Basic customization",
-      "1 document upload",
-    ],
-    cta: "Start Free Trial",
+    name: "স্টার্টার রিচার্জ",
+    price: "৳৫০০",
+    replies: "~৫০০ রিপ্লাই",
+    icon: <Zap className="h-5 w-5 text-primary" />,
+    bonus: null,
     popular: false,
+    features: [
+      "Messenger + Instagram + WhatsApp",
+      "COD Order নেওয়া",
+      "Comment Auto-reply",
+      "Human Handover",
+      "৬ মাস মেয়াদ",
+    ],
+    cta: "রিচার্জ করুন",
+    planKey: "starter",
   },
   {
-    name: "Starter",
-    description: "Perfect for small businesses getting started",
-    monthlyPrice: 999,
-    yearlyPrice: 999,
-    price: "999",
-    period: "/month",
-    features: [
-      "1,000 conversations/month",
-      "1 chatbot",
-      "WhatsApp and Facebook integration",
-      "Basic analytics",
-      "Email support",
-      "Website widget",
-      "Basic customization",
-      "10 document uploads",
-    ],
-    cta: "Start Free Trial",
-    popular: false,
-  },
-  {
-    name: "Professional",
-    description: "For growing businesses with higher demands",
-    monthlyPrice: 2999,
-    yearlyPrice: 2999,
-    price: "৳2999",
-    period: "/month",
-    features: [
-      "4,000 conversations/month",
-      "2 chatbots",
-      "All social integrations",
-      "Advanced analytics",
-      "Priority support",
-      "All integrations",
-      "Custom branding",
-      "Team collaboration",
-      "API access",
-      "20 document uploads",
-    ],
-    cta: "Start Free Trial",
+    name: "প্রফেশনাল রিচার্জ",
+    price: "৳১,০০০",
+    replies: "~১,১০০ রিপ্লাই",
+    icon: <Sparkles className="h-5 w-5 text-primary" />,
+    bonus: "১০% বোনাস",
     popular: true,
+    features: [
+      "সব চ্যানেল",
+      "COD Order + Invoice",
+      "Vision AI (ছবি চেনা)",
+      "Voice Note",
+      "Team Inbox",
+      "Human Handover",
+      "১ বছর মেয়াদ",
+    ],
+    cta: "রিচার্জ করুন",
+    planKey: "professional",
   },
   {
-    name: "Business",
-    description: "For growing businesses with higher demands",
-    monthlyPrice: 5999,
-    yearlyPrice: 5999,
-    price: "৳5999",
-    period: "/month",
-    features: [
-      "10,000 conversations/month",
-      "4 chatbots",
-      "All social integrations",
-      "Advanced analytics",
-      "Priority support",
-      "All integrations",
-      "Custom branding",
-      "Team collaboration",
-      "API access",
-      "50 document uploads",
-    ],
-    cta: "Start Free Trial",
-    // popular: true,
-  },
-  {
-    name: "Enterprise",
-    description: "Custom solutions for large organizations",
-    monthlyPrice: null,
-    yearlyPrice: null,
-    price: "Custom",
-    period: "",
-    features: [
-      "Unlimited conversations",
-      "Unlimited chatbots",
-      "All social integrations",
-      "Enterprise analytics",
-      "24/7 dedicated support",
-      "Custom integrations",
-      "White-label solution",
-      "SSO & advanced security",
-      "SLA guarantee",
-      "On-premise option",
-      "Unlimited document uploads",
-    ],
-    cta: "Contact Sales",
+    name: "বিজনেস রিচার্জ",
+    price: "৳৫,০০০",
+    replies: "~৬,০০০ রিপ্লাই",
+    icon: <CreditCard className="h-5 w-5 text-primary" />,
+    bonus: "২০% বোনাস",
     popular: false,
+    features: [
+      "সব প্রফেশনাল ফিচার",
+      "Priority Support",
+      "Custom AI Persona",
+      "Advanced Analytics",
+      "API Access",
+      "কোনো মেয়াদ নেই",
+    ],
+    cta: "রিচার্জ করুন",
+    planKey: "business",
   },
 ];
+
+const paymentMethods = [
+  { emoji: "🟢", name: "bKash" },
+  { emoji: "🔵", name: "Nagad" },
+  { emoji: "🏦", name: "Bank Transfer" },
+];
+
 const faqs = [
   {
-    question: "What happens after my free trial?",
+    question: "Credit কতদিন থাকে?",
     answer:
-      "After your 14-day free trial, you'll be asked to select a plan. You won't be charged until you actively choose to subscribe. No credit card is required for the trial.",
+      "Credit এর কোনো expiry নেই, যতদিন আপনার account থাকবে ততদিন থাকবে।",
   },
   {
-    question: "Can I change plans later?",
+    question: "কিভাবে রিচার্জ করব?",
     answer:
-      "Yes! You can upgrade or downgrade your plan at any time. When upgrading, you'll have immediate access to new features. When downgrading, changes take effect at your next billing cycle.",
+      "Dashboard থেকে bKash, Nagad, বা Bank Transfer এ রিচার্জ করা যায়। ৫-১০ মিনিটে active হয়।",
   },
   {
-    question: "What counts as a conversation?",
+    question: "কতটি page কানেক্ট করা যাবে?",
     answer:
-      "A conversation is a complete interaction between a customer and your chatbot, regardless of the number of messages exchanged within that session.",
+      "একটি account থেকে multiple Facebook page কানেক্ট করা যায়।",
   },
   {
-    question: "Do you offer discounts for nonprofits?",
+    question: "Human handover কিভাবে কাজ করে?",
     answer:
-      "Yes, we offer special pricing for registered nonprofits and educational institutions. Contact our sales team to learn more about our discount programs.",
+      "Team inbox থেকে যেকোনো conversation এ ক্লিক করে AI pause করে নিজে reply করুন। কাজ শেষে AI আবার চালু হবে।",
+  },
+  {
+    question: "Meta compliant কি?",
+    answer:
+      "হ্যাঁ, আমরা Meta এর official API ব্যবহার করি। আপনার page সম্পূর্ণ নিরাপদ।",
   },
 ];
 
 export function PricingSection() {
-  const [isYearly, setIsYearly] = useState(false);
-
   return (
     <section className="py-20 lg:py-32">
       <div className="container mx-auto px-4 md:max-w-[90%] md:mx-auto">
@@ -151,104 +112,102 @@ export function PricingSection() {
         <div className="mx-auto max-w-3xl text-center">
           <Badge className="mb-6 border-primary/30 bg-primary/10 text-primary">
             <Sparkles className="mr-2 h-3 w-3" />
-            Pricing
+            মূল্য পরিকল্পনা
           </Badge>
           <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
-            Simple, Transparent <span className="gradient-text">Pricing</span>
+            কোনো মাসিক ফি নেই। শুধু{" "}
+            <span className="gradient-text">ব্যবহার করুন,</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Start free, scale as you grow. No hidden fees, no surprises.
+            Pay-as-you-go model — রিচার্জ করুন, ব্যবহার করুন। কোনো বাধ্যতামূলক
+            সাবস্ক্রিপশন নেই। বাংলাদেশের সেরা পেমেন্ট পদ্ধতিতে রিচার্জ করুন।
           </p>
+        </div>
 
-          {/* Billing Toggle */}
-          <div className="mt-8 flex items-center justify-center gap-4">
-            <span
-              className={`text-sm ${!isYearly ? "text-foreground" : "text-muted-foreground"}`}
-            >
-              Monthly
-            </span>
-            <Switch checked={isYearly} onCheckedChange={setIsYearly} />
-            <span
-              className={`text-sm ${isYearly ? "text-foreground" : "text-muted-foreground"}`}
-            >
-              Yearly
-            </span>
-            {isYearly && (
-              <Badge className="border-green-500/30 bg-green-500/10 text-green-400">
-                Save 20%
-              </Badge>
-            )}
+        {/* Free Trial Banner */}
+        <div className="mt-12">
+          <div className="relative rounded-2xl border border-green-500/40 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 p-8">
+            <div className="flex flex-col items-center justify-between gap-6 text-center md:flex-row md:text-left">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-500/20">
+                  <Gift className="h-6 w-6 text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">
+                    ৭ দিন বিনামূল্যে ব্যবহার করুন
+                  </h3>
+                  <p className="mt-1 text-muted-foreground">
+                    ৳৫০ ফ্রি ক্রেডিট — কোনো ক্রেডিট কার্ড দরকার নেই। ৭ দিন সব
+                    ফিচার ব্যবহার করুন।
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                className="shrink-0 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                asChild
+              >
+                <a href="/signup">ফ্রি ট্রায়াল শুরু করুন</a>
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Pricing Cards */}
+        {/* Recharge Packages */}
         <div className="mt-16 grid gap-8 lg:grid-cols-3">
-          {plans.map((plan) => (
+          {rechargePackages.map((pkg) => (
             <Card
-              key={plan.name}
+              key={pkg.name}
               className={`relative border-border bg-card ${
-                plan.popular ? "ring-2 ring-primary" : ""
+                pkg.popular ? "ring-2 ring-primary" : ""
               }`}
             >
-              {plan.popular && (
+              {pkg.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-primary text-primary-foreground">
-                    Most Popular
+                    সবচেয়ে জনপ্রিয়
                   </Badge>
                 </div>
               )}
               <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  {plan.name === "Starter" && (
-                    <Zap className="h-5 w-5 text-primary" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {pkg.icon}
+                    <CardTitle className="text-lg text-foreground">
+                      {pkg.name}
+                    </CardTitle>
+                  </div>
+                  {pkg.bonus && (
+                    <Badge className="border-green-500/30 bg-green-500/10 text-green-400">
+                      {pkg.bonus}
+                    </Badge>
                   )}
-                  {plan.name === "Professional" && (
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  )}
-                  {plan.name === "Enterprise" && (
-                    <Building2 className="h-5 w-5 text-primary" />
-                  )}
-                  <CardTitle className="text-lg text-foreground">
-                    {plan.name}
-                  </CardTitle>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {plan.description}
-                </p>
               </CardHeader>
               <CardContent>
                 <div className="mb-6">
-                  {plan.monthlyPrice || plan.monthlyPrice === 0 ? (
-                    <div className="flex items-baseline">
-                      <span className="text-4xl font-bold text-foreground">
-                        ৳{isYearly ? plan.yearlyPrice : plan.monthlyPrice}
-                      </span>
-                      <span className="ml-2 text-muted-foreground">/month</span>
-                    </div>
-                  ) : (
-                    <div className="text-4xl font-bold text-foreground">
-                      Custom
-                    </div>
-                  )}
-                  {isYearly && plan.monthlyPrice && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Billed annually (৳{plan.yearlyPrice! * 12}/year)
-                    </p>
-                  )}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-foreground">
+                      {pkg.price}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {pkg.replies}
+                  </p>
                 </div>
 
                 <PricingButton
-                  planName={plan.name}
+                  planName={pkg.planKey}
                   className={`mb-6 w-full gap-2 ${
-                    plan.popular
+                    pkg.popular
                       ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "bg-muted text-foreground hover:bg-muted/80"
                   }`}
-                  variant={plan.popular ? "default" : "secondary"}
+                  variant={pkg.popular ? "default" : "secondary"}
                 />
 
                 <ul className="space-y-3">
-                  {plan.features.map((feature) => (
+                  {pkg.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <span className="text-sm text-muted-foreground">
@@ -262,84 +221,84 @@ export function PricingSection() {
           ))}
         </div>
 
+        {/* Payment Methods */}
+        <div className="mt-12 text-center">
+          <p className="mb-6 text-sm font-medium text-muted-foreground">
+            পছন্দের পেমেন্ট পদ্ধতিতে রিচার্জ করুন
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {paymentMethods.map((method) => (
+              <div
+                key={method.name}
+                className="flex items-center gap-2 rounded-full border border-border bg-muted px-5 py-2.5"
+              >
+                <span className="text-lg">{method.emoji}</span>
+                <span className="text-sm font-medium text-foreground">
+                  {method.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* FAQ Section */}
         <div className="mt-24">
           <div className="mb-12 text-center">
-            <h3 className="text-2xl font-bold text-foreground">
-              Frequently Asked Questions
-            </h3>
-            <p className="mt-2 text-muted-foreground">
-              {"Everything you need to know about our pricing"}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <HelpCircle className="h-5 w-5 text-primary" />
+              <h3 className="text-2xl font-bold text-foreground">
+                সাধারণ প্রশ্নাবলী
+              </h3>
+            </div>
+            <p className="text-muted-foreground">
+              আপনার মনে যা প্রশ্ন আছে, উত্তর এখানেই আছে।
             </p>
           </div>
 
-          <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
-            {faqs.map((faq) => (
-              <Card key={faq.question} className="border-border bg-card">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-3">
-                    <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <h4 className="font-medium text-foreground">
-                        {faq.question}
-                      </h4>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {faq.answer}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="mx-auto max-w-3xl">
+            <Accordion type="single" collapsible className="space-y-3">
+              {faqs.map((faq, index) => (
+                <AccordionItem
+                  key={index}
+                  value={`faq-${index}`}
+                  className="rounded-xl border border-border bg-card px-6"
+                >
+                  <AccordionTrigger className="text-left font-medium text-foreground hover:no-underline">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </div>
         </div>
 
         {/* CTA Banner */}
         <div className="mt-20">
           <Card className="border-border bg-card">
-            <CardContent className="flex flex-col items-center justify-between gap-6 p-8 lg:flex-row lg:p-12">
+            <CardContent className="flex flex-col items-center justify-between gap-6 p-8 text-center lg:flex-row lg:p-12 lg:text-left">
               <div>
                 <h3 className="text-2xl font-bold text-foreground">
-                  Ready to Transform Your Customer Engagement?
+                  আজই শুরু করুন — ৭ দিন বিনামূল্যে
                 </h3>
                 <p className="mt-2 text-muted-foreground">
-                  Start your 14-day free trial. No credit card required.
+                  ৳৫০ ফ্রি ক্রেডিট দিয়ে সব ফিচার পরীক্ষা করুন। কোনো ক্রেডিট
+                  কার্ড দরকার নেই।
                 </p>
               </div>
-              <div className="flex gap-4">
-                <Button variant="outline" size="lg">
-                  Schedule Demo
+              <div className="flex shrink-0 flex-wrap gap-4">
+                <Button variant="outline" size="lg" asChild>
+                  <a href="#features">বিস্তারিত জানুন</a>
                 </Button>
                 <AuthButton
                   size="lg"
-                  className="gap-2 bg-primary text-primary-foreground"
+                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 />
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Trust Badges */}
-        <div className="mt-16 text-center">
-          <p className="mb-6 text-sm text-muted-foreground">
-            Trusted by leading companies worldwide
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-8 opacity-50">
-            {[
-              "TechCorp",
-              "GlobalRetail",
-              "HealthPlus",
-              "EduLearn",
-              "FinanceHub",
-            ].map((company) => (
-              <div
-                key={company}
-                className="text-lg font-semibold text-muted-foreground"
-              >
-                {company}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </section>

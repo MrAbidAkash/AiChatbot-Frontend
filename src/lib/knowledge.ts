@@ -95,20 +95,40 @@ export async function saveDocument(doc: {
 export async function getDocuments(filter: {
   userId?: string;
   pageId?: string;
-}): Promise<BusinessDocument[]> {
+} = {}): Promise<BusinessDocument[]> {
   const db = getDb();
   const collection = db.collection<BusinessDocument>(COLLECTION_NAME);
 
   const query: any = {};
-  if (filter.userId && filter.userId !== "all") {
-    // Also include documents with no userId or "default"
-    query.$or = [{ userId: filter.userId }, { userId: "default" }, { userId: { $exists: false } }];
+  if (filter.userId && filter.userId !== "all" && filter.userId !== "default") {
+    query.$or = [
+      { userId: filter.userId },
+      { userId: "default" },
+      { userId: { $exists: false } },
+      { userId: null },
+    ];
   }
   if (filter.pageId) {
-    query.$or = [...(query.$or || []), { pageId: filter.pageId }, { pageId: { $exists: false } }];
+    const pageCondition = [
+      { pageId: filter.pageId },
+      { pageId: { $exists: false } },
+      { pageId: null },
+    ];
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: pageCondition }];
+      delete query.$or;
+    } else {
+      query.$or = pageCondition;
+    }
   }
 
-  const docs = await collection.find(query).sort({ uploadedAt: -1 }).toArray();
+  let docs = await collection.find(query).sort({ uploadedAt: -1 }).toArray();
+
+  // If no docs matched the narrow filter, fallback to returning all available business documents
+  if (docs.length === 0) {
+    docs = await collection.find({}).sort({ uploadedAt: -1 }).toArray();
+  }
+
   return docs.map((d) => ({
     ...d,
     _id: d._id.toString(),
@@ -140,13 +160,19 @@ export async function getRelevantKnowledge(
   query: string,
   options: { userId?: string; pageId?: string } = {},
 ): Promise<string> {
-  const docs = await getDocuments(options);
+  let docs = await getDocuments(options);
   if (!docs || docs.length === 0) {
+    docs = await getDocuments({});
+  }
+  if (!docs || docs.length === 0) {
+    console.warn(`[Knowledge] No documents found in database.`);
     return "";
   }
 
+  console.log(`[Knowledge] Retrieved ${docs.length} document(s) for query "${query}". Total chars: ${docs.reduce((acc, d) => acc + (d.content?.length || 0), 0)}`);
+
   // If the total knowledge across all documents is under ~15,000 words,
-  // we can provide full context directly into Gemini Flash for maximum accuracy!
+  // we provide full context directly into Gemini Flash for maximum accuracy!
   const totalLength = docs.reduce((acc, d) => acc + (d.content?.length || 0), 0);
 
   if (totalLength <= 60000) {

@@ -110,6 +110,10 @@ export async function POST(request: NextRequest) {
           pageId: page.pageId,
         });
 
+        console.log(
+          `[FB Webhook] Knowledge loaded (${businessKnowledge.length} chars) for page "${page.pageName}". Prompting Gemini...`,
+        );
+
         // Retrieve recent conversation history for multi-turn dialogue
         const history = await getRecentConversationHistory(conversationId, 6);
 
@@ -130,6 +134,7 @@ export async function POST(request: NextRequest) {
 
           aiReplyText = aiResponse.reply;
           modelUsed = aiResponse.modelUsed;
+          console.log(`[FB Webhook] AI reply generated (${aiReplyText.length} chars, model: ${modelUsed})`);
         } catch (geminiError: any) {
           console.error("Gemini reply error:", geminiError);
           aiReplyText =
