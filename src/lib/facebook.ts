@@ -8,12 +8,23 @@ export interface FacebookPageRecord {
   pageId: string;
   pageName: string;
   pageAccessToken: string;
+  category?: string;
+  pictureUrl?: string;
   isActive: boolean;
   botTone?: "friendly" | "professional" | "casual";
   fallbackMessage?: string;
   customInstructions?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface FacebookDiscoveredPage {
+  id: string;
+  name: string;
+  category?: string;
+  accessToken: string;
+  pictureUrl?: string;
+  canManage: boolean;
 }
 
 const COLLECTION_NAME = "facebook_pages";
@@ -73,6 +84,8 @@ export async function upsertFacebookPage(data: {
   pageId: string;
   pageName: string;
   pageAccessToken: string;
+  category?: string;
+  pictureUrl?: string;
   isActive?: boolean;
   botTone?: "friendly" | "professional" | "casual";
   fallbackMessage?: string;
@@ -88,6 +101,8 @@ export async function upsertFacebookPage(data: {
     pageId: data.pageId,
     pageName: data.pageName,
     pageAccessToken: data.pageAccessToken,
+    category: data.category,
+    pictureUrl: data.pictureUrl,
     isActive: data.isActive !== undefined ? data.isActive : true,
     botTone: data.botTone || "friendly",
     fallbackMessage:
@@ -197,4 +212,114 @@ export async function getFacebookUserProfile(
   }
   return { name: `Customer ${psid.slice(-4)}` };
 }
+
+/**
+ * Fetch all Facebook Pages managed by a user using their Facebook User Access Token
+ */
+export async function fetchUserFacebookPages(
+  userAccessToken: string,
+): Promise<FacebookDiscoveredPage[]> {
+  try {
+    const cleanToken = userAccessToken.trim();
+    if (!cleanToken || cleanToken.length < 15) {
+      throw new Error("Invalid access token format.");
+    }
+
+    const url = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,access_token,tasks,picture{url}&access_token=${encodeURIComponent(cleanToken)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Facebook me/accounts error:", data);
+      const msg = data.error?.message || "Failed to fetch Facebook pages from Meta.";
+      throw new Error(msg);
+    }
+
+    const pages: FacebookDiscoveredPage[] = (data.data || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      category: p.category || "Business",
+      accessToken: p.access_token, // This is the Page-specific access token!
+      pictureUrl: p.picture?.data?.url || "",
+      canManage: Array.isArray(p.tasks) && p.tasks.includes("MANAGE"),
+    }));
+
+    return pages;
+  } catch (error: any) {
+    console.error("Error in fetchUserFacebookPages:", error);
+    throw error;
+  }
+}
+
+/**
+ * Exchange OAuth authorization code for Facebook User Token & Managed Pages
+ */
+export async function exchangeCodeForPages(
+  code: string,
+  redirectUri: string,
+): Promise<{ userAccessToken: string; pages: FacebookDiscoveredPage[] }> {
+  const clientId = process.env.FACEBOOK_CLIENT_ID;
+  const clientSecret = process.env.FACEBOOK_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      "FACEBOOK_CLIENT_ID and FACEBOOK_CLIENT_SECRET are not configured in your .env file.",
+    );
+  }
+
+  // 1. Exchange code for short-lived user token
+  const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${encodeURIComponent(code)}`;
+  const tokenRes = await fetch(tokenUrl);
+  const tokenData = await tokenRes.json();
+
+  if (!tokenRes.ok || !tokenData.access_token) {
+    console.error("Facebook token exchange error:", tokenData);
+    throw new Error(
+      tokenData.error?.message || "Failed to exchange authorization code with Facebook.",
+    );
+  }
+
+  let userAccessToken = tokenData.access_token;
+
+  // 2. Exchange for 60-day long-lived token
+  try {
+    const longLivedUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${userAccessToken}`;
+    const longRes = await fetch(longLivedUrl);
+    const longData = await longRes.json();
+    if (longData.access_token) {
+      userAccessToken = longData.access_token;
+    }
+  } catch (err) {
+    console.warn("Could not exchange for long-lived token:", err);
+  }
+
+  // 3. Fetch managed pages
+  const pages = await fetchUserFacebookPages(userAccessToken);
+  return { userAccessToken, pages };
+}
+
+/**
+ * Automatically subscribe a Facebook Page to the App Webhook for Messenger
+ */
+export async function subscribePageToWebhook(
+  pageId: string,
+  pageAccessToken: string,
+): Promise<{ success: boolean; data?: any; error?: any }> {
+  try {
+    const url = `https://graph.facebook.com/v21.0/${pageId}/subscribed_apps?subscribed_fields=messages,messaging_postbacks&access_token=${encodeURIComponent(pageAccessToken)}`;
+    const response = await fetch(url, { method: "POST" });
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.warn(`Could not auto-subscribe page ${pageId} to webhook:`, data);
+      return { success: false, error: data };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    console.warn(`Error auto-subscribing page ${pageId}:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
 

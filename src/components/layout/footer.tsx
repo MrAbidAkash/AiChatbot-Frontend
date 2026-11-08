@@ -50,8 +50,7 @@ export function Footer() {
 
             {/* Tagline */}
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              বাংলাদেশের F-Commerce ব্যবসায়ীদের জন্য তৈরি AI Sales Agent।
-              Messenger, Instagram, WhatsApp সব এক জায়গায়।
+              কাস্টমার রিপ্লাইয়ের ক্লান্তি দূর করে বিজনেসের সেলস বাড়ান। Facebook, Instagram ও WhatsApp-এর জন্য আধুনিক AI সেলস অটোমেশন।
             </p>
 
             {/* Payment Badges */}

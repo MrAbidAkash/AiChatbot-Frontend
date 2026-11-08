@@ -16,92 +16,91 @@ const features = [
   {
     id: 1,
     icon: MessageSquare,
-    title: "বাংলা, Banglish & English",
-    badge: "মাল্টিলিং AI",
+    title: "বাংলা, Banglish ও English এ পারদর্শী",
+    badge: "স্মার্ট NLP",
     color: "text-primary",
     bgColor: "bg-primary/10",
     description:
-      "Customer যেভাবেই লিখুক — 'dam koto bhai', 'দাম কত?', or 'What's the price?' — AI বুঝে সঠিক উত্তর দেয়।",
+      "কাস্টমার যেভাবে খুশি লিখুক — 'dam koto bhai', 'অফার আছে কি?' কিংবা 'Show me red color' — AI মানুষের মতো স্বাভাবিকভাবে সঠিক উত্তর দেয়।",
   },
   {
     id: 2,
     icon: Camera,
-    title: "ছবি দেখে পণ্য চেনে",
+    title: "ছবি দেখে ইনস্ট্যান্ট প্রোডাক্ট ম্যাচিং",
     badge: "Vision AI",
     color: "text-pink-400",
     bgColor: "bg-pink-500/10",
     description:
-      "Customer product এর screenshot পাঠালে AI নিজেই catalog থেকে মিলিয়ে দাম, সাইজ ও স্টক বলে দেয়।",
+      "স্ক্রিনশট বা জামাকাপড়/গ্যাজেটের ছবি পাঠালেই AI আপনার ক্যাটালগ সার্চ করে প্রডাক্টের সাইজ, দাম ও লাইভ স্টক নিশ্চিত করে।",
   },
   {
     id: 3,
     icon: ShoppingBag,
-    title: "COD অর্ডার নেয়",
-    badge: "Auto Order",
+    title: "স্বয়ংক্রিয় ক্যাশ অন ডেলিভারি (COD)",
+    badge: "অটো চেকআউট",
     color: "text-green-400",
     bgColor: "bg-green-500/10",
     description:
-      "Chat এর মধ্যেই নাম, ফোন, ঠিকানা নিয়ে Cash on Delivery অর্ডার কনফার্ম করে ও invoice তৈরি করে।",
+      "চ্যাটবক্সেই নাম, মোবাইল নম্বর ও ঠিকানা সংগ্রহ করে এরিয়া অনুযায়ী ডেলিভারি চার্জ যোগ করে অর্ডার কনফার্ম করে।",
   },
   {
     id: 4,
     icon: Mic,
-    title: "Voice Note শোনে",
-    badge: "Audio AI",
+    title: "অডিও ও ভয়েস নোট লিসেনিং",
+    badge: "Voice-to-Text",
     color: "text-orange-400",
     bgColor: "bg-orange-500/10",
     description:
-      "Customer voice message পাঠালে AI শুনে transcribe করে এবং সঠিক উত্তর দেয়।",
+      "মেসেঞ্জারে কাস্টমারদের পাঠানো ভয়েস মেসেজ শুনে AI স্বয়ংক্রিয়ভাবে টেক্সটে রূপান্তর করে এবং যথাযথ উত্তর দেয়।",
   },
   {
     id: 5,
     icon: MessageCircle,
-    title: "Comment Auto-Reply",
-    badge: "FB Comment",
+    title: "পোস্ট কমেন্ট টু ইনবক্স কনভার্সন",
+    badge: "Lead Booster",
     color: "text-blue-400",
     bgColor: "bg-blue-500/10",
     description:
-      "Facebook post এ কেউ 'Price please 👇' লিখলে AI auto-reply করে ও inbox এ নিয়ে আসে।",
+      "ফেসবুক পোস্টের কমেন্টে 'দাম কত?' জানতে চাইলে মুহূর্তেই রিপ্লাই দিয়ে কাস্টমারকে সরাসরি ইনবক্সে ডেকে আনে।",
   },
   {
     id: 6,
     icon: Users,
-    title: "Human Handover",
-    badge: "Team Inbox",
+    title: "টিম ইনবক্স ও ১-ক্লিক টেকওভার",
+    badge: "Human Handover",
     color: "text-chart-5",
     bgColor: "bg-chart-5/10",
     description:
-      "যেকোনো সময় AI থেকে human এ switch করুন — একটি ক্লিকেই। কাজ শেষ হলে AI আবার চালু হয়।",
+      "স্পেশাল কোনো কাস্টমার বা জটিল প্রশ্নে যেকোনো সময় একজন মানুষ চ্যাটে ঢুকতে পারেন, প্রয়োজন শেষে AI পুনরায় সচল হয়।",
   },
 ];
 
 const steps = [
   {
     number: "০১",
-    title: "পেজ কানেক্ট করুন",
-    description: "Connect your Facebook Page securely via Meta (10 min)",
+    title: "ফেসবুক পেজ কানেক্ট করুন",
+    description: "মাত্র ২ মিনিটে Meta এর অফিসিয়াল সিকিউর API দিয়ে আপনার পেজ লিংক করুন",
   },
   {
     number: "০২",
-    title: "AI ট্রেইন করুন",
-    description:
-      "Describe your products, delivery charges, policies in plain Bangla",
+    title: "শপের নিয়ম ও প্রাইস লিস্ট দিন",
+    description: "ডেলিভারি চার্জ, পলিসি ও প্রোডাক্টের বিবরণ সাধারণ বাংলায় বা ফাইলে লিখে দিন",
   },
   {
     number: "০৩",
-    title: "বিক্রি শুরু করুন",
-    description: "AI handles all customer queries 24/7 automatically",
+    title: "নিশ্চিন্তে গ্রোথে মনোযোগ দিন",
+    description: "ChatTime AI দিন-রাত ২৪ ঘণ্টা আপনার সেলস ও সাপোর্ট সম্পূর্ণ নিখুঁতভাবে চালাবে",
   },
 ];
 
 const comparisonRows = [
-  { feature: "Banglish বোঝে", keywordBot: false, ourAI: true },
-  { feature: "ছবি দেখে পণ্য চেনে", keywordBot: false, ourAI: true },
-  { feature: "COD অর্ডার নেয়", keywordBot: false, ourAI: true },
-  { feature: "Voice note বোঝে", keywordBot: false, ourAI: true },
-  { feature: "Human handover", keywordBot: false, ourAI: true },
+  { feature: "বাংলিশ ও আঞ্চলিক ভাষা বোঝে", keywordBot: false, ourAI: true },
+  { feature: "ছবি দেখে প্রোডাক্ট ও স্টক মেলায়", keywordBot: false, ourAI: true },
+  { feature: "অটোমেটিক COD অর্ডার ইনভয়েস", keywordBot: false, ourAI: true },
+  { feature: "গ্রাহকের ভয়েস নোট বোঝে", keywordBot: false, ourAI: true },
+  { feature: "১-ক্লিকে টিম টেকওভার", keywordBot: false, ourAI: true },
   {
-    feature: "সেটআপ সময়",
+    feature: "সেটআপ ও কনফিগারেশন সময়",
     keywordBot: "কয়েক দিন",
     ourAI: "১০ মিনিট",
     isText: true,
@@ -126,16 +125,14 @@ export function FeaturesSection() {
             variant="outline"
             className="border-primary/40 text-primary bg-primary/10 px-4 py-1.5 text-sm font-medium"
           >
-            কেন আমাদের বেছে নেবেন?
+            ChatTime AI পাওয়ারফুল ফিচারস
           </Badge>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">
-            যে কারণে হাজারো ব্যবসায়ী{" "}
-            <span className="gradient-text">আমাদের ভরসা করেন</span>
+            কাস্টমারের প্রতিটি ইনকোয়ারিকে{" "}
+            <span className="gradient-text">সরাসরি অর্ডারে রূপান্তর করুন</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-            No monthly subscription. No keyword bots. Just intelligent AI that
-            speaks Bangla, Banglish, and English — and actually converts
-            customers.
+            কোনো জটিল ফ্লোচার্ট বা কিওয়ার্ড রুল নয়। ChatTime AI কাস্টমারের ভাষা বোঝে, ছবি চিনে স্টক জানায় এবং চোখের পলকে সেলস ক্লোজ করে।
           </p>
         </div>
 
@@ -262,10 +259,10 @@ export function FeaturesSection() {
                       Feature
                     </th>
                     <th className="text-center px-6 py-4 font-semibold text-muted-foreground w-1/4">
-                      Keyword Bot
+                      সাধারণ কিওয়ার্ড বট
                     </th>
                     <th className="text-center px-6 py-4 font-semibold text-primary w-1/4">
-                      আমাদের AI
+                      ChatTime AI
                     </th>
                   </tr>
                 </thead>

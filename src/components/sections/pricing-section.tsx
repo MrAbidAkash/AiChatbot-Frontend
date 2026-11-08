@@ -15,55 +15,55 @@ import { Check, Sparkles, Zap, Gift, CreditCard, HelpCircle } from "lucide-react
 
 const rechargePackages = [
   {
-    name: "স্টার্টার রিচার্জ",
+    name: "স্টার্টার প্যাক",
     price: "৳৫০০",
-    replies: "~৫০০ রিপ্লাই",
+    replies: "~৫০০ কাস্টমার রিপ্লাই",
     icon: <Zap className="h-5 w-5 text-primary" />,
     bonus: null,
     popular: false,
     features: [
       "Messenger + Instagram + WhatsApp",
-      "COD Order নেওয়া",
-      "Comment Auto-reply",
-      "Human Handover",
-      "৬ মাস মেয়াদ",
+      "অটো COD অর্ডার কনফার্মেশন",
+      "পোস্ট কমেন্ট অটো-রিপ্লাই",
+      "টিম ইনবক্স ও হ্যান্ডওভার",
+      "ক্রেডিটের কোনো এক্সপায়ারি নেই",
     ],
     cta: "রিচার্জ করুন",
     planKey: "starter",
   },
   {
-    name: "প্রফেশনাল রিচার্জ",
+    name: "গ্রোথ প্যাক",
     price: "৳১,০০০",
     replies: "~১,১০০ রিপ্লাই",
     icon: <Sparkles className="h-5 w-5 text-primary" />,
-    bonus: "১০% বোনাস",
+    bonus: "১০% বোনাস ক্রেডিট",
     popular: true,
     features: [
-      "সব চ্যানেল",
-      "COD Order + Invoice",
-      "Vision AI (ছবি চেনা)",
-      "Voice Note",
-      "Team Inbox",
-      "Human Handover",
-      "১ বছর মেয়াদ",
+      "সব চ্যানেল সাপোর্ট",
+      "অটোমেটিক COD ইনভয়েস",
+      "Vision AI (ছবি চিনে প্রোডাক্ট ম্যাচ)",
+      "ভয়েস মেসেজ ট্রান্সক্রিপশন",
+      "রিয়েল-টাইম টিম ইনবক্স",
+      "লাইভ সাপোর্ট ও অনবোর্ডিং",
+      "কোনো মেয়াদ সীমাবদ্ধতা নেই",
     ],
     cta: "রিচার্জ করুন",
-    planKey: "professional",
+    planKey: "growth",
   },
   {
-    name: "বিজনেস রিচার্জ",
+    name: "বিজনেস স্কেল",
     price: "৳৫,০০০",
     replies: "~৬,০০০ রিপ্লাই",
     icon: <CreditCard className="h-5 w-5 text-primary" />,
-    bonus: "২০% বোনাস",
+    bonus: "২০% বোনাস ক্রেডিট",
     popular: false,
     features: [
-      "সব প্রফেশনাল ফিচার",
-      "Priority Support",
-      "Custom AI Persona",
-      "Advanced Analytics",
-      "API Access",
-      "কোনো মেয়াদ নেই",
+      "সব গ্রোথ ফিচার অন্তর্ভুক্ত",
+      "প্রাইওরিটি কাস্টমার সাপোর্ট",
+      "কাস্টম ব্র্যান্ড টোন ও প্রম্পট",
+      "অ্যাডভান্সড সেলস অ্যানালিটিক্স",
+      "API ও ওয়েবহুক ইন্টিগ্রেশন",
+      "আনলিমিটেড ভ্যালিডিটি",
     ],
     cta: "রিচার্জ করুন",
     planKey: "business",
@@ -78,29 +78,29 @@ const paymentMethods = [
 
 const faqs = [
   {
-    question: "Credit কতদিন থাকে?",
+    question: "রিচার্জ করা ক্রেডিট কি মেয়াদ শেষ হলে নষ্ট হয়ে যাবে?",
     answer:
-      "Credit এর কোনো expiry নেই, যতদিন আপনার account থাকবে ততদিন থাকবে।",
+      "না, ChatTime AI-তে ক্রেডিটের কোনো এক্সপায়ারি নেই। আপনার ব্যালেন্স যতদিন ইচ্ছা জমা থাকবে এবং ব্যবহৃত রিপ্লাই অনুযায়ী কাটবে।",
   },
   {
-    question: "কিভাবে রিচার্জ করব?",
+    question: "পেমেন্ট কীভাবে করা যায়?",
     answer:
-      "Dashboard থেকে bKash, Nagad, বা Bank Transfer এ রিচার্জ করা যায়। ৫-১০ মিনিটে active হয়।",
+      "সরাসরি দেশীয় বিকাশ (bKash), নগদ (Nagad) কিংবা লোকাল ব্যাংক ট্রান্সফারের মাধ্যমে সহজেই ব্যালেন্স যোগ করতে পারবেন।",
   },
   {
-    question: "কতটি page কানেক্ট করা যাবে?",
+    question: "একটি অ্যাকাউন্ট থেকে কয়টি ফেসবুক পেজ কানেক্ট করা যাবে?",
     answer:
-      "একটি account থেকে multiple Facebook page কানেক্ট করা যায়।",
+      "একটি ChatTime AI ড্যাশবোর্ড থেকেই একাধিক ফেসবুক পেজ কানেক্ট করে আলাদা ক্যাটালগ ও নিয়মে পরিচালনা করতে পারবেন।",
   },
   {
-    question: "Human handover কিভাবে কাজ করে?",
+    question: "প্রয়োজনে কি নিজে কাস্টমারের সাথে কথা বলা যাবে?",
     answer:
-      "Team inbox থেকে যেকোনো conversation এ ক্লিক করে AI pause করে নিজে reply করুন। কাজ শেষে AI আবার চালু হবে।",
+      "অবশ্যই। টিম ইনবক্স থেকে যেকোনো মুহূর্তে ১-ক্লিকে চ্যাট নিজের নিয়ন্ত্রণে নিতে পারবেন। আপনার রিপ্লাই শেষ হলে AI আবার অটোমেটিক চালু হবে।",
   },
   {
-    question: "Meta compliant কি?",
+    question: "আমার ফেসবুক পেজের নিরাপত্তা নিয়ে কি কোনো ঝুঁকি আছে?",
     answer:
-      "হ্যাঁ, আমরা Meta এর official API ব্যবহার করি। আপনার page সম্পূর্ণ নিরাপদ।",
+      "বিন্দুমাত্র না। আমরা Meta-এর অফিশিয়াল Graph API ব্যবহার করি। আপনার পেজ বা ফেসবুক আইডির কোনো পাসওয়ার্ড আমাদের কখনোই দিতে হয় না।",
   },
 ];
 
@@ -112,15 +112,15 @@ export function PricingSection() {
         <div className="mx-auto max-w-3xl text-center">
           <Badge className="mb-6 border-primary/30 bg-primary/10 text-primary">
             <Sparkles className="mr-2 h-3 w-3" />
-            মূল্য পরিকল্পনা
+            স্বচ্ছ ও ফ্লেক্সিবল প্রাইসিং
           </Badge>
           <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
-            কোনো মাসিক ফি নেই। শুধু{" "}
-            <span className="gradient-text">ব্যবহার করুন,</span>
+            যতটুকু বিক্রি করবেন,{" "}
+            <span className="gradient-text">ততটুকুই খরচ হবে</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Pay-as-you-go model — রিচার্জ করুন, ব্যবহার করুন। কোনো বাধ্যতামূলক
-            সাবস্ক্রিপশন নেই। বাংলাদেশের সেরা পেমেন্ট পদ্ধতিতে রিচার্জ করুন।
+            কোনো বাধ্যতামূলক মাসিক ফি নেই, কোনো আন্তর্জাতিক কার্ডের ঝামেলা নেই।
+            ChatTime AI-তে বিকাশ ও নগদ দিয়ে প্রিপেইড রিচার্জ করুন — ক্রেডিটের মেয়াদ কখনো শেষ হয় না।
           </p>
         </div>
 
@@ -134,11 +134,11 @@ export function PricingSection() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-foreground">
-                    ৭ দিন বিনামূল্যে ব্যবহার করুন
+                    বিনামূল্যে শুরু করুন ChatTime AI
                   </h3>
                   <p className="mt-1 text-muted-foreground">
-                    ৳৫০ ফ্রি ক্রেডিট — কোনো ক্রেডিট কার্ড দরকার নেই। ৭ দিন সব
-                    ফিচার ব্যবহার করুন।
+                    নতুন অ্যাকাউন্ট খুললেই পাচ্ছেন ফ্রি ট্রায়াল ক্রেডিট — ক্রেডিট কার্ড ছাড়াই
+                    সম্পূর্ণ সেটআপ করুন এবং সব প্রিমিয়াম ফিচার পরখ করে দেখুন।
                   </p>
                 </div>
               </div>
@@ -147,7 +147,7 @@ export function PricingSection() {
                 className="shrink-0 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 asChild
               >
-                <a href="/signup">ফ্রি ট্রায়াল শুরু করুন</a>
+                <a href="/signup">ফ্রি অ্যাকাউন্ট তৈরি করুন</a>
               </Button>
             </div>
           </div>
@@ -281,16 +281,15 @@ export function PricingSection() {
             <CardContent className="flex flex-col items-center justify-between gap-6 p-8 text-center lg:flex-row lg:p-12 lg:text-left">
               <div>
                 <h3 className="text-2xl font-bold text-foreground">
-                  আজই শুরু করুন — ৭ দিন বিনামূল্যে
+                  আজই শুরু করুন কাস্টমার সাপোর্ট অটোমেশন
                 </h3>
                 <p className="mt-2 text-muted-foreground">
-                  ৳৫০ ফ্রি ক্রেডিট দিয়ে সব ফিচার পরীক্ষা করুন। কোনো ক্রেডিট
-                  কার্ড দরকার নেই।
+                  ফ্রি ট্রায়াল ক্রেডিট দিয়ে এখুনি শুরু করুন। কোনো ক্রেডিট কার্ডের প্রয়োজন নেই।
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap gap-4">
                 <Button variant="outline" size="lg" asChild>
-                  <a href="#features">বিস্তারিত জানুন</a>
+                  <a href="#features">ফিচারস দেখুন</a>
                 </Button>
                 <AuthButton
                   size="lg"

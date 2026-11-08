@@ -1,28 +1,31 @@
 // src/components/Connect.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FaFacebook,
   FaCheck,
   FaCopy,
   FaTrash,
-  FaRobot,
   FaPaperPlane,
-  FaExclamationTriangle,
   FaBook,
   FaInfoCircle,
+  FaExternalLinkAlt,
+  FaChevronDown,
+  FaChevronUp,
+  FaKey,
+  FaExclamationCircle,
 } from "react-icons/fa";
 import {
   Sparkles,
   Bot,
-  Layers,
-  ArrowRight,
-  ExternalLink,
-  ShieldCheck,
   RefreshCw,
-  Power,
-  ChevronRight,
+  Plus,
+  CheckCircle2,
+  Store,
+  ShieldCheck,
+  HelpCircle,
+  Laptop,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -35,6 +38,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
@@ -43,6 +54,8 @@ interface ConnectedPage {
   pageId: string;
   pageName: string;
   pageAccessToken: string;
+  category?: string;
+  pictureUrl?: string;
   isActive: boolean;
   botTone?: "friendly" | "professional" | "casual";
   fallbackMessage?: string;
@@ -50,20 +63,33 @@ interface ConnectedPage {
   createdAt?: string;
 }
 
+interface DiscoveredPage {
+  id: string;
+  name: string;
+  category?: string;
+  accessToken: string;
+  pictureUrl?: string;
+  canManage: boolean;
+}
+
 export default function ConnectFacebookPage() {
   const [pages, setPages] = useState<ConnectedPage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  // New Page Form State
-  const [pageName, setPageName] = useState("");
-  const [pageId, setPageId] = useState("");
-  const [pageAccessToken, setPageAccessToken] = useState("");
-  const [botTone, setBotTone] = useState<"friendly" | "professional" | "casual">("friendly");
-  const [customInstructions, setCustomInstructions] = useState("");
-  const [fallbackMessage, setFallbackMessage] = useState(
-    "I don't have that specific information in my documents right now. Our support team will get back to you shortly!",
-  );
+  // Facebook OAuth & Popup State
+  const [authenticating, setAuthenticating] = useState(false);
+  const [showPageSelectorModal, setShowPageSelectorModal] = useState(false);
+  const [showSetupGuideModal, setShowSetupGuideModal] = useState(false);
+  const [discoveredPages, setDiscoveredPages] = useState<DiscoveredPage[]>([]);
+  const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
+  const [connectingPages, setConnectingPages] = useState(false);
+
+  // Manual Page Connection State
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualPageId, setManualPageId] = useState("");
+  const [manualPageName, setManualPageName] = useState("");
+  const [manualPageAccessToken, setManualPageAccessToken] = useState("");
+  const [manualSaving, setManualSaving] = useState(false);
 
   // AI Testing Playground State
   const [testMessage, setTestMessage] = useState("");
@@ -80,14 +106,7 @@ export default function ConnectFacebookPage() {
 
   const [origin, setOrigin] = useState("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-    fetchPages();
-  }, []);
-
-  const fetchPages = async () => {
+  const fetchPages = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/facebook/pages");
@@ -103,49 +122,178 @@ export default function ConnectFacebookPage() {
     } finally {
       setLoading(false);
     }
+  }, [testPageId]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+    fetchPages();
+
+    // Listen for OAuth completion from the popup window
+    const handlePopupMessage = (event: MessageEvent) => {
+      if (event.data?.type === "FACEBOOK_AUTH_SUCCESS") {
+        const incomingPages: DiscoveredPage[] = event.data.pages || [];
+        if (incomingPages.length > 0) {
+          setDiscoveredPages(incomingPages);
+          setShowPageSelectorModal(true);
+          toast.success(`Facebook connected! Found ${incomingPages.length} Page(s).`);
+        } else {
+          toast.error("No managed Facebook Pages found. Make sure you are an Admin of a Facebook Page.");
+        }
+      } else if (event.data?.type === "FACEBOOK_AUTH_ERROR") {
+        toast.error(`Facebook login error: ${event.data.error || "Cancelled"}`);
+      }
+    };
+
+    window.addEventListener("message", handlePopupMessage);
+    return () => window.removeEventListener("message", handlePopupMessage);
+  }, [fetchPages]);
+
+  // Click handler for "Connect Facebook Page"
+  const handleStartFacebookConnect = async () => {
+    setAuthenticating(true);
+    try {
+      const res = await fetch("/api/facebook/auth-url");
+      const data = await res.json();
+
+      if (!data.configured || !data.authUrl) {
+        // Facebook App credentials not yet filled in .env
+        setShowSetupGuideModal(true);
+        return;
+      }
+
+      // Open centered Facebook Login popup
+      const width = 600;
+      const height = 700;
+      const left = window.innerWidth / 2 - width / 2 + window.screenX;
+      const top = window.innerHeight / 2 - height / 2 + window.screenY;
+
+      const popup = window.open(
+        data.authUrl,
+        "facebook_oauth_popup",
+        `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes`,
+      );
+
+      if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        toast.error("Popup blocked by browser. Please allow popups for this site.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to initiate Facebook connect");
+    } finally {
+      setAuthenticating(false);
+    }
   };
 
-  const handleConnectPage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pageId.trim() || !pageAccessToken.trim()) {
-      toast.error("Page ID and Page Access Token are required.");
-      return;
-    }
-
-    setSaving(true);
+  // Connect single page directly from the popup list
+  const handleConnectSinglePage = async (page: DiscoveredPage) => {
+    setConnectingPages(true);
     try {
-      const res = await fetch("/api/facebook/pages", {
+      const res = await fetch("/api/facebook/connect-page", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pageId: pageId.trim(),
-          pageName: pageName.trim() || `Facebook Page (${pageId.trim()})`,
-          pageAccessToken: pageAccessToken.trim(),
-          isActive: true,
-          botTone,
-          customInstructions,
-          fallbackMessage,
+          pageId: page.id,
+          pageName: page.name,
+          pageAccessToken: page.accessToken,
+          category: page.category,
+          pictureUrl: page.pictureUrl,
+          botTone: "friendly",
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Connected "${page.name}" with auto-reply enabled!`);
+        await fetchPages();
+        setShowPageSelectorModal(false);
+      } else {
+        toast.error(data.error || "Failed to connect page");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to connect page");
+    } finally {
+      setConnectingPages(false);
+    }
+  };
+
+  // Toggle page selection checkbox
+  const togglePageSelect = (pageId: string) => {
+    setSelectedPageIds((prev) =>
+      prev.includes(pageId) ? prev.filter((id) => id !== pageId) : [...prev, pageId],
+    );
+  };
+
+  // Connect multiple selected pages
+  const handleConnectSelectedPages = async () => {
+    if (selectedPageIds.length === 0) return;
+
+    setConnectingPages(true);
+    let count = 0;
+    for (const pageId of selectedPageIds) {
+      const p = discoveredPages.find((item) => item.id === pageId);
+      if (!p) continue;
+
+      try {
+        const res = await fetch("/api/facebook/connect-page", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pageId: p.id,
+            pageName: p.name,
+            pageAccessToken: p.accessToken,
+            category: p.category,
+            pictureUrl: p.pictureUrl,
+            botTone: "friendly",
+          }),
+        });
+        if (res.ok) count++;
+      } catch (err) {
+        console.error("Error connecting page:", err);
+      }
+    }
+
+    setConnectingPages(false);
+    toast.success(`Successfully connected ${count} Facebook Page(s)!`);
+    await fetchPages();
+    setShowPageSelectorModal(false);
+    setSelectedPageIds([]);
+  };
+
+  // Connect a 1-click Demo Store Page for fast testing
+  const handleConnectDemoStore = async (storeName: string, category: string) => {
+    setConnectingPages(true);
+    try {
+      const demoId = `page_${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+      const res = await fetch("/api/facebook/connect-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageId: demoId,
+          pageName: storeName,
+          pageAccessToken: `EAAG_demo_token_${demoId}`,
+          category,
+          pictureUrl: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=100&h=100&fit=crop",
+          botTone: "friendly",
         }),
       });
 
       if (res.ok) {
-        toast.success("Facebook Page connected and auto-reply enabled!");
-        setPageName("");
-        setPageId("");
-        setPageAccessToken("");
-        setCustomInstructions("");
+        toast.success(`Connected "${storeName}"! You can now test auto-reply with your documents.`);
+        setShowSetupGuideModal(false);
+        setShowPageSelectorModal(false);
         await fetchPages();
       } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to connect Facebook page");
+        toast.error("Failed to connect demo store");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Network error");
+    } catch {
+      toast.error("Failed to connect demo store");
     } finally {
-      setSaving(false);
+      setConnectingPages(false);
     }
   };
 
+  // Toggle active auto-reply
   const handleToggleActive = async (page: ConnectedPage) => {
     try {
       const updated = !page.isActive;
@@ -171,6 +319,7 @@ export default function ConnectFacebookPage() {
     }
   };
 
+  // Delete page
   const handleDeletePage = async (pageIdToDelete: string) => {
     if (!confirm("Are you sure you want to disconnect this Facebook Page?")) return;
     try {
@@ -186,11 +335,52 @@ export default function ConnectFacebookPage() {
     }
   };
 
+  // Manual Page Connect
+  const handleManualConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualPageId.trim() || !manualPageAccessToken.trim()) {
+      toast.error("Page ID and Access Token are required");
+      return;
+    }
+
+    setManualSaving(true);
+    try {
+      const res = await fetch("/api/facebook/connect-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageId: manualPageId.trim(),
+          pageName: manualPageName.trim() || `Facebook Page (${manualPageId.trim()})`,
+          pageAccessToken: manualPageAccessToken.trim(),
+          botTone: "friendly",
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Page connected successfully!");
+        setManualPageId("");
+        setManualPageName("");
+        setManualPageAccessToken("");
+        setShowManualForm(false);
+        setShowSetupGuideModal(false);
+        await fetchPages();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to connect page");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error");
+    } finally {
+      setManualSaving(false);
+    }
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard!`);
   };
 
+  // Live AI Tester
   const handleTestAi = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!testMessage.trim() || testingAi) return;
@@ -250,47 +440,61 @@ export default function ConnectFacebookPage() {
   return (
     <div className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-8">
-        {/* Page Title & Intro */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
               <FaFacebook className="text-[#1877F2] h-8 w-8" />
-              Facebook Messenger Auto-Reply
+              Facebook Auto-Reply Integration
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Connect your Facebook Pages and let Gemini AI automatically answer customer
-              inquiries by analyzing your uploaded business documents.
+              questions by analyzing your business documents.
             </p>
           </div>
-          <Link href="/dashboard/training">
-            <Button variant="outline" className="gap-2">
-              <FaBook className="h-4 w-4 text-primary" />
-              Manage Business Documents
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard/training">
+              <Button variant="outline" className="gap-2">
+                <FaBook className="h-4 w-4 text-primary" />
+                Knowledge Base
+              </Button>
+            </Link>
+            <Button
+              onClick={handleStartFacebookConnect}
+              disabled={authenticating}
+              className="gap-2 bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-md font-semibold px-5"
+            >
+              {authenticating ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <FaFacebook className="h-4 w-4" />
+              )}
+              {authenticating ? "Connecting..." : "Connect Facebook Page"}
             </Button>
-          </Link>
+          </div>
         </div>
 
-        {/* Top Instructions / Webhook Setup Banner */}
+        {/* Webhook Configuration Banner */}
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2 text-primary font-semibold">
-              <ShieldCheck className="h-5 w-5" />
-              Step 1: Configure Webhook in Meta Developer App
+            <CardTitle className="text-base flex items-center gap-2 text-primary font-semibold">
+              <ShieldCheck className="h-4 w-4" />
+              Meta Webhook Settings
             </CardTitle>
-            <CardDescription>
-              Copy these two values and paste them into your Meta Developer App (Messenger → Webhooks → Edit Subscription).
+            <CardDescription className="text-xs">
+              Configure these in your Meta Developer App (Messenger → Webhooks → Edit Subscription).
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border bg-background/80 p-3">
-              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground mb-1">
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border bg-background p-2.5">
+              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
                 <span>Callback URL</span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(webhookUrl, "Callback URL")}
                   className="flex items-center gap-1 text-primary hover:underline"
                 >
-                  <FaCopy className="h-3 w-3" /> Copy
+                  <FaCopy className="h-2.5 w-2.5" /> Copy
                 </button>
               </div>
               <p className="text-xs font-mono font-semibold break-all text-foreground">
@@ -298,181 +502,119 @@ export default function ConnectFacebookPage() {
               </p>
             </div>
 
-            <div className="rounded-lg border bg-background/80 p-3">
-              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground mb-1">
+            <div className="rounded-lg border bg-background p-2.5">
+              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
                 <span>Verify Token</span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(verifyToken, "Verify Token")}
                   className="flex items-center gap-1 text-primary hover:underline"
                 >
-                  <FaCopy className="h-3 w-3" /> Copy
+                  <FaCopy className="h-2.5 w-2.5" /> Copy
                 </button>
               </div>
               <p className="text-xs font-mono font-semibold text-foreground">
                 {verifyToken}
               </p>
             </div>
-            <div className="sm:col-span-2 text-xs text-muted-foreground flex items-center gap-2">
-              <FaInfoCircle className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span>
-                Required Webhook subscription fields in Meta: <span className="font-semibold text-foreground">messages</span> and <span className="font-semibold text-foreground">messaging_postbacks</span>.
-              </span>
-            </div>
           </CardContent>
         </Card>
 
-        {/* Main Grid: Left = Connect Form & Connected Pages, Right = Live AI Simulator */}
+        {/* Main Grid: Left = Connected Pages & Connect Action, Right = Live AI Simulator */}
         <div className="grid gap-8 lg:grid-cols-12">
-          {/* Left Column (7 cols): Connect Page Form & Connected Pages List */}
-          <div className="space-y-8 lg:col-span-7">
-            {/* Connect a Facebook Page Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-primary" />
-                  Connect Facebook Page
-                </CardTitle>
-                <CardDescription>
-                  Enter your Page ID and Page Access Token to link your Facebook Page.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConnectPage} className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-xs font-semibold text-foreground">
-                        Page Name
-                      </label>
-                      <Input
-                        placeholder="e.g. My Brand Store"
-                        value={pageName}
-                        onChange={(e) => setPageName(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground">
-                        Facebook Page ID *
-                      </label>
-                      <Input
-                        placeholder="e.g. 104928374829102"
-                        value={pageId}
-                        onChange={(e) => setPageId(e.target.value)}
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-foreground">
-                      Facebook Page Access Token (Never Expires) *
-                    </label>
-                    <Input
-                      type="password"
-                      placeholder="EAAG..."
-                      value={pageAccessToken}
-                      onChange={(e) => setPageAccessToken(e.target.value)}
-                      required
-                      className="mt-1 font-mono text-xs"
-                    />
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Generated from Meta Developer App → Tools → Graph API Explorer (Page Access Token) or Page Settings.
+          {/* Left Column (7 cols): Connected Pages List & One-Click Connect */}
+          <div className="space-y-6 lg:col-span-7">
+            {/* Quick Connect Callout Card */}
+            <Card className="border-border shadow-xs bg-card">
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                      <Store className="h-5 w-5 text-primary" />
+                      Add Facebook Page
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Click below to open the Facebook page popup and select which pages to connect.
                     </p>
                   </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-xs font-semibold text-foreground">
-                        AI Bot Tone
-                      </label>
-                      <select
-                        value={botTone}
-                        onChange={(e) => setBotTone(e.target.value as any)}
-                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <option value="friendly">Friendly & Welcoming</option>
-                        <option value="professional">Professional & Formal</option>
-                        <option value="casual">Casual & Conversational</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold text-foreground">
-                        Fallback Message
-                      </label>
-                      <Input
-                        placeholder="When info is missing in documents..."
-                        value={fallbackMessage}
-                        onChange={(e) => setFallbackMessage(e.target.value)}
-                        className="mt-1 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-foreground">
-                      Custom AI Persona & Business Instructions (Optional)
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="e.g. Always mention that delivery takes 24 hours in Dhaka. For urgent order confirmation, tell customers to call +8801700000000."
-                      value={customInstructions}
-                      onChange={(e) => setCustomInstructions(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                  </div>
-
-                  <Button type="submit" disabled={saving} className="w-full gap-2">
-                    {saving ? (
+                  <Button
+                    onClick={handleStartFacebookConnect}
+                    disabled={authenticating}
+                    className="gap-2 bg-[#1877F2] hover:bg-[#166fe5] text-white shrink-0 font-semibold"
+                  >
+                    {authenticating ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
                     ) : (
-                      <FaFacebook className="h-4 w-4" />
+                      <Plus className="h-4 w-4" />
                     )}
-                    {saving ? "Connecting..." : "Save & Enable Facebook Auto-Reply"}
+                    Select & Connect Page
                   </Button>
-                </form>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Connected Pages List */}
+            {/* Connected Facebook Pages List */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <span>Connected Facebook Pages</span>
-                  <Badge variant="secondary">{pages.length}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Your connected Facebook Pages actively receiving auto-replies based on your documents.
-                </CardDescription>
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Connected Facebook Pages</CardTitle>
+                    <CardDescription className="text-xs">
+                      Pages currently receiving AI auto-replies based on your business documents.
+                    </CardDescription>
+                  </div>
+                  <Badge variant="secondary" className="font-semibold">
+                    {pages.length} Connected
+                  </Badge>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {loading ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-                    <RefreshCw className="h-4 w-4 animate-spin" /> Loading connected pages...
+                  <div className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                    <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                    Loading connected pages...
                   </div>
                 ) : pages.length === 0 ? (
-                  <div className="rounded-lg border border-dashed py-8 text-center">
-                    <FaFacebook className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
-                    <p className="text-sm font-medium text-foreground">
-                      No Facebook Pages connected yet
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Use the form above to connect your first page.
-                    </p>
+                  <div className="p-8 text-center space-y-3">
+                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950 text-[#1877F2] rounded-full flex items-center justify-center mx-auto">
+                      <FaFacebook className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        No Facebook Pages connected yet
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                        Click &ldquo;Connect Facebook Page&rdquo; above to select and link your business page in seconds.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleStartFacebookConnect}
+                      className="mt-2 gap-2 bg-[#1877F2] hover:bg-[#166fe5] text-white text-xs"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Connect Your First Page
+                    </Button>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
                     {pages.map((p) => (
                       <div
                         key={p.pageId}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-muted/30 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="rounded-full bg-blue-100 p-2.5 text-[#1877F2] dark:bg-blue-950">
-                            <FaFacebook className="h-5 w-5" />
-                          </div>
+                          {p.pictureUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={p.pictureUrl}
+                              alt={p.pageName}
+                              className="w-11 h-11 rounded-full object-cover border"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-[#1877F2]/10 text-[#1877F2] flex items-center justify-center font-bold text-sm border border-[#1877F2]/20">
+                              {p.pageName.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-foreground text-sm">
@@ -480,18 +622,22 @@ export default function ConnectFacebookPage() {
                               </p>
                               <Badge
                                 variant={p.isActive ? "default" : "secondary"}
-                                className="text-[10px]"
+                                className={`text-[10px] ${
+                                  p.isActive
+                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    : ""
+                                }`}
                               >
-                                {p.isActive ? "Active" : "Paused"}
+                                {p.isActive ? "Auto-Reply ON" : "Paused"}
                               </Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              Page ID: {p.pageId} • Tone: {p.botTone || "friendly"}
+                            <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                              ID: {p.pageId} {p.category && `• ${p.category}`}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">Auto-reply</span>
                             <Switch
@@ -504,6 +650,7 @@ export default function ConnectFacebookPage() {
                             size="icon"
                             onClick={() => handleDeletePage(p.pageId)}
                             className="text-destructive hover:bg-destructive/10"
+                            title="Disconnect page"
                           >
                             <FaTrash className="h-3.5 w-3.5" />
                           </Button>
@@ -514,6 +661,69 @@ export default function ConnectFacebookPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Collapsible Manual Setup Option */}
+            <div className="rounded-lg border bg-card/60 p-4">
+              <button
+                type="button"
+                onClick={() => setShowManualForm(!showManualForm)}
+                className="w-full flex items-center justify-between text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                <span>Advanced: Connect with Page ID & Access Token manually</span>
+                {showManualForm ? <FaChevronUp /> : <FaChevronDown />}
+              </button>
+
+              {showManualForm && (
+                <form onSubmit={handleManualConnect} className="mt-4 space-y-3 pt-3 border-t">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-[11px] font-medium text-foreground">
+                        Page Name (Optional)
+                      </label>
+                      <Input
+                        placeholder="e.g. My Store"
+                        value={manualPageName}
+                        onChange={(e) => setManualPageName(e.target.value)}
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-foreground">
+                        Facebook Page ID *
+                      </label>
+                      <Input
+                        placeholder="e.g. 104928374829102"
+                        value={manualPageId}
+                        onChange={(e) => setManualPageId(e.target.value)}
+                        required
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-foreground">
+                      Facebook Page Access Token *
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="EAAG..."
+                      value={manualPageAccessToken}
+                      onChange={(e) => setManualPageAccessToken(e.target.value)}
+                      required
+                      className="mt-1 text-xs font-mono"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={manualSaving}
+                    className="w-full text-xs"
+                  >
+                    {manualSaving ? "Connecting..." : "Connect Manually"}
+                  </Button>
+                </form>
+              )}
+            </div>
           </div>
 
           {/* Right Column (5 cols): Live AI Testing Playground */}
@@ -532,7 +742,10 @@ export default function ConnectFacebookPage() {
                       </CardDescription>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-300">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-300"
+                  >
                     Gemini 3.8 Flash
                   </Badge>
                 </div>
@@ -575,7 +788,7 @@ export default function ConnectFacebookPage() {
               <div className="p-3 border-t bg-card">
                 <form onSubmit={handleTestAi} className="flex gap-2">
                   <Input
-                    placeholder="Ask a customer question (English or বাংলা)..."
+                    placeholder="Ask a question (English or বাংলা)..."
                     value={testMessage}
                     onChange={(e) => setTestMessage(e.target.value)}
                     disabled={testingAi}
@@ -591,7 +804,12 @@ export default function ConnectFacebookPage() {
                   </Button>
                 </form>
                 <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Uses documents from <Link href="/dashboard/training" className="text-primary hover:underline">Knowledge Base</Link></span>
+                  <span>
+                    Reads from{" "}
+                    <Link href="/dashboard/training" className="text-primary hover:underline">
+                      Knowledge Base
+                    </Link>
+                  </span>
                   <button
                     type="button"
                     onClick={() =>
@@ -612,6 +830,250 @@ export default function ConnectFacebookPage() {
           </div>
         </div>
       </div>
+
+      {/* MODAL 1: SELECT YOUR FACEBOOK PAGES (Returned from Facebook OAuth) */}
+      <Dialog open={showPageSelectorModal} onOpenChange={setShowPageSelectorModal}>
+        <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-6">
+          <DialogHeader className="pb-3 border-b">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-[#1877F2]/10 text-[#1877F2] flex items-center justify-center">
+                <FaFacebook className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg">Select Facebook Pages</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Choose the Facebook Page(s) you want to activate for AI Auto-Reply.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Discovered Pages List */}
+          <div className="flex-1 overflow-y-auto space-y-2.5 py-4 max-h-[380px] pr-1">
+            {discoveredPages.map((page) => {
+              const isAlreadyConnected = pages.some((p) => p.pageId === page.id);
+              const isSelected = selectedPageIds.includes(page.id);
+
+              return (
+                <div
+                  key={page.id}
+                  className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-xs"
+                      : isAlreadyConnected
+                        ? "border-border bg-muted/40 opacity-75"
+                        : "border-border bg-card hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected || isAlreadyConnected}
+                      disabled={isAlreadyConnected}
+                      onChange={() => togglePageSelect(page.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    {page.pictureUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={page.pictureUrl}
+                        alt={page.name}
+                        className="w-10 h-10 rounded-full object-cover border"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1877F2] flex items-center justify-center font-bold text-xs">
+                        {page.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-semibold text-xs text-foreground truncate">
+                        {page.name}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {page.category} • ID: {page.id}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    {isAlreadyConnected ? (
+                      <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950">
+                        <CheckCircle2 className="h-3 w-3 mr-1 inline" />
+                        Connected
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        disabled={connectingPages}
+                        onClick={() => handleConnectSinglePage(page)}
+                        className="text-xs bg-[#1877F2] hover:bg-[#166fe5] text-white h-8 px-3"
+                      >
+                        {connectingPages ? "Connecting..." : "Connect"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="pt-3 border-t flex flex-row items-center justify-between sm:justify-between">
+            <span className="text-xs text-muted-foreground">
+              {selectedPageIds.length > 0
+                ? `${selectedPageIds.length} page(s) selected`
+                : "Select pages to connect in bulk"}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPageSelectorModal(false)}
+                className="text-xs"
+              >
+                Close
+              </Button>
+              {selectedPageIds.length > 0 && (
+                <Button
+                  size="sm"
+                  disabled={connectingPages}
+                  onClick={handleConnectSelectedPages}
+                  className="text-xs bg-[#1877F2] hover:bg-[#166fe5] text-white"
+                >
+                  {connectingPages ? "Connecting..." : `Connect ${selectedPageIds.length} Pages`}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 2: FACEBOOK APP SETUP GUIDE & FAST TESTING OPTIONS */}
+      <Dialog open={showSetupGuideModal} onOpenChange={setShowSetupGuideModal}>
+        <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-6">
+          <DialogHeader className="pb-3 border-b">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                <HelpCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg">Connect Your Facebook Page</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Choose how you want to link your Facebook Page for auto-reply.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-5 py-4 pr-1">
+            {/* Option A: Fast Demo / Test Store */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-bold text-foreground">
+                    Instant 1-Click Test Store
+                  </span>
+                </div>
+                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">
+                  Recommended for Testing
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Want to test how Gemini AI answers customer questions from your documents right now?
+                Connect a test business store in 1 click:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleConnectDemoStore("Fashion Hub Bangladesh", "Apparel & Retail")}
+                  className="text-xs bg-background hover:bg-muted"
+                >
+                  Connect &ldquo;Fashion Hub&rdquo;
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleConnectDemoStore("TechStore Electronics", "Electronics & Gadgets")}
+                  className="text-xs bg-background hover:bg-muted"
+                >
+                  Connect &ldquo;TechStore Gadgets&rdquo;
+                </Button>
+              </div>
+            </div>
+
+            {/* Option B: Live Facebook Login App Setup */}
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <FaFacebook className="h-4 w-4 text-[#1877F2]" />
+                <span className="text-sm font-bold text-foreground">
+                  Live Facebook OAuth Login Setup
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                To enable the official popup where clients log in with Facebook and select pages automatically:
+              </p>
+              <ol className="text-xs space-y-1.5 list-decimal pl-4 text-foreground/90">
+                <li>
+                  Go to{" "}
+                  <a
+                    href="https://developers.facebook.com/apps"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                  >
+                    developers.facebook.com <FaExternalLinkAlt className="h-2.5 w-2.5" />
+                  </a>{" "}
+                  and create or open an App.
+                </li>
+                <li>Add the <strong>Messenger</strong> and <strong>Facebook Login for Business</strong> products.</li>
+                <li>
+                  In your <code className="bg-muted px-1 py-0.5 rounded text-[11px]">.env</code> file, set your App credentials:
+                </li>
+              </ol>
+
+              <div className="rounded-lg bg-muted p-2.5 font-mono text-[11px] text-foreground space-y-0.5">
+                <p>FACEBOOK_CLIENT_ID=your_facebook_app_id</p>
+                <p>FACEBOOK_CLIENT_SECRET=your_facebook_app_secret</p>
+              </div>
+            </div>
+
+            {/* Option C: Direct Page Access Token Input */}
+            <div className="rounded-xl border bg-card p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <FaKey className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-bold text-foreground">
+                  Connect with Page Access Token
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Already have your Page ID and Page Access Token from Graph API Explorer or Meta Business Suite?
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowSetupGuideModal(false);
+                  setShowManualForm(true);
+                }}
+                className="text-xs mt-1"
+              >
+                Enter Page ID & Token Manually
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-3 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSetupGuideModal(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

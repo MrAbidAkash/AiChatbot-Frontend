@@ -2,14 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bot,
-  Bell,
-  Settings,
   LayoutDashboard,
   MessageSquare,
-  BarChart3,
   BookOpen,
   Share2,
   ChevronDown,
@@ -17,7 +14,7 @@ import {
   X,
   Sparkles,
   LogOut,
-  User,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,37 +26,69 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { signOut } from "@/lib/auth-client";
+import { toast } from "sonner";
+
+interface DashboardLayoutProps {
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
+}
 
 const navigation = [
   {
     name: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-    badge: undefined,
   },
   {
     name: "Documents & Knowledge",
     href: "/dashboard/training",
     icon: BookOpen,
-    badge: undefined,
   },
   {
     name: "Facebook Connect",
     href: "/connect",
     icon: Share2,
-    badge: undefined,
   },
   {
     name: "Customer Inbox",
     href: "/inbox",
     icon: MessageSquare,
-    badge: undefined,
   },
 ];
 
-const DashboardLayout = () => {
+export default function DashboardLayout({ user }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await signOut();
+      toast.success("Signed out successfully");
+      router.push("/login");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to sign out");
+      setIsSigningOut(false);
+    }
+  };
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -95,14 +124,6 @@ const DashboardLayout = () => {
                   >
                     <item.icon className="h-4 w-4" />
                     {item.name}
-                    {item.badge && (
-                      <Badge
-                        variant="destructive"
-                        className="ml-1 h-5 min-w-[20px] rounded-full px-1.5 text-xs"
-                      >
-                        {item.badge}
-                      </Badge>
-                    )}
                     {isActive && (
                       <span className="absolute -bottom-[17px] left-0 right-0 h-0.5 rounded-full bg-primary" />
                     )}
@@ -113,59 +134,80 @@ const DashboardLayout = () => {
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* AI Status indicator */}
-            <div className="hidden items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 sm:flex">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-success" />
-              <span className="text-xs font-medium text-success">
-                AI Active
+            <div className="hidden items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5 sm:flex">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+              <span className="text-xs font-medium text-green-400">
+                AI Agent Active
               </span>
             </div>
 
-            {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-                3
-              </span>
-            </Button>
+            {/* Pricing / Recharge Shortcut */}
+            <Link href="/pricing" className="hidden sm:block">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                রিচার্জ / Pricing
+              </Button>
+            </Link>
 
-            {/* User Menu */}
+            {/* User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2 px-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-sm font-semibold text-primary-foreground">
-                    DU
+                <Button variant="ghost" className="gap-2 px-2 hover:bg-muted">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-xs font-semibold text-primary-foreground">
+                    {getInitials(user?.name)}
                   </div>
-                  <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
+                  <span className="hidden text-sm font-medium text-foreground sm:inline-block max-w-[120px] truncate">
+                    {user?.name || "Merchant"}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span className="font-medium">Demo User</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      demo@chattime.ai
+                    <span className="font-medium text-foreground">
+                      {user?.name || "Merchant"}
+                    </span>
+                    <span className="text-xs font-normal text-muted-foreground truncate">
+                      {user?.email || "merchant@example.com"}
                     </span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
+                <DropdownMenuItem asChild>
+                  <Link href="/connect" className="cursor-pointer">
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Manage Facebook Pages
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/training" className="cursor-pointer">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Shop Knowledge & Rules
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Upgrade Plan
+                <DropdownMenuItem asChild>
+                  <Link href="/inbox" className="cursor-pointer">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Customer Conversations
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/pricing" className="cursor-pointer">
+                    <CreditCard className="mr-2 h-4 w-4 text-primary" />
+                    Recharge Balance (bKash)
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem
+                  disabled={isSigningOut}
+                  onClick={handleSignOut}
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  {isSigningOut ? "Signing out..." : "Sign out"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -206,19 +248,23 @@ const DashboardLayout = () => {
                 >
                   <item.icon className="h-5 w-5" />
                   {item.name}
-                  {item.badge && (
-                    <Badge variant="destructive" className="ml-auto">
-                      {item.badge}
-                    </Badge>
-                  )}
                 </Link>
               );
             })}
+            <div className="pt-2 border-t border-border/50 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start gap-2 text-destructive"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </Button>
+            </div>
           </div>
         </div>
       )}
     </nav>
   );
-};
-
-export default DashboardLayout;
+}

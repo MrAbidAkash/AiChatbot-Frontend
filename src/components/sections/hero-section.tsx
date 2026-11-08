@@ -56,17 +56,17 @@ const CHANNELS = [
 
 /* ─────────────── stat chips ────────────────────────────────── */
 const STATS = [
-  { icon: "৳", label: "50 Free Credit" },
-  { icon: "🗓", label: "7-Day Free Trial" },
-  { icon: "⚡", label: "Setup in 10 min" },
-  { icon: "🤖", label: "24/7 Active" },
+  { icon: "⚡", label: "< ২ সেকেন্ডে রিপ্লাই" },
+  { icon: "🌙", label: "রাত-দিন ২৪/৭ অ্যাক্টিভ" },
+  { icon: "🛒", label: "অটো COD অর্ডার" },
+  { icon: "💳", label: "বিকাশ ও নগদ সাপোর্ট" },
 ];
 
 /* ─────────────── floating badge cards ──────────────────────── */
 const FLOAT_BADGES = [
-  { text: "✅ Banglish বোঝে", pos: "absolute -left-4 top-10 lg:block hidden" },
-  { text: "🛒 COD অর্ডার নেয়", pos: "absolute -right-4 top-1/3 lg:block hidden" },
-  { text: "📸 ছবি চেনে", pos: "absolute -left-4 bottom-10 lg:block hidden" },
+  { text: "💬 সাবলীল বাংলিশ ও বাংলা", pos: "absolute -left-4 top-10 lg:block hidden" },
+  { text: "🛒 অটোমেটিক COD অর্ডার", pos: "absolute -right-4 top-1/3 lg:block hidden" },
+  { text: "📸 ছবি চিনে প্রোডাক্ট ম্যাচিং", pos: "absolute -left-4 bottom-10 lg:block hidden" },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -305,21 +305,21 @@ export function HeroSection() {
             {/* Top badge */}
             <Badge className="mb-6 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 gap-1.5 py-1 px-3">
               <Sparkles className="h-3 w-3" />
-              Bangladesh&apos;s #1 F-Commerce AI Agent
+              ChatTime AI • স্মার্ট F-Commerce অটোমেশন
             </Badge>
 
             {/* Headline */}
             <h1 className="text-4xl font-extrabold tracking-tight text-foreground md:text-5xl lg:text-6xl leading-tight">
-              ব্যবসা চালান আপনি,
+              কাস্টমার রিপ্লাইয়ের ক্লান্তি দূর করুন,
               <br />
-              <span className="gradient-text">ঝামেলা সামলাবে AI</span>
+              <span className="gradient-text">বিজনেসের গ্রোথে নজর দিন</span>
             </h1>
 
             {/* Sub-headline */}
             <p className="mt-5 text-base md:text-lg leading-relaxed text-muted-foreground">
-              Bangladesh&apos;s #1 AI Sales Agent for F-Commerce &amp;
-              E-Commerce. Automates your Messenger, Instagram, WhatsApp &amp;
-              Facebook Comments 24/7.
+              রাত-দিন এক করে আর মেসেজের রিপ্লাই দেওয়া লাগবে না। ChatTime AI আপনার Facebook Messenger,
+              Instagram ও WhatsApp-এ কাস্টমারের প্রশ্নের তাৎক্ষণিক উত্তর দেবে, ছবি দেখে স্টক জানাবে এবং ক্যাশ অন ডেলিভারি
+              অর্ডার কনফার্ম করবে স্বয়ংক্রিয়ভাবে।
             </p>
 
             {/* Channel badges */}
@@ -361,7 +361,7 @@ export function HeroSection() {
 
             {/* Trust note */}
             <p className="mt-5 text-xs text-muted-foreground">
-              ক্রেডিট কার্ড লাগবে না • বাংলাদেশে ব্যবহৃত • COD সাপোর্ট
+              কোনো ক্রেডিট কার্ড লাগবে না • ১০ মিনিটে সহজ সেটআপ • দেশীয় বিকাশ/নগদে রিচার্জ
             </p>
           </div>
 

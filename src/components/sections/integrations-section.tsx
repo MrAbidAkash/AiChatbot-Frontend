@@ -136,14 +136,14 @@ export function IntegrationsSection() {
         <div className="mx-auto max-w-3xl text-center">
           <Badge className="mb-6 border-primary/30 bg-primary/10 text-primary">
             <Zap className="mr-2 h-3 w-3" />
-            সংযোগ ও ইন্টিগ্রেশন
+            মাল্টি-চ্যানেল সংযোগ
           </Badge>
           <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl lg:text-5xl">
-            যেখানেই আপনার customer,{" "}
-            <span className="gradient-text">সেখানেই</span>
+            যে প্ল্যাটফর্মেই মেসেজ আসুক,{" "}
+            <span className="gradient-text">ChatTime AI প্রস্তুত</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Facebook Messenger, Instagram DM, WhatsApp, Facebook Post Comments — সব চ্যানেলে একসাথে AI চালু রাখুন।
+            Facebook Messenger, Instagram Direct, WhatsApp কিংবা Post Comments — যেকোনো মাধ্যমে গ্রাহক নক করলেই সেকেন্ডের মধ্যে পেয়ে যাবেন সঠিক তথ্য ও অর্ডার সাপোর্ট।
           </p>
         </div>
 

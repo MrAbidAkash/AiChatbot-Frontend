@@ -20,7 +20,7 @@ const testimonials = [
     initials: "SR",
     avatarBg: "bg-pink-500/20",
     avatarText: "text-pink-400",
-    text: "আগে রাত ২টায় customer message করলেও আমাকে জেগে উঠতে হতো। এখন AI সব handle করে — COD order পর্যন্ত নেয়! গত মাসে ৩৫% বেশি order পেয়েছি।",
+    text: "আগে রাত ২টায় কাস্টমার মেসেজ দিলেও ঘুমানো যেত না। ChatTime AI আসার পর মধ্যরাতের সব অর্ডার অটোমেটিক কনফার্ম হয়ে যাচ্ছে — সেলস বেড়েছে প্রায় ৪০%!",
     badge: "Messenger + Instagram",
   },
   {
@@ -29,8 +29,8 @@ const testimonials = [
     initials: "KV",
     avatarBg: "bg-blue-500/20",
     avatarText: "text-blue-400",
-    text: "Customer ছবি দিয়ে জিজ্ঞেস করে 'এই product ache?' — AI নিজেই বলে দেয় দাম আর স্টক। আমাকে আর সারাদিন ফোনের সামনে থাকতে হয় না।",
-    badge: "Vision AI",
+    text: "কাস্টমাররা গ্যাজেটের ছবি পাঠিয়ে জানতে চায় স্টক আছে কি না। ChatTime AI ছবি চিনে তৎক্ষণাৎ ক্যাটালগ থেকে সাইজ ও প্রাইস জানিয়ে দেয়। সারাদিন ফোনের পেছনে বসে থাকা বন্ধ হয়েছে।",
+    badge: "Vision AI Matching",
   },
   {
     name: "Nasrin Akter",
@@ -38,7 +38,7 @@ const testimonials = [
     initials: "NA",
     avatarBg: "bg-green-500/20",
     avatarText: "text-green-400",
-    text: "Banglish এ message করলেও AI বুঝতে পারে — এটাই সবচেয়ে বড় ব্যাপার। Setup ১০ মিনিটেই হয়ে গেছে। bKash এ রিচার্জ করা যায়, কোনো ঝামেলা নেই।",
+    text: "বাংলিশে মেসেজ লিখলেও ChatTime AI চমৎকার উত্তর দেয়। ডেলিভারি চার্জ, পলিসি সব নির্ভুলভাবে বলে। বিকাশ দিয়ে সহজে রিচার্জ করা যায়, কোনো জটিলতা নেই।",
     badge: "bKash Recharge",
   },
   {
@@ -47,8 +47,8 @@ const testimonials = [
     initials: "RA",
     avatarBg: "bg-orange-500/20",
     avatarText: "text-orange-400",
-    text: "ManyChat try করেছিলাম, keyword set করতে করতে মাথা নষ্ট হয়ে যায়। এই AI কে শুধু বললাম আমার delivery charge ৮০ টাকা — ব্যস, বুঝে গেছে।",
-    badge: "No Keyword Bots",
+    text: "আগে কিওয়ার্ড বট দিয়ে কাস্টমার হারাতাম। ChatTime AI একদম সত্যিকারের সেলসম্যানের মতো মিষ্টি ভাষায় কথা বলে অর্ডার ক্লোজ করে। কাস্টমাররাও খুশি!",
+    badge: "Natural Banglish",
   },
   {
     name: "Mitu Begum",
@@ -56,8 +56,8 @@ const testimonials = [
     initials: "MB",
     avatarBg: "bg-purple-500/20",
     avatarText: "text-purple-400",
-    text: "রাত ১২টায় আসা order গুলো সকালে দেখি সব confirmed! AI customer এর নাম, ফোন, ঠিকানা নিয়ে সব গুছিয়ে রেখেছে। এখন ঘুমের সমস্যা নেই।",
-    badge: "Auto COD Order",
+    text: "সকালে ঘুম থেকে উঠে দেখি রাতের সবগুলো মেসেজের অর্ডার কনফার্ম এবং নাম-ঠিকানা গুছিয়ে রাখা! রিপ্লাই দেওয়ার ক্লান্তি থেকে এখন আমি সম্পূর্ণ মুক্ত।",
+    badge: "Auto COD Orders",
   },
   {
     name: "Tanvir Hossain",
@@ -65,8 +65,8 @@ const testimonials = [
     initials: "TH",
     avatarBg: "bg-[hsl(var(--chart-5))]/20",
     avatarText: "text-[hsl(var(--chart-5))]",
-    text: "Facebook comment এ কেউ দাম জানতে চাইলে AI instant reply দেয় এবং inbox এ নিয়ে আসে। আমার page engagement অনেক বেড়ে গেছে।",
-    badge: "FB Comment Auto",
+    text: "ফেসবুকের প্রতিটি পোস্ট কমেন্টে সেকেন্ডের মধ্যে অটো-রিপ্লাই দিয়ে কাস্টমারকে ইনবক্সে নিয়ে আসে। কমেন্ট টু সেলস কনভার্সন রেট চোখের পলকে বেড়ে গেছে।",
+    badge: "Comment Automation",
   },
 ];
 
@@ -193,19 +193,16 @@ export function SocialProofSection() {
 
               <div className="flex flex-col gap-2">
                 <h3 className="text-2xl font-bold text-foreground md:text-3xl">
-                  আপনিও শুরু করুন আজই
+                  আজই কাস্টমার রিপ্লাইয়ের ক্লান্তি দূর করুন
                 </h3>
                 <p className="text-muted-foreground md:text-lg">
-                  ৭ দিন বিনামূল্যে ব্যবহার করুন —{" "}
-                  <span className="font-semibold text-primary">
-                    ৳৫০ ফ্রি ক্রেডিট
-                  </span>
+                  ChatTime AI দিয়ে আপনার ফেসবুক পেজকে রূপান্তর করুন ২৪/৭ সেলস মেশিনে।
                 </p>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
                 <Button size="lg" asChild className="font-semibold">
-                  <Link href="/signup">ফ্রি ট্রায়াল শুরু করুন</Link>
+                  <Link href="/signup">ফ্রি অ্যাকাউন্ট তৈরি করুন</Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild className="font-semibold">
                   <Link href="/contact">কথা বলুন আমাদের সাথে</Link>
