@@ -1,422 +1,614 @@
-// app/connect/page.tsx
+// src/components/Connect.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FaFacebook,
   FaCheck,
-  FaLock,
-  FaShieldAlt,
-  FaArrowRight,
-  FaChevronLeft,
+  FaCopy,
+  FaTrash,
+  FaRobot,
+  FaPaperPlane,
+  FaExclamationTriangle,
+  FaBook,
+  FaInfoCircle,
 } from "react-icons/fa";
+import {
+  Sparkles,
+  Bot,
+  Layers,
+  ArrowRight,
+  ExternalLink,
+  ShieldCheck,
+  RefreshCw,
+  Power,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+
+interface ConnectedPage {
+  _id?: string;
+  pageId: string;
+  pageName: string;
+  pageAccessToken: string;
+  isActive: boolean;
+  botTone?: "friendly" | "professional" | "casual";
+  fallbackMessage?: string;
+  customInstructions?: string;
+  createdAt?: string;
+}
 
 export default function ConnectFacebookPage() {
-  const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [connectedPages, setConnectedPages] = useState<string[]>([]);
+  const [pages, setPages] = useState<ConnectedPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const steps = [
-    {
-      number: 1,
-      title: "Authorization",
-      description: "Grant permissions to ChatTime AI",
-    },
-    {
-      number: 2,
-      title: "Select Pages",
-      description: "Choose pages to connect",
-    },
-    { number: 3, title: "Configure", description: "Setup auto-reply settings" },
-  ];
+  // New Page Form State
+  const [pageName, setPageName] = useState("");
+  const [pageId, setPageId] = useState("");
+  const [pageAccessToken, setPageAccessToken] = useState("");
+  const [botTone, setBotTone] = useState<"friendly" | "professional" | "casual">("friendly");
+  const [customInstructions, setCustomInstructions] = useState("");
+  const [fallbackMessage, setFallbackMessage] = useState(
+    "I don't have that specific information in my documents right now. Our support team will get back to you shortly!",
+  );
 
-  // Mock pages from Facebook
-  const mockFacebookPages = [
+  // AI Testing Playground State
+  const [testMessage, setTestMessage] = useState("");
+  const [testPageId, setTestPageId] = useState("");
+  const [testingAi, setTestingAi] = useState(false);
+  const [testChat, setTestChat] = useState<
+    Array<{ sender: "user" | "bot"; text: string; model?: string }>
+  >([
     {
-      id: "1",
-      name: "My Business Store",
-      category: "Retail",
-      followers: "1.2K",
+      sender: "bot",
+      text: "Hello! I am your AI assistant trained on your business documents. Ask me anything to test how I will reply to Facebook customers!",
     },
-    {
-      id: "2",
-      name: "Tech Startup",
-      category: "Technology",
-      followers: "3.4K",
-    },
-    {
-      id: "3",
-      name: "Coffee Shop",
-      category: "Food & Beverage",
-      followers: "456",
-    },
-  ];
+  ]);
 
-  const handleFacebookAuth = async () => {
-    setLoading(true);
+  const [origin, setOrigin] = useState("");
 
-    // In production, this would redirect to Facebook OAuth
-    // For now, simulate the process
-    setTimeout(() => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+    fetchPages();
+  }, []);
+
+  const fetchPages = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/facebook/pages");
+      if (res.ok) {
+        const data = await res.json();
+        setPages(data.pages || []);
+        if (data.pages?.length > 0 && !testPageId) {
+          setTestPageId(data.pages[0].pageId);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load Facebook pages:", err);
+    } finally {
       setLoading(false);
-      setStep(2);
-    }, 1500);
+    }
   };
 
-  const togglePageSelection = (pageId: string) => {
-    setConnectedPages((prev) =>
-      prev.includes(pageId)
-        ? prev.filter((id) => id !== pageId)
-        : [...prev, pageId],
-    );
+  const handleConnectPage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pageId.trim() || !pageAccessToken.trim()) {
+      toast.error("Page ID and Page Access Token are required.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/facebook/pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageId: pageId.trim(),
+          pageName: pageName.trim() || `Facebook Page (${pageId.trim()})`,
+          pageAccessToken: pageAccessToken.trim(),
+          isActive: true,
+          botTone,
+          customInstructions,
+          fallbackMessage,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Facebook Page connected and auto-reply enabled!");
+        setPageName("");
+        setPageId("");
+        setPageAccessToken("");
+        setCustomInstructions("");
+        await fetchPages();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to connect Facebook page");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleComplete = () => {
-    setLoading(true);
-    // Save connected pages and redirect to dashboard
-    setTimeout(() => {
-      router.push("/dashboard?connected=true");
-    }, 1000);
+  const handleToggleActive = async (page: ConnectedPage) => {
+    try {
+      const updated = !page.isActive;
+      const res = await fetch("/api/facebook/pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...page,
+          isActive: updated,
+        }),
+      });
+
+      if (res.ok) {
+        setPages((prev) =>
+          prev.map((p) => (p.pageId === page.pageId ? { ...p, isActive: updated } : p)),
+        );
+        toast.success(
+          updated ? "Auto-reply activated for page" : "Auto-reply paused for page",
+        );
+      }
+    } catch {
+      toast.error("Failed to update status");
+    }
   };
+
+  const handleDeletePage = async (pageIdToDelete: string) => {
+    if (!confirm("Are you sure you want to disconnect this Facebook Page?")) return;
+    try {
+      const res = await fetch(`/api/facebook/pages?pageId=${pageIdToDelete}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Page disconnected");
+        setPages((prev) => prev.filter((p) => p.pageId !== pageIdToDelete));
+      }
+    } catch {
+      toast.error("Failed to disconnect page");
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard!`);
+  };
+
+  const handleTestAi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testMessage.trim() || testingAi) return;
+
+    const userText = testMessage.trim();
+    setTestMessage("");
+    setTestChat((prev) => [...prev, { sender: "user", text: userText }]);
+    setTestingAi(true);
+
+    try {
+      const res = await fetch("/api/facebook/test-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userText,
+          pageId: testPageId || undefined,
+          conversationHistory: testChat.map((m) => ({
+            senderType: m.sender === "user" ? "customer" : "ai",
+            text: m.text,
+          })),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTestChat((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: data.reply,
+            model: data.modelUsed,
+          },
+        ]);
+      } else {
+        const err = await res.json();
+        setTestChat((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: `Error: ${err.error || "Failed to generate reply"}`,
+          },
+        ]);
+      }
+    } catch (err: any) {
+      setTestChat((prev) => [
+        ...prev,
+        { sender: "bot", text: `Connection error: ${err.message}` },
+      ]);
+    } finally {
+      setTestingAi(false);
+    }
+  };
+
+  const webhookUrl = `${origin || "https://your-domain.com"}/api/webhook/facebook`;
+  const verifyToken = "chattime_ai_webhook_verify_token_2026";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Navigation */}
-      <nav className="border-b border-gray-200 bg-white">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Link
-                href="/dashboard"
-                className="flex items-center text-gray-600 hover:text-gray-900"
-              >
-                <FaChevronLeft className="mr-2" />
-                Back to Dashboard
-              </Link>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <FaFacebook className="text-white text-sm" />
-              </div>
-              <span className="font-bold text-gray-900">Connect Facebook</span>
-            </div>
+    <div className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-8">
+        {/* Page Title & Intro */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+              <FaFacebook className="text-[#1877F2] h-8 w-8" />
+              Facebook Messenger Auto-Reply
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Connect your Facebook Pages and let Gemini AI automatically answer customer
+              inquiries by analyzing your uploaded business documents.
+            </p>
           </div>
+          <Link href="/dashboard/training">
+            <Button variant="outline" className="gap-2">
+              <FaBook className="h-4 w-4 text-primary" />
+              Manage Business Documents
+            </Button>
+          </Link>
         </div>
-      </nav>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Progress Steps */}
-        <div className="mb-12">
-          <div className="flex justify-between relative">
-            {steps.map((s) => (
-              <div key={s.number} className="flex flex-col items-center z-10">
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
-                    step >= s.number
-                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                      : "bg-gray-200 text-gray-400"
-                  }`}
+        {/* Top Instructions / Webhook Setup Banner */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2 text-primary font-semibold">
+              <ShieldCheck className="h-5 w-5" />
+              Step 1: Configure Webhook in Meta Developer App
+            </CardTitle>
+            <CardDescription>
+              Copy these two values and paste them into your Meta Developer App (Messenger → Webhooks → Edit Subscription).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border bg-background/80 p-3">
+              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground mb-1">
+                <span>Callback URL</span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(webhookUrl, "Callback URL")}
+                  className="flex items-center gap-1 text-primary hover:underline"
                 >
-                  {step > s.number ? <FaCheck /> : s.number}
-                </div>
-                <div className="mt-4 text-center">
-                  <div
-                    className={`font-bold ${step >= s.number ? "text-gray-900" : "text-gray-400"}`}
-                  >
-                    {s.title}
-                  </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {s.description}
-                  </div>
-                </div>
+                  <FaCopy className="h-3 w-3" /> Copy
+                </button>
               </div>
-            ))}
-            {/* Connecting Line */}
-            <div className="absolute top-6 left-16 right-16 h-1 bg-gray-200">
-              <div
-                className="h-full bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-500"
-                style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
-              />
+              <p className="text-xs font-mono font-semibold break-all text-foreground">
+                {webhookUrl}
+              </p>
             </div>
+
+            <div className="rounded-lg border bg-background/80 p-3">
+              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground mb-1">
+                <span>Verify Token</span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(verifyToken, "Verify Token")}
+                  className="flex items-center gap-1 text-primary hover:underline"
+                >
+                  <FaCopy className="h-3 w-3" /> Copy
+                </button>
+              </div>
+              <p className="text-xs font-mono font-semibold text-foreground">
+                {verifyToken}
+              </p>
+            </div>
+            <div className="sm:col-span-2 text-xs text-muted-foreground flex items-center gap-2">
+              <FaInfoCircle className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span>
+                Required Webhook subscription fields in Meta: <span className="font-semibold text-foreground">messages</span> and <span className="font-semibold text-foreground">messaging_postbacks</span>.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Grid: Left = Connect Form & Connected Pages, Right = Live AI Simulator */}
+        <div className="grid gap-8 lg:grid-cols-12">
+          {/* Left Column (7 cols): Connect Page Form & Connected Pages List */}
+          <div className="space-y-8 lg:col-span-7">
+            {/* Connect a Facebook Page Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  Connect Facebook Page
+                </CardTitle>
+                <CardDescription>
+                  Enter your Page ID and Page Access Token to link your Facebook Page.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleConnectPage} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-semibold text-foreground">
+                        Page Name
+                      </label>
+                      <Input
+                        placeholder="e.g. My Brand Store"
+                        value={pageName}
+                        onChange={(e) => setPageName(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-foreground">
+                        Facebook Page ID *
+                      </label>
+                      <Input
+                        placeholder="e.g. 104928374829102"
+                        value={pageId}
+                        onChange={(e) => setPageId(e.target.value)}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-foreground">
+                      Facebook Page Access Token (Never Expires) *
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="EAAG..."
+                      value={pageAccessToken}
+                      onChange={(e) => setPageAccessToken(e.target.value)}
+                      required
+                      className="mt-1 font-mono text-xs"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Generated from Meta Developer App → Tools → Graph API Explorer (Page Access Token) or Page Settings.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-semibold text-foreground">
+                        AI Bot Tone
+                      </label>
+                      <select
+                        value={botTone}
+                        onChange={(e) => setBotTone(e.target.value as any)}
+                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="friendly">Friendly & Welcoming</option>
+                        <option value="professional">Professional & Formal</option>
+                        <option value="casual">Casual & Conversational</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-foreground">
+                        Fallback Message
+                      </label>
+                      <Input
+                        placeholder="When info is missing in documents..."
+                        value={fallbackMessage}
+                        onChange={(e) => setFallbackMessage(e.target.value)}
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-foreground">
+                      Custom AI Persona & Business Instructions (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Always mention that delivery takes 24 hours in Dhaka. For urgent order confirmation, tell customers to call +8801700000000."
+                      value={customInstructions}
+                      onChange={(e) => setCustomInstructions(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={saving} className="w-full gap-2">
+                    {saving ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FaFacebook className="h-4 w-4" />
+                    )}
+                    {saving ? "Connecting..." : "Save & Enable Facebook Auto-Reply"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Connected Pages List */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>Connected Facebook Pages</span>
+                  <Badge variant="secondary">{pages.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Your connected Facebook Pages actively receiving auto-replies based on your documents.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Loading connected pages...
+                  </div>
+                ) : pages.length === 0 ? (
+                  <div className="rounded-lg border border-dashed py-8 text-center">
+                    <FaFacebook className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm font-medium text-foreground">
+                      No Facebook Pages connected yet
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use the form above to connect your first page.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {pages.map((p) => (
+                      <div
+                        key={p.pageId}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-full bg-blue-100 p-2.5 text-[#1877F2] dark:bg-blue-950">
+                            <FaFacebook className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-foreground text-sm">
+                                {p.pageName}
+                              </p>
+                              <Badge
+                                variant={p.isActive ? "default" : "secondary"}
+                                className="text-[10px]"
+                              >
+                                {p.isActive ? "Active" : "Paused"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              Page ID: {p.pageId} • Tone: {p.botTone || "friendly"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Auto-reply</span>
+                            <Switch
+                              checked={p.isActive}
+                              onCheckedChange={() => handleToggleActive(p)}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeletePage(p.pageId)}
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <FaTrash className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </div>
 
-        {/* Step Content */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-          {step === 1 && (
-            <div className="text-center">
-              <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <FaLock className="text-blue-600 text-3xl" />
-              </div>
+          {/* Right Column (5 cols): Live AI Testing Playground */}
+          <div className="lg:col-span-5">
+            <Card className="h-full flex flex-col border-primary/30 shadow-md">
+              <CardHeader className="pb-3 border-b bg-card">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-md bg-primary/10 p-1.5 text-primary">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">AI Auto-Reply Tester</CardTitle>
+                      <CardDescription className="text-xs">
+                        Test how Gemini answers using your business documents
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-300">
+                    Gemini 3.8 Flash
+                  </Badge>
+                </div>
+              </CardHeader>
 
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Authorize ChatTime AI with Facebook
-              </h2>
-
-              <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-                ChatTime AI needs permission to read and reply to messages on
-                your Facebook Pages. We only access the pages you select and
-                never post on your behalf.
-              </p>
-
-              {/* Permissions List */}
-              <div className="bg-gray-50 rounded-xl p-6 mb-8 max-w-md mx-auto">
-                <h4 className="font-bold text-lg mb-4 flex items-center">
-                  <FaShieldAlt className="text-green-500 mr-2" />
-                  Permissions we request:
-                </h4>
-                <ul className="space-y-3 text-left">
-                  {[
-                    "Read messages from your Pages",
-                    "Send replies to messages",
-                    "Read and reply to comments",
-                    "Access basic page info",
-                    "Never post on your timeline",
-                  ].map((permission, index) => (
-                    <li key={index} className="flex items-center">
-                      <FaCheck className="text-green-500 mr-3 flex-shrink-0" />
-                      <span>{permission}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <button
-                onClick={handleFacebookAuth}
-                disabled={loading}
-                className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 inline-flex items-center space-x-3 mx-auto disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                <FaFacebook className="text-xl" />
-                <span className="text-lg font-bold">
-                  {loading
-                    ? "Connecting to Facebook..."
-                    : "Continue with Facebook"}
-                </span>
-                <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
-              </button>
-
-              <p className="mt-4 text-gray-500 text-sm">
-                You&apos;ll be redirected to Facebook to authorize ChatTime AI
-              </p>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                Select Pages to Connect
-              </h2>
-              <p className="text-gray-600 mb-8">
-                Choose which Facebook Pages you want to connect with ChatTime AI
-              </p>
-
-              <div className="space-y-4 mb-8">
-                {mockFacebookPages.map((page) => (
+              {/* Chat Messages Body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[350px] max-h-[500px] bg-muted/20">
+                {testChat.map((m, idx) => (
                   <div
-                    key={page.id}
-                    onClick={() => togglePageSelection(page.id)}
-                    className={`p-6 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${
-                      connectedPages.includes(page.id)
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
+                    key={idx}
+                    className={`flex flex-col ${
+                      m.sender === "user" ? "items-end" : "items-start"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center">
-                            <FaFacebook className="text-gray-700 text-2xl" />
-                          </div>
-                          {connectedPages.includes(page.id) && (
-                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                              <FaCheck className="text-white text-xs" />
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg">{page.name}</h3>
-                          <p className="text-gray-600">
-                            {page.category} • {page.followers} followers
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 ${
-                          connectedPages.includes(page.id)
-                            ? "bg-blue-500 border-blue-500"
-                            : "border-gray-300"
-                        }`}
-                      >
-                        {connectedPages.includes(page.id) && (
-                          <FaCheck className="text-white w-4 h-4 mx-auto mt-0.5" />
-                        )}
-                      </div>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                        m.sender === "user"
+                          ? "bg-primary text-primary-foreground rounded-br-sm"
+                          : "bg-background border shadow-xs text-foreground rounded-bl-sm"
+                      }`}
+                    >
+                      {m.text}
                     </div>
+                    {m.model && (
+                      <span className="text-[9px] text-muted-foreground mt-0.5 px-1">
+                        Analyzed with {m.model}
+                      </span>
+                    )}
                   </div>
                 ))}
+                {testingAi && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
+                    <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+                    Gemini is analyzing business documents...
+                  </div>
+                )}
               </div>
 
-              <div className="flex justify-between">
-                <button
-                  onClick={() => setStep(1)}
-                  className="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep(3)}
-                  disabled={connectedPages.length === 0}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl hover:shadow-xl transition disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  Continue with {connectedPages.length} Page
-                  {connectedPages.length !== 1 ? "s" : ""}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                Configure Your Pages
-              </h2>
-              <p className="text-gray-600 mb-8">
-                Customize how ChatTime AI interacts with your pages
-              </p>
-
-              <div className="space-y-6 mb-8">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                  <h3 className="font-bold text-lg mb-4">
-                    Auto-Reply Settings
-                  </h3>
-                  <div className="space-y-4">
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        defaultChecked
-                        className="rounded text-blue-600"
-                      />
-                      <span>Enable automatic replies to messages</span>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        defaultChecked
-                        className="rounded text-blue-600"
-                      />
-                      <span>Enable replies to post comments</span>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        className="rounded text-blue-600"
-                      />
-                      <span>Enable lead capture form</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-                  <h3 className="font-bold text-lg mb-4">Working Hours</h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Start Time
-                      </label>
-                      <input
-                        type="time"
-                        defaultValue="09:00"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        End Time
-                      </label>
-                      <input
-                        type="time"
-                        defaultValue="17:00"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-gray-500 text-sm mt-4">
-                    Outside these hours, ChatTime AI will use your
-                    &quot;Away&quot; message template
-                  </p>
-                </div>
-
-                <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                  <h3 className="font-bold text-lg mb-4">
-                    Default Welcome Message
-                  </h3>
-                  <textarea
-                    className="w-full p-4 border border-gray-300 rounded-lg h-32"
-                    placeholder="Enter your welcome message..."
-                    defaultValue="Hello! Thanks for reaching out. This is an AI assistant. How can I help you today?"
+              {/* Message Input Footer */}
+              <div className="p-3 border-t bg-card">
+                <form onSubmit={handleTestAi} className="flex gap-2">
+                  <Input
+                    placeholder="Ask a customer question (English or বাংলা)..."
+                    value={testMessage}
+                    onChange={(e) => setTestMessage(e.target.value)}
+                    disabled={testingAi}
+                    className="text-xs"
                   />
-                  <p className="text-gray-500 text-sm mt-2">
-                    This message will be sent when someone messages your page
-                    for the first time
-                  </p>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={testingAi || !testMessage.trim()}
+                    className="shrink-0 gap-1 px-3"
+                  >
+                    <FaPaperPlane className="h-3 w-3" />
+                  </Button>
+                </form>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Uses documents from <Link href="/dashboard/training" className="text-primary hover:underline">Knowledge Base</Link></span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTestChat([
+                        {
+                          sender: "bot",
+                          text: "Chat cleared! Ask me another question to test your business documents.",
+                        },
+                      ])
+                    }
+                    className="hover:underline"
+                  >
+                    Clear Chat
+                  </button>
                 </div>
               </div>
-
-              <div className="flex justify-between">
-                <button
-                  onClick={() => setStep(2)}
-                  className="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleComplete}
-                  disabled={loading}
-                  className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-8 py-3 rounded-xl hover:shadow-xl transition disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center space-x-3"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Setting up...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Complete Setup</span>
-                      <FaArrowRight />
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* FAQ */}
-        <div className="mt-12 bg-white rounded-2xl border border-gray-200 p-8">
-          <h3 className="font-bold text-xl mb-6">Frequently Asked Questions</h3>
-          <div className="space-y-6">
-            {[
-              {
-                q: "Is my Facebook data safe?",
-                a: "Yes, we use end-to-end encryption and never store your login credentials. We only access the pages you explicitly authorize.",
-              },
-              {
-                q: "Can I disconnect a page later?",
-                a: "Yes, you can disconnect any page at any time from your dashboard settings.",
-              },
-              {
-                q: "Will ChatTime AI post on my page?",
-                a: "No, ChatTime AI only reads and replies to messages and comments. It never posts on your timeline or creates new posts.",
-              },
-            ].map((faq, index) => (
-              <div key={index}>
-                <h4 className="font-bold text-gray-900 mb-2">{faq.q}</h4>
-                <p className="text-gray-600">{faq.a}</p>
-              </div>
-            ))}
+            </Card>
           </div>
         </div>
       </div>

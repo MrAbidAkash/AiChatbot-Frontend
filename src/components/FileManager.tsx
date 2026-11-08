@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Upload,
   Cloud,
@@ -34,6 +35,9 @@ import {
   ExternalLink,
   Clock,
   Database,
+  Eye,
+  FilePlus,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +102,8 @@ interface UploadedFile {
   lastModified: string;
   selected: boolean;
   folder?: string;
+  content?: string;
+  summary?: string;
 }
 
 interface CloudFile {
@@ -372,7 +378,7 @@ export default function FileManager() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState(mockUploadedFiles);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [cloudAccounts, setCloudAccounts] = useState(mockCloudAccounts);
   const [cloudFolders, setCloudFolders] = useState(mockCloudFolders);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
@@ -381,6 +387,129 @@ export default function FileManager() {
   const [storageLocation, setStorageLocation] = useState("default");
   const [autoSync, setAutoSync] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Real backend sync state
+  const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showAddTextModal, setShowAddTextModal] = useState(false);
+  const [textTitle, setTextTitle] = useState("");
+  const [textContent, setTextContent] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<UploadedFile | null>(null);
+
+  const fetchDocs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/documents");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.documents)) {
+          if (data.documents.length === 0) {
+            setUploadedFiles(mockUploadedFiles);
+          } else {
+            const formatted: UploadedFile[] = data.documents.map((d: any) => ({
+              id: d._id,
+              name: d.title || d.fileName,
+              type: d.fileType || "txt",
+              size: d.size || "1.0 KB",
+              source: "upload",
+              status: d.status || "trained",
+              chunks: d.chunks?.length || 1,
+              uploadedAt: new Date(d.uploadedAt).toLocaleDateString(),
+              lastModified: new Date(d.updatedAt || d.uploadedAt).toLocaleTimeString(),
+              selected: false,
+              content: d.content,
+              summary: d.summary,
+            }));
+            setUploadedFiles(formatted);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load documents:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDocs();
+  }, [fetchDocs]);
+
+  const handleUploadFiles = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    let successCount = 0;
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
+        const res = await fetch("/api/documents", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          successCount++;
+        } else {
+          const err = await res.json();
+          toast.error(`Failed to upload ${file.name}: ${err.error || "Unknown error"}`);
+        }
+      } catch (err: any) {
+        toast.error(`Error uploading ${file.name}: ${err.message}`);
+      }
+    }
+    if (successCount > 0) {
+      toast.success(`Successfully uploaded and analyzed ${successCount} document(s)!`);
+      await fetchDocs();
+    }
+    setIsUploading(false);
+  };
+
+  const handleSaveTextKnowledge = async () => {
+    if (!textContent.trim()) {
+      toast.error("Please enter the knowledge text");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: textTitle.trim() || "Business FAQ / Note",
+          content: textContent.trim(),
+          fileType: "manual",
+        }),
+      });
+      if (res.ok) {
+        toast.success("Business knowledge saved & indexed successfully!");
+        setShowAddTextModal(false);
+        setTextTitle("");
+        setTextContent("");
+        await fetchDocs();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to save document");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (id: string) => {
+    try {
+      const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Document removed from knowledge base");
+        setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
+      } else {
+        toast.error("Failed to delete document");
+      }
+    } catch {
+      toast.error("Delete failed");
+    }
+  };
 
   // Handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -392,20 +521,27 @@ export default function FileManager() {
     setDragActive(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    // Handle file drop - in production, this would upload files
-    const files = Array.from(e.dataTransfer.files);
-    console.log("[v0] Files dropped:", files.map(f => f.name));
-  }, []);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragActive(false);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        handleUploadFiles(files);
+      }
+    },
+    [],
+  );
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      console.log("[v0] Files selected:", Array.from(files).map(f => f.name));
-    }
-  }, []);
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        handleUploadFiles(Array.from(files));
+      }
+    },
+    [],
+  );
 
   const toggleFileSelection = (fileId: string) => {
     setUploadedFiles(files =>
@@ -616,23 +752,49 @@ export default function FileManager() {
             onDrop={handleDrop}
           >
             <CardContent className="flex flex-col items-center justify-center py-10">
-              <div className="rounded-full bg-primary/10 p-4">
-                <Upload className="h-8 w-8 text-primary" />
-              </div>
-              <p className="mt-4 text-lg font-medium text-foreground">
-                Drop files here or click to upload
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Supports PDF, DOCX, TXT, CSV, XLSX (max 50MB)
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4 gap-2"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <FolderOpen className="h-4 w-4" />
-                Browse Files
-              </Button>
+              {isUploading ? (
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <div className="rounded-full bg-primary/10 p-4 animate-spin">
+                    <Loader2 className="h-8 w-8 text-primary" />
+                  </div>
+                  <p className="text-lg font-medium text-foreground">
+                    Analyzing & Training Documents with Gemini AI...
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Extracting text, generating summary and indexing for Facebook Messenger.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-full bg-primary/10 p-4">
+                    <Upload className="h-8 w-8 text-primary" />
+                  </div>
+                  <p className="mt-4 text-lg font-medium text-foreground">
+                    Drop business files here or click to upload
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Supports PDF, DOCX, TXT, CSV, JSON (Auto-analyzed by Gemini)
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      Browse Files
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="gap-2"
+                      onClick={() => setShowAddTextModal(true)}
+                    >
+                      <FilePlus className="h-4 w-4" />
+                      Add Text / FAQ Note
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -764,20 +926,15 @@ export default function FileManager() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Brain className="mr-2 h-4 w-4" />
-                              Retrain
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Sync
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              View Original
+                            <DropdownMenuItem onClick={() => setPreviewDoc(file)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Content & Summary
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteFile(file.id)}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
@@ -1218,6 +1375,86 @@ export default function FileManager() {
               <Sparkles className="h-4 w-4" />
               Import {selectedCloudFilesCount > 0 ? `${selectedCloudFilesCount} Files` : "Selected"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for adding manual text or FAQ */}
+      <Dialog open={showAddTextModal} onOpenChange={setShowAddTextModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Business Knowledge / FAQ</DialogTitle>
+            <DialogDescription>
+              Paste company policies, product descriptions, FAQs, operating hours, delivery fees, or return terms. Gemini AI will analyze and index this text to answer Facebook customers.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground">Document / Topic Title</label>
+              <Input
+                placeholder="e.g. Return Policy & Delivery Fees"
+                value={textTitle}
+                onChange={(e) => setTextTitle(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Knowledge Content (Text or FAQs)</label>
+              <textarea
+                rows={8}
+                placeholder={"e.g.\nQ: What are your opening hours?\nA: We are open 9am - 9pm every day.\n\nDelivery Charges:\nInside Dhaka: 60 BDT (24-48 hours)\nOutside Dhaka: 120 BDT (3-5 days)"}
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddTextModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTextKnowledge} disabled={isUploading || !textContent.trim()}>
+              {isUploading ? "Training with Gemini..." : "Save & Train"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for previewing document content and AI summary */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              {previewDoc?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Status: <span className="text-emerald-500 font-medium">Trained</span> • {previewDoc?.size} • {previewDoc?.chunks || 1} chunks
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-2">
+            {previewDoc?.summary && (
+              <div className="rounded-lg bg-primary/10 p-4 border border-primary/20">
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Gemini AI Summary
+                </p>
+                <p className="mt-1 text-sm text-foreground leading-relaxed">
+                  {previewDoc.summary}
+                </p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Extracted Text Content
+              </p>
+              <div className="rounded-lg border bg-muted/40 p-4 text-xs font-mono text-foreground whitespace-pre-wrap max-h-80 overflow-y-auto">
+                {previewDoc?.content || "No text preview available for this mock file."}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setPreviewDoc(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

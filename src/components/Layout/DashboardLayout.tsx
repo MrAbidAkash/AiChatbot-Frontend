@@ -11,6 +11,7 @@ import {
   MessageSquare,
   BarChart3,
   BookOpen,
+  Share2,
   ChevronDown,
   Menu,
   X,
@@ -36,15 +37,24 @@ const navigation = [
     icon: LayoutDashboard,
     badge: undefined,
   },
-  // { name: "Inbox", href: "/inbox", icon: MessageSquare, badge: 5 },
-  // { name: "Analytics", href: "/analytics", icon: BarChart3, badge: undefined },
   {
-    name: "Training",
+    name: "Documents & Knowledge",
     href: "/dashboard/training",
     icon: BookOpen,
     badge: undefined,
   },
-  // { name: "Settings", href: "/settings", icon: Settings, badge: undefined },
+  {
+    name: "Facebook Connect",
+    href: "/connect",
+    icon: Share2,
+    badge: undefined,
+  },
+  {
+    name: "Customer Inbox",
+    href: "/inbox",
+    icon: MessageSquare,
+    badge: undefined,
+  },
 ];
 
 const DashboardLayout = () => {

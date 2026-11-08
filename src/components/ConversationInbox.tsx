@@ -1,7 +1,7 @@
-// app/inbox/page.tsx
+// src/components/ConversationInbox.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FaSearch,
   FaFilter,
@@ -15,125 +15,198 @@ import {
   FaTag,
   FaArrowLeft,
   FaComments,
+  FaSync,
 } from "react-icons/fa";
 import Link from "next/link";
+import { toast } from "sonner";
+
+interface ConversationItem {
+  _id: string;
+  pageId: string;
+  pageName: string;
+  senderPsid: string;
+  customerName: string;
+  customerAvatar?: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unread: boolean;
+  status: "ai_replied" | "pending" | "human_replied";
+}
+
+interface MessageItem {
+  _id: string;
+  conversationId: string;
+  senderPsid: string;
+  senderType: "customer" | "ai" | "human";
+  name: string;
+  text: string;
+  timestamp: string;
+  modelUsed?: string;
+}
 
 export default function ConversationInbox() {
-  const [selectedConversation, setSelectedConversation] = useState<
-    string | null
-  >(null);
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock conversations
-  const conversations = [
-    {
-      id: "1",
-      page: "My Store",
-      name: "John Doe",
-      lastMessage: "Hi, what's your return policy?",
-      time: "2 min ago",
-      unread: true,
-      status: "ai_replied",
-      avatar: "JD",
-    },
-    {
-      id: "2",
-      page: "My Store",
-      name: "Sarah Smith",
-      lastMessage: "Do you ship internationally?",
-      time: "5 min ago",
-      unread: false,
-      status: "pending",
-      avatar: "SS",
-    },
-    {
-      id: "3",
-      page: "Tech Startup",
-      name: "Mike Johnson",
-      lastMessage: "I need help with my order #12345",
-      time: "12 min ago",
-      unread: true,
-      status: "human_replied",
-      avatar: "MJ",
-    },
-  ];
-
-  // Mock conversation messages
-  const conversationMessages = [
-    {
-      id: "1",
-      sender: "customer",
-      name: "John Doe",
-      message: "Hi, what's your return policy?",
-      time: "2:30 PM",
-      avatar: "JD",
-    },
-    {
-      id: "2",
-      sender: "ai",
-      name: "AI Assistant",
-      message:
-        "Our return policy allows returns within 30 days of purchase with original packaging. Would you like me to send you our detailed return policy document?",
-      time: "2:31 PM",
-      avatar: "AI",
-    },
-    {
-      id: "3",
-      sender: "customer",
-      name: "John Doe",
-      message: "Yes, please send it. Also, are return shipping costs covered?",
-      time: "2:32 PM",
-      avatar: "JD",
-    },
-  ];
-
-  const sendMessage = async () => {
-    if (!message.trim()) return;
-
-    setLoading(true);
-    // Send message API call would go here
-    setTimeout(() => {
-      setMessage("");
+  const fetchConversations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/conversations");
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data.conversations || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch conversations:", err);
+    } finally {
       setLoading(false);
-    }, 500);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+    // Poll every 10s for new Facebook messages
+    const timer = setInterval(fetchConversations, 10000);
+    return () => clearInterval(timer);
+  }, [fetchConversations]);
+
+  // Fetch messages for selected conversation
+  useEffect(() => {
+    if (!selectedConvId) {
+      setMessages([]);
+      return;
+    }
+
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`/api/conversations/${selectedConvId}/messages`);
+        if (res.ok) {
+          const data = await res.json();
+          setMessages(data.messages || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch messages:", err);
+      }
+    };
+
+    fetchMessages();
+  }, [selectedConvId]);
+
+  const selectedConv = conversations.find((c) => c._id === selectedConvId);
+
+  const handleSendMessage = async () => {
+    if (!replyText.trim() || !selectedConv) return;
+
+    setSending(true);
+    const textToSend = replyText.trim();
+    setReplyText("");
+
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: selectedConv._id,
+          pageId: selectedConv.pageId,
+          senderPsid: selectedConv.senderPsid,
+          text: textToSend,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Reply sent to customer on Facebook!");
+        // Append locally
+        setMessages((prev) => [
+          ...prev,
+          {
+            _id: `temp-${Date.now()}`,
+            conversationId: selectedConv._id,
+            senderPsid: selectedConv.senderPsid,
+            senderType: "human",
+            name: "Agent",
+            text: textToSend,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+        fetchConversations();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to send message to Facebook");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error");
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSendMessage();
     }
   };
 
+  const filteredConversations = conversations.filter((c) => {
+    if (filter === "unread" && !c.unread) return false;
+    if (filter === "pending" && c.status !== "pending") return false;
+    if (filter === "ai_replied" && c.status !== "ai_replied") return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return (
+        c.customerName?.toLowerCase().includes(q) ||
+        c.lastMessage?.toLowerCase().includes(q) ||
+        c.pageName?.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-muted/20">
+      {/* Top Navbar */}
+      <nav className="sticky top-0 z-30 bg-background border-b border-border">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <Link href="/dashboard" className="md:hidden text-gray-600">
+              <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
                 <FaArrowLeft />
               </Link>
-              <h1 className="text-xl font-bold text-gray-900">
-                Conversation Inbox
+              <h1 className="text-lg font-bold text-foreground">
+                Facebook Customer Inbox
               </h1>
-              <div className="hidden md:flex items-center space-x-2 text-sm">
-                <span className="text-gray-500">Active:</span>
-                <span className="font-bold">3 conversations</span>
+              <div className="hidden sm:flex items-center space-x-2 text-xs text-muted-foreground">
+                <span>Active:</span>
+                <span className="font-semibold text-foreground">
+                  {conversations.length} conversations
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => {
+                  setRefreshing(true);
+                  fetchConversations();
+                }}
+                className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-background hover:bg-muted text-muted-foreground"
+              >
+                <FaSync className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </button>
               <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search conversations..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl w-64"
+                  placeholder="Search messages..."
+                  className="pl-9 pr-4 py-1.5 text-xs border border-input rounded-lg bg-background w-48 sm:w-60 focus:outline-none focus:ring-1 focus:ring-primary"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -143,194 +216,228 @@ export default function ConversationInbox() {
         </div>
       </nav>
 
+      {/* Main Container */}
       <div className="flex h-[calc(100vh-64px)]">
-        {/* Conversation List */}
+        {/* Left Side: Conversation List */}
         <div
-          className={`${selectedConversation ? "hidden md:block" : "block"} md:w-96 border-r border-gray-200 bg-white`}
+          className={`${
+            selectedConvId ? "hidden md:block" : "block"
+          } w-full md:w-96 border-r border-border bg-background flex flex-col`}
         >
           {/* Filters */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex space-x-2">
-              {["all", "unread", "pending"].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${
-                    filter === f
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-              <button className="ml-auto text-gray-600 hover:text-gray-900">
-                <FaFilter />
+          <div className="p-3 border-b border-border flex gap-1.5 overflow-x-auto">
+            {["all", "unread", "pending", "ai_replied"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1 rounded-md text-xs font-medium capitalize shrink-0 ${
+                  filter === f
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {f.replace("_", " ")}
               </button>
-            </div>
+            ))}
           </div>
 
-          {/* Conversation Items */}
-          <div className="overflow-y-auto h-[calc(100vh-128px)]">
-            {conversations.map((conv) => (
-              <div
-                key={conv.id}
-                onClick={() => setSelectedConversation(conv.id)}
-                className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                  selectedConversation === conv.id ? "bg-blue-50" : ""
-                } ${conv.unread ? "bg-blue-50/50" : ""}`}
-              >
-                <div className="flex items-start space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold">
-                      {conv.avatar}
+          {/* Conversation List */}
+          <div className="overflow-y-auto flex-1 divide-y divide-border">
+            {loading ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                Loading conversations...
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
+                <FaComments className="mx-auto h-8 w-8 opacity-30" />
+                <p className="font-semibold text-foreground">No conversations yet</p>
+                <p>
+                  When customers message your connected Facebook Page, conversations and
+                  Gemini AI auto-replies will appear here in real time.
+                </p>
+                <Link
+                  href="/connect"
+                  className="inline-block mt-2 text-primary hover:underline text-xs"
+                >
+                  View Facebook Connect & Setup
+                </Link>
+              </div>
+            ) : (
+              filteredConversations.map((conv) => (
+                <div
+                  key={conv._id}
+                  onClick={() => setSelectedConvId(conv._id)}
+                  className={`p-3.5 hover:bg-muted/50 cursor-pointer transition-colors ${
+                    selectedConvId === conv._id ? "bg-muted" : ""
+                  } ${conv.unread ? "font-semibold" : ""}`}
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="relative">
+                      {conv.customerAvatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={conv.customerAvatar}
+                          alt={conv.customerName}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          {conv.customerName ? conv.customerName.slice(0, 2).toUpperCase() : "FB"}
+                        </div>
+                      )}
+                      <div
+                        className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background ${
+                          conv.status === "ai_replied"
+                            ? "bg-emerald-500"
+                            : conv.status === "human_replied"
+                              ? "bg-blue-500"
+                              : "bg-amber-500"
+                        }`}
+                      />
                     </div>
-                    <div
-                      className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                        conv.status === "ai_replied"
-                          ? "bg-green-500"
-                          : conv.status === "human_replied"
-                            ? "bg-blue-500"
-                            : "bg-yellow-500"
-                      }`}
-                    />
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-bold text-gray-900">
-                          {conv.name}
-                        </div>
-                        <div className="text-sm text-gray-500 flex items-center">
-                          <span className="text-xs px-2 py-0.5 bg-gray-100 rounded mr-2">
-                            {conv.page}
-                          </span>
-                          <FaClock className="mr-1" size={10} />
-                          {conv.time}
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <p className="text-xs font-bold text-foreground truncate">
+                          {conv.customerName}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(conv.lastMessageAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </div>
-                      {conv.unread && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      )}
-                    </div>
 
-                    <p className="mt-2 text-gray-600 truncate">
-                      {conv.lastMessage}
-                    </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] px-1.5 py-0.2 bg-muted text-muted-foreground rounded">
+                          {conv.pageName}
+                        </span>
+                        {conv.status === "ai_replied" && (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                            <FaRobot size={9} /> AI Replied
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="mt-2 flex items-center space-x-2">
-                      {conv.status === "ai_replied" && (
-                        <span className="inline-flex items-center text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                          <FaRobot className="mr-1" size={10} /> AI Replied
-                        </span>
-                      )}
-                      {conv.status === "pending" && (
-                        <span className="inline-flex items-center text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                          <FaClock className="mr-1" size={10} /> Pending
-                        </span>
-                      )}
+                      <p className="mt-1 text-xs text-muted-foreground truncate">
+                        {conv.lastMessage}
+                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
-        {/* Chat Window */}
+        {/* Right Side: Chat Window */}
         <div
-          className={`${selectedConversation ? "block" : "hidden md:block"} flex-1 flex flex-col`}
+          className={`${
+            selectedConvId ? "block" : "hidden md:block"
+          } flex-1 flex flex-col bg-card`}
         >
-          {selectedConversation ? (
+          {selectedConv ? (
             <>
               {/* Chat Header */}
-              <div className="bg-white border-b border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={() => setSelectedConversation(null)}
-                      className="md:hidden text-gray-600"
-                    >
-                      <FaArrowLeft />
-                    </button>
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold">
-                      JD
-                    </div>
-                    <div>
-                      <div className="font-bold text-gray-900">John Doe</div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                        Online • My Store
-                      </div>
-                    </div>
+              <div className="bg-background border-b border-border p-3.5 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setSelectedConvId(null)}
+                    className="md:hidden text-muted-foreground hover:text-foreground"
+                  >
+                    <FaArrowLeft />
+                  </button>
+                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    {selectedConv.customerName.slice(0, 2).toUpperCase()}
                   </div>
+                  <div>
+                    <h2 className="font-bold text-sm text-foreground">
+                      {selectedConv.customerName}
+                    </h2>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                      Facebook Messenger • {selectedConv.pageName}
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="flex items-center space-x-4">
-                    <button className="text-gray-600 hover:text-gray-900">
-                      <FaTag />
-                    </button>
-                    <button className="text-gray-600 hover:text-gray-900">
-                      <FaEllipsisV />
-                    </button>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                    Auto-Reply Active
+                  </span>
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50">
-                {conversationMessages.map((msg) => (
+              {/* Messages Body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10">
+                {messages.map((msg) => (
                   <div
-                    key={msg.id}
-                    className={`flex ${msg.sender === "customer" ? "justify-start" : "justify-end"}`}
+                    key={msg._id}
+                    className={`flex ${
+                      msg.senderType === "customer" ? "justify-start" : "justify-end"
+                    }`}
                   >
                     <div
-                      className={`flex max-w-[80%] ${msg.sender === "customer" ? "" : "flex-row-reverse"}`}
+                      className={`flex max-w-[80%] ${
+                        msg.senderType === "customer" ? "" : "flex-row-reverse"
+                      }`}
                     >
                       <div
-                        className={`flex-shrink-0 ${msg.sender === "customer" ? "mr-3" : "ml-3"}`}
+                        className={`shrink-0 ${
+                          msg.senderType === "customer" ? "mr-2.5" : "ml-2.5"
+                        }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            msg.sender === "customer"
-                              ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white"
-                              : "bg-gradient-to-br from-green-500 to-blue-600 text-white"
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
+                            msg.senderType === "customer"
+                              ? "bg-muted text-foreground border"
+                              : msg.senderType === "ai"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-emerald-600 text-white"
                           }`}
                         >
-                          {msg.sender === "customer" ? (
-                            <FaUser size={14} />
+                          {msg.senderType === "customer" ? (
+                            <FaUser size={11} />
+                          ) : msg.senderType === "ai" ? (
+                            <FaRobot size={11} />
                           ) : (
-                            <FaRobot size={14} />
+                            <FaCheck size={11} />
                           )}
                         </div>
                       </div>
 
                       <div>
                         <div
-                          className={`rounded-2xl p-4 ${
-                            msg.sender === "customer"
-                              ? "bg-white border border-gray-200"
-                              : "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                          className={`rounded-2xl p-3.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                            msg.senderType === "customer"
+                              ? "bg-background border shadow-xs text-foreground rounded-tl-xs"
+                              : msg.senderType === "ai"
+                                ? "bg-primary text-primary-foreground rounded-tr-xs"
+                                : "bg-emerald-600 text-white rounded-tr-xs"
                           }`}
                         >
-                          <p
-                            className={
-                              msg.sender === "customer"
-                                ? "text-gray-800"
-                                : "text-white"
-                            }
-                          >
-                            {msg.message}
-                          </p>
+                          {msg.text}
                         </div>
                         <div
-                          className={`text-xs text-gray-500 mt-1 ${msg.sender === "customer" ? "text-left" : "text-right"}`}
+                          className={`text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5 ${
+                            msg.senderType === "customer" ? "text-left" : "justify-end"
+                          }`}
                         >
-                          {msg.time}
-                          {msg.sender === "ai" && (
-                            <span className="ml-2 inline-flex items-center">
-                              <FaCheck size={10} className="mr-1" /> AI
-                              Generated
+                          <span>
+                            {new Date(msg.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          {msg.senderType === "ai" && (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
+                              <FaRobot size={9} /> Gemini Auto-Reply
+                            </span>
+                          )}
+                          {msg.senderType === "human" && (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              Manual Reply
                             </span>
                           )}
                         </div>
@@ -340,75 +447,48 @@ export default function ConversationInbox() {
                 ))}
               </div>
 
-              {/* Message Input */}
-              <div className="bg-white border-t border-gray-200 p-4">
-                <div className="flex space-x-4">
-                  <div className="flex-1">
-                    <textarea
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      placeholder="Type your message here..."
-                      className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:border-blue-500"
-                      rows={2}
-                    />
-                  </div>
+              {/* Manual Reply Footer */}
+              <div className="bg-background border-t border-border p-3">
+                <div className="flex gap-2">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Type a manual reply to send to the customer on Facebook..."
+                    className="flex-1 p-2.5 border border-input rounded-lg bg-background text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                    rows={2}
+                  />
                   <button
-                    onClick={sendMessage}
-                    disabled={loading || !message.trim()}
-                    className="self-end bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-xl hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSendMessage}
+                    disabled={sending || !replyText.trim()}
+                    className="self-end bg-primary text-primary-foreground p-2.5 rounded-lg hover:opacity-90 transition disabled:opacity-50"
                   >
-                    {loading ? (
-                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {sending ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <FaPaperPlane />
+                      <FaPaperPlane className="h-4 w-4" />
                     )}
                   </button>
                 </div>
-
-                <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center space-x-4">
-                    <button className="hover:text-blue-600">
-                      <FaReply className="mr-1 inline" /> AI Reply
-                    </button>
-                    <button className="hover:text-blue-600">
-                      <FaRobot className="mr-1 inline" /> Suggest Reply
-                    </button>
-                  </div>
-                  <div>
-                    Press{" "}
-                    <kbd className="px-2 py-1 bg-gray-100 rounded">Enter</kbd>{" "}
-                    to send
-                  </div>
-                </div>
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                  Press <kbd className="px-1.5 py-0.5 bg-muted rounded">Enter</kbd> to send
+                  directly to Facebook Messenger.
+                </p>
               </div>
             </>
           ) : (
             /* Empty Chat State */
-            <div className="flex-1 flex flex-col items-center justify-center p-8">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl flex items-center justify-center mb-6">
-                <FaComments className="text-blue-500 text-4xl" />
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 text-primary">
+                <FaComments className="text-2xl" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                No conversation selected
+              <h3 className="text-base font-bold text-foreground mb-1">
+                Select a conversation
               </h3>
-              <p className="text-gray-600 text-center max-w-md mb-8">
-                Select a conversation from the list to view messages and reply
+              <p className="text-xs text-muted-foreground max-w-sm mb-6">
+                Choose a customer from the left to view the messages, see AI replies, and
+                send manual messages to Facebook Messenger.
               </p>
-              <div className="grid grid-cols-2 gap-4 max-w-md">
-                <div className="bg-white p-4 rounded-xl border border-gray-200">
-                  <div className="text-sm text-gray-500 mb-1">
-                    Total Conversations
-                  </div>
-                  <div className="text-2xl font-bold">24</div>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200">
-                  <div className="text-sm text-gray-500 mb-1">
-                    Avg. Response Time
-                  </div>
-                  <div className="text-2xl font-bold">2.3s</div>
-                </div>
-              </div>
             </div>
           )}
         </div>

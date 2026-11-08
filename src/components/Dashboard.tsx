@@ -24,6 +24,7 @@ import {
   Calendar,
   Zap,
   RefreshCw,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -149,9 +150,14 @@ export default function Dashboard({ session }: DashboardProps) {
   const [activeView, setActiveView] = useState<"overview" | "pages" | "usage">(
     "overview",
   );
+  const [dbStats, setDbStats] = useState<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 100);
+    fetch("/api/dashboard/stats")
+      .then((res) => res.json())
+      .then((data) => setDbStats(data))
+      .catch((err) => console.error("Stats load error:", err));
     return () => clearTimeout(timer);
   }, []);
 
@@ -184,6 +190,41 @@ export default function Dashboard({ session }: DashboardProps) {
     }
   };
 
+  const currentStats = [
+    {
+      title: "Total Messages",
+      value: dbStats?.totalMessages !== undefined ? dbStats.totalMessages.toLocaleString() : "8,247",
+      change: "+12.5%",
+      trend: "up",
+      icon: MessageSquare,
+      description: "Customer interactions",
+    },
+    {
+      title: "AI Auto-Responses",
+      value: dbStats?.totalAiReplies !== undefined ? dbStats.totalAiReplies.toLocaleString() : "7,103",
+      change: "+14.2%",
+      trend: "up",
+      icon: Zap,
+      description: "Powered by Gemini",
+    },
+    {
+      title: "Trained Documents",
+      value: dbStats?.totalDocuments !== undefined ? dbStats.totalDocuments.toLocaleString() : "12",
+      change: "Active",
+      trend: "up",
+      icon: BookOpen,
+      description: "Knowledge base indexed",
+    },
+    {
+      title: "Connected FB Pages",
+      value: dbStats?.totalPages !== undefined ? dbStats.totalPages.toLocaleString() : "2",
+      change: "Active",
+      trend: "up",
+      icon: Facebook,
+      description: "Auto-reply enabled",
+    },
+  ];
+
   const maxMessages = Math.max(...weeklyTrend.map((d) => d.messages));
 
   return (
@@ -212,23 +253,28 @@ export default function Dashboard({ session }: DashboardProps) {
                   Manage your connected pages and monitor your monthly usage.
                 </p>
               </div>
-              <div className="flex gap-3">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Bell className="h-4 w-4" />
-                  <Badge
-                    variant="destructive"
-                    className="h-5 w-5 rounded-full p-0 text-xs"
+              <div className="flex flex-wrap items-center gap-3">
+                <Link href="/dashboard/training">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Knowledge Base
+                  </Button>
+                </Link>
+                <Link href="/inbox">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Customer Inbox
+                  </Button>
+                </Link>
+                <Link href="/connect">
+                  <Button
+                    size="sm"
+                    className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
-                    3
-                  </Badge>
-                </Button>
-                <Button
-                  size="sm"
-                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Plus className="h-4 w-4" />
-                  Connect Page
-                </Button>
+                    <Plus className="h-4 w-4" />
+                    Connect Facebook
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -260,7 +306,7 @@ export default function Dashboard({ session }: DashboardProps) {
               isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             }`}
           >
-            {quickStats.map((stat, index) => (
+            {currentStats.map((stat, index) => (
               <Card
                 key={stat.title}
                 className="group border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-border hover:shadow-lg"
