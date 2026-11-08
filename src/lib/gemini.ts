@@ -211,3 +211,72 @@ Format your response as JSON:
     keyTopics: ["business-knowledge"],
   };
 }
+
+/**
+ * Extract all readable text from a PDF buffer using Gemini Multimodal AI.
+ * Completely immune to Next.js server worker / pdfjs-dist bundle errors,
+ * and handles scanned pages, tables, Bengali, English, and complex layouts.
+ */
+export async function extractPdfTextWithGemini(
+  pdfBuffer: Buffer,
+  fileName = "document.pdf",
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY || GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured in environment variables.");
+  }
+
+  const base64Data = pdfBuffer.toString("base64");
+  const models = [DEFAULT_MODEL, ...FALLBACK_MODELS];
+  let lastError: any = null;
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  inline_data: {
+                    mime_type: "application/pdf",
+                    data: base64Data,
+                  },
+                },
+                {
+                  text: "You are an accurate document transcription system. Extract and return ALL text, headings, policies, pricing, contact details, and bullet points from this document verbatim. Return ONLY the transcribed text in full, preserving sections and formatting. Do not add commentary.",
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(`Gemini PDF extraction on ${model} failed (${response.status}):`, errorText);
+        lastError = new Error(`Gemini ${model} failed: ${errorText}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const extracted = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (extracted && extracted.trim()) {
+        return extracted.trim();
+      }
+    } catch (err) {
+      console.warn(`Error extracting PDF with ${model}:`, err);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error(`Failed to extract text from PDF "${fileName}".`);
+}
+

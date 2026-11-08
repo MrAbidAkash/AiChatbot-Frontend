@@ -92,14 +92,18 @@ export async function POST(request: NextRequest) {
       if (extension === "pdf") {
         fileType = "pdf";
         try {
-          const { PDFParse } = await import("pdf-parse");
-          const parser = new PDFParse({ data: buffer });
-          const pdfData = await parser.getText();
-          extractedText = pdfData.text || "";
-        } catch (pdfErr) {
+          // Use Gemini Multimodal PDF extraction (eliminates Next.js server worker/bundle issues,
+          // handles tables, multilingual text, scanned documents, etc.)
+          const { extractPdfTextWithGemini } = await import("@/lib/gemini");
+          extractedText = await extractPdfTextWithGemini(buffer, fileName);
+        } catch (pdfErr: any) {
           console.error("PDF extraction error:", pdfErr);
           return NextResponse.json(
-            { error: "Failed to parse PDF file. Please ensure it is not password-protected." },
+            {
+              error:
+                pdfErr?.message ||
+                "Failed to parse PDF file. Please ensure GEMINI_API_KEY is valid.",
+            },
             { status: 400 },
           );
         }
