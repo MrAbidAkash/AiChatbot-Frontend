@@ -26,9 +26,12 @@ export default function AboutPage() {
           <div className="w-20 h-20 bg-background/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-8">
             <FaRocket className="text-foreground text-4xl" />
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+          <h1 className="text-4xl md:text-6xl font-bold mb-3">
             About ChatTime AI
           </h1>
+          <p className="text-sm font-medium uppercase tracking-wider text-blue-200 mb-6">
+            A Product of Solvence Labs
+          </p>
           <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-8">
             Empowering businesses worldwide with intelligent conversation
             automation that converts casual chats into loyal customers.

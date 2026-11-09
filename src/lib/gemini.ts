@@ -38,7 +38,7 @@ export async function generateCustomerReply(
   const {
     customerMessage,
     businessKnowledge,
-    businessName = "ChatTime Business",
+    businessName = "ChatTime AI (Solvence Labs)",
     botTone = "friendly",
     customInstructions = "",
     fallbackMessage = "I don't have that specific information right now. Please allow our team member to get back to you shortly, or contact our customer support.",

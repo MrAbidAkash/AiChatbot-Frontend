@@ -43,9 +43,14 @@ export function Footer() {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
                 <Bot className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-foreground">
-                ChatTime AI
-              </span>
+              <div className="flex flex-col">
+                <span className="text-xl font-semibold text-foreground">
+                  ChatTime AI
+                </span>
+                <span className="text-[10px] text-primary font-medium tracking-wide">
+                  A Product of Solvence Labs
+                </span>
+              </div>
             </Link>
 
             {/* Tagline */}
@@ -172,7 +177,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            © 2026 ChatTime AI. Made with ❤️ in Bangladesh 🇧🇩
+            © 2026 ChatTime AI. A product of Solvence Labs. Made with ❤️ in Bangladesh 🇧🇩
           </p>
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2">

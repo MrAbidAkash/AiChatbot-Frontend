@@ -95,7 +95,7 @@ export default function Dashboard({ session }: DashboardProps) {
   const webhookUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/api/webhook/facebook`
-      : "https://yourdomain.com/api/webhook/facebook";
+      : "https://chattimeai.com/api/webhook/facebook";
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);

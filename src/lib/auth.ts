@@ -6,6 +6,15 @@ import { MongoClient } from "mongodb";
 // Create auth instance immediately with error handling
 let authInstance: ReturnType<typeof betterAuth> | null = null;
 
+const trustedOrigins = [
+  "https://chattimeai.com",
+  "https://www.chattimeai.com",
+  "http://localhost:3000",
+  ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
+    ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",")
+    : []),
+];
+
 function createAuth() {
   try {
     const uri = process.env.MONGODB_URI;
@@ -20,6 +29,7 @@ function createAuth() {
         secret:
           process.env.BETTER_AUTH_SECRET ||
           "development-secret-change-in-production",
+        trustedOrigins,
         plugins: [nextCookies()],
         emailAndPassword: {
           enabled: true,
@@ -48,6 +58,7 @@ function createAuth() {
       secret:
         process.env.BETTER_AUTH_SECRET ||
         "development-secret-change-in-production",
+      trustedOrigins,
       database: mongodbAdapter(db, {
         client,
       }),
@@ -103,6 +114,7 @@ function createAuth() {
       secret:
         process.env.BETTER_AUTH_SECRET ||
         "development-secret-change-in-production",
+      trustedOrigins,
       plugins: [nextCookies()],
       emailAndPassword: {
         enabled: true,

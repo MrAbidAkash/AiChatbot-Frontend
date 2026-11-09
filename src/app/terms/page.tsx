@@ -26,7 +26,7 @@ export default function TermsEN() {
               Last Updated: {new Date().toLocaleDateString()}
             </p>
             <p className="text-muted-foreground mt-2">
-              ChatTime AI • Dhaka, Bangladesh • support@chattimeai.com
+              ChatTime AI (Operated by Solvence Labs) • Dhaka, Bangladesh • support@chattimeai.com
             </p>
           </div>
 

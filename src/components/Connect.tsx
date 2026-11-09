@@ -434,7 +434,7 @@ export default function ConnectFacebookPage() {
     }
   };
 
-  const webhookUrl = `${origin || "https://your-domain.com"}/api/webhook/facebook`;
+  const webhookUrl = `${origin || "https://chattimeai.com"}/api/webhook/facebook`;
   const verifyToken = "chattime_ai_webhook_verify_token_2026";
 
   return (
