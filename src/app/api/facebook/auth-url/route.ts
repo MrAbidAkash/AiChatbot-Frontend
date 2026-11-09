@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
     "pages_show_list",
     "pages_messaging",
     "pages_manage_metadata",
-    "pages_read_engagement",
   ].join(",");
 
   const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${encodeURIComponent(clientId.trim())}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=code&state=${encodeURIComponent(userId)}`;
