@@ -253,7 +253,7 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
               </span>
               AI Agent Active
             </span>
-            <span className="text-[10px] font-mono text-muted-foreground/80">Gemini 2.5</span>
+            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">24/7 Live</span>
           </div>
 
           {/* User Account Card */}

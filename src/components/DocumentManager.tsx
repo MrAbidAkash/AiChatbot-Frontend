@@ -187,7 +187,7 @@ export default function DocumentManager() {
             <span>ডকুমেন্টস ও ফাইল আপলোড</span>
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            আপনার শপের প্রোডাক্ট ক্যাটালগ, সাইজ চার্ট ও নির্দেশিকা আপলোড করুন — Gemini AI স্বয়ংক্রিয়ভাবে পড়ে উত্তর দেবে।
+            আপনার শপের প্রোডাক্ট ক্যাটালগ, সাইজ চার্ট ও নির্দেশিকা আপলোড করুন — AI স্বয়ংক্রিয়ভাবে পড়ে উত্তর দেবে।
           </p>
         </div>
 
@@ -251,7 +251,7 @@ export default function DocumentManager() {
           প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ফাইল ড্রপ করুন
         </h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-          PDF, Excel (.xlsx, .csv), Word বা Text ফাইল ড্র্যাগ করে এখানে ছাড়ুন অথবা ব্রাউজ করুন। Gemini AI স্বয়ংক্রিয়ভাবে টেক্সট ইনডেক্স করবে।
+          PDF, Excel (.xlsx, .csv), Word বা Text ফাইল ড্র্যাগ করে এখানে ছাড়ুন অথবা ব্রাউজ করুন। AI স্বয়ংক্রিয়ভাবে টেক্সট ইনডেক্স করবে।
         </p>
 
         <div className="mt-4 flex flex-wrap justify-center items-center gap-2">

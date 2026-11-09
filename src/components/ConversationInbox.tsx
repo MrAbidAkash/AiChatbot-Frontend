@@ -253,7 +253,7 @@ export default function ConversationInbox() {
                 <p className="font-semibold text-foreground">No conversations yet</p>
                 <p>
                   When customers message your connected Facebook Page, conversations and
-                  Gemini AI auto-replies will appear here in real time.
+                  AI auto-replies will appear here in real time.
                 </p>
                 <Link
                   href="/connect"
@@ -432,7 +432,7 @@ export default function ConversationInbox() {
                           </span>
                           {msg.senderType === "ai" && (
                             <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
-                              <FaRobot size={9} /> Gemini Auto-Reply
+                              <FaRobot size={9} /> AI Auto-Reply
                             </span>
                           )}
                           {msg.senderType === "human" && (

@@ -124,7 +124,7 @@ export default function AIPlayground() {
             <span>লাইভ AI টেস্ট কনসোল (Playground)</span>
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            আপনার আপলোডকৃত ফাইল ও পলিসির ভিত্তিতে Gemini 2.5 Flash কীভাবে উত্তর দেয় তা সরাসরি পরীক্ষা করুন।
+            আপনার আপলোডকৃত ফাইল ও পলিসির ভিত্তিতে AI কীভাবে উত্তর দেয় তা সরাসরি পরীক্ষা করুন।
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export default function AIPlayground() {
                     <span>ChatTime AI Messenger Bot</span>
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   </h3>
-                  <p className="text-[10px] text-muted-foreground">Gemini 2.5 Flash • Live Simulator</p>
+                  <p className="text-[10px] text-muted-foreground">ChatTime AI • Live Simulator</p>
                 </div>
               </div>
 
@@ -200,12 +200,6 @@ export default function AIPlayground() {
                   </div>
                   <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground px-1 font-mono">
                     <span>{msg.timestamp}</span>
-                    {msg.modelUsed && (
-                      <>
-                        <span>•</span>
-                        <span className="text-primary">{msg.modelUsed}</span>
-                      </>
-                    )}
                   </div>
                 </div>
               ))}
@@ -285,8 +279,11 @@ export default function AIPlayground() {
             </CardHeader>
             <CardContent className="space-y-3 pt-0 text-xs">
               <div className="flex items-center justify-between py-1.5 border-b border-border/40">
-                <span className="text-muted-foreground">AI মডেল</span>
-                <span className="font-semibold text-foreground">Gemini 2.5 Flash</span>
+                <span className="text-muted-foreground">AI স্ট্যাটাস</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  সক্রিয় (Active)
+                </span>
               </div>
               <div className="flex items-center justify-between py-1.5 border-b border-border/40">
                 <span className="text-muted-foreground">গড় রেসপন্স স্পিড</span>

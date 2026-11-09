@@ -658,7 +658,7 @@ ${customRules}
               প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট আপলোড করুন
             </h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-              PDF, Excel (.xlsx, .csv) বা Word ফাইল ড্র্যাগ করে এখানে ছাড়ুন অথবা ব্রাউজ করুন। Gemini AI স্বয়ংক্রিয়ভাবে পণ্য ও দাম ইনডেক্স করবে।
+              PDF, Excel (.xlsx, .csv) বা Word ফাইল ড্র্যাগ করে এখানে ছাড়ুন অথবা ব্রাউজ করুন। AI স্বয়ংক্রিয়ভাবে পণ্য ও দাম ইনডেক্স করবে।
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <Button
@@ -771,7 +771,7 @@ ${customRules}
                     <CardTitle className="text-sm">লাইভ এআই টেস্ট কনসোল</CardTitle>
                     <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Gemini Multimodal Engine
+                      ChatTime AI Engine
                     </p>
                   </div>
                 </div>

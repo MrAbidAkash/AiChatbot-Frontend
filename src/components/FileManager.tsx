@@ -758,7 +758,7 @@ export default function FileManager() {
                     <Loader2 className="h-8 w-8 text-primary" />
                   </div>
                   <p className="text-lg font-medium text-foreground">
-                    Analyzing & Training Documents with Gemini AI...
+                    Analyzing & Training Documents with AI...
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Extracting text, generating summary and indexing for Facebook Messenger.
@@ -773,7 +773,7 @@ export default function FileManager() {
                     Drop business files here or click to upload
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Supports PDF, DOCX, TXT, CSV, JSON (Auto-analyzed by Gemini)
+                    Supports PDF, DOCX, TXT, CSV, JSON (Auto-analyzed)
                   </p>
                   <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
                     <Button
@@ -1385,7 +1385,7 @@ export default function FileManager() {
           <DialogHeader>
             <DialogTitle>Add Business Knowledge / FAQ</DialogTitle>
             <DialogDescription>
-              Paste company policies, product descriptions, FAQs, operating hours, delivery fees, or return terms. Gemini AI will analyze and index this text to answer Facebook customers.
+              Paste company policies, product descriptions, FAQs, operating hours, delivery fees, or return terms. The AI will analyze and index this text to answer Facebook customers.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -1414,7 +1414,7 @@ export default function FileManager() {
               Cancel
             </Button>
             <Button onClick={handleSaveTextKnowledge} disabled={isUploading || !textContent.trim()}>
-              {isUploading ? "Training with Gemini..." : "Save & Train"}
+              {isUploading ? "Training with AI..." : "Save & Train"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1437,7 +1437,7 @@ export default function FileManager() {
               <div className="rounded-lg bg-primary/10 p-4 border border-primary/20">
                 <p className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Gemini AI Summary
+                  AI Summary
                 </p>
                 <p className="mt-1 text-sm text-foreground leading-relaxed">
                   {previewDoc.summary}

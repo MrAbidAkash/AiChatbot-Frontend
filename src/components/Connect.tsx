@@ -450,7 +450,7 @@ export default function ConnectFacebookPage() {
               Facebook Auto-Reply Integration
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Connect your Facebook Pages and let Gemini AI automatically answer customer
+              Connect your Facebook Pages and let AI automatically answer customer
               questions by analyzing your business documents.
             </p>
           </div>
@@ -705,7 +705,7 @@ export default function ConnectFacebookPage() {
                     <div>
                       <CardTitle className="text-base">AI Auto-Reply Tester</CardTitle>
                       <CardDescription className="text-xs">
-                        Test how Gemini answers using your business documents
+                        Test how AI answers using your business documents
                       </CardDescription>
                     </div>
                   </div>
@@ -713,7 +713,7 @@ export default function ConnectFacebookPage() {
                     variant="outline"
                     className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-300"
                   >
-                    Gemini 3.8 Flash
+                    Active
                   </Badge>
                 </div>
               </CardHeader>
@@ -736,17 +736,12 @@ export default function ConnectFacebookPage() {
                     >
                       {m.text}
                     </div>
-                    {m.model && (
-                      <span className="text-[9px] text-muted-foreground mt-0.5 px-1">
-                        Analyzed with {m.model}
-                      </span>
-                    )}
                   </div>
                 ))}
                 {testingAi && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
                     <RefreshCw className="h-3 w-3 animate-spin text-primary" />
-                    Gemini is analyzing business documents...
+                    AI is analyzing business documents...
                   </div>
                 )}
               </div>
@@ -946,7 +941,7 @@ export default function ConnectFacebookPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Want to test how Gemini AI answers customer questions from your documents right now?
+                Want to test how AI answers customer questions from your documents right now?
                 Connect a test business store in 1 click:
               </p>
               <div className="flex flex-wrap gap-2">

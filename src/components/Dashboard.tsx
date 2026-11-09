@@ -342,7 +342,7 @@ export default function Dashboard({ session }: DashboardProps) {
             </p>
             <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Gemini 2.5 Active
+              AI সক্রিয় (Active)
             </p>
           </CardContent>
         </Card>
@@ -602,8 +602,11 @@ export default function Dashboard({ session }: DashboardProps) {
             </CardHeader>
             <CardContent className="space-y-2.5 pt-0 text-xs">
               <div className="flex items-center justify-between py-1.5 border-b border-border/40">
-                <span className="text-muted-foreground">AI মডেল</span>
-                <span className="font-semibold text-foreground">Gemini 2.5 Flash</span>
+                <span className="text-muted-foreground">AI স্ট্যাটাস</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  সক্রিয় (Active)
+                </span>
               </div>
 
               <div className="flex items-center justify-between py-1.5 border-b border-border/40">
@@ -687,7 +690,7 @@ export default function Dashboard({ session }: DashboardProps) {
                   <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 </DialogTitle>
                 <DialogDescription className="text-[11px]">
-                  Gemini 2.5 Flash • রিয়েল-টাইম F-Commerce রেসপন্স সিমুলেটর
+                  রিয়েল-টাইম F-Commerce রেসপন্স সিমুলেটর
                 </DialogDescription>
               </div>
             </div>
@@ -713,12 +716,6 @@ export default function Dashboard({ session }: DashboardProps) {
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
                   <span>{msg.timestamp}</span>
-                  {msg.modelUsed && (
-                    <>
-                      <span>•</span>
-                      <span className="text-primary font-mono">{msg.modelUsed}</span>
-                    </>
-                  )}
                 </div>
               </div>
             ))}
@@ -730,7 +727,7 @@ export default function Dashboard({ session }: DashboardProps) {
                   <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
                   <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
                 </div>
-                <span>Gemini উত্তর প্রস্তুত করছে...</span>
+                <span>AI উত্তর প্রস্তুত করছে...</span>
               </div>
             )}
           </div>
