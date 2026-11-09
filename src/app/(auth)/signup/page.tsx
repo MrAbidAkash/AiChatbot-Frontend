@@ -41,7 +41,8 @@ export default function SignupPage() {
       try {
         const session = await getSession();
         if (session.data?.user) {
-          router.push("/dashboard");
+          window.location.href = "/dashboard";
+          return;
         }
       } catch (err) {
         // User is not logged in, continue to signup page
@@ -51,7 +52,7 @@ export default function SignupPage() {
     };
 
     checkAuthStatus();
-  }, [router]);
+  }, []);
 
   if (isCheckingAuth) {
     return (
@@ -95,17 +96,17 @@ export default function SignupPage() {
     setError("");
 
     try {
-      const result = await signUp(email, password, name);
-      if (result.data) {
+      const result = await signUp(email, password, name, "/dashboard");
+      if (result?.data) {
         setSuccess(true);
         setTimeout(() => {
-          router.push("/dashboard");
-        }, 2000);
+          window.location.href = "/dashboard";
+        }, 1500);
       } else {
-        setError("Signup failed. Please try again.");
+        setError(result?.error?.message || "Signup failed. Please try again.");
       }
-    } catch (err) {
-      setError("Signup failed. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Signup failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -115,8 +116,8 @@ export default function SignupPage() {
     setIsLoading(true);
     setError("");
     try {
-      await signIn();
-      // Redirect will be handled by the auth callback
+      await signIn("/dashboard");
+      // Redirect will be handled by the auth callback to /dashboard
     } catch (err) {
       setError("Google signup failed. Please try again.");
       setIsLoading(false);

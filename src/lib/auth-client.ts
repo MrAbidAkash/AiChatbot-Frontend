@@ -2,24 +2,37 @@ import { createAuthClient } from "better-auth/client";
 
 const authClient = createAuthClient();
 
-const signIn = async () => {
+const signIn = async (callbackURL: string = "/dashboard") => {
   return await authClient.signIn.social({
     provider: "google",
+    callbackURL,
+    newUserCallbackURL: callbackURL,
   });
 };
 
-const signUp = async (email: string, password: string, name: string) => {
+const signUp = async (
+  email: string,
+  password: string,
+  name: string,
+  callbackURL: string = "/dashboard"
+) => {
   return await authClient.signUp.email({
     email,
     password,
     name,
+    callbackURL,
   });
 };
 
-const signInWithEmail = async (email: string, password: string) => {
+const signInWithEmail = async (
+  email: string,
+  password: string,
+  callbackURL: string = "/dashboard"
+) => {
   return await authClient.signIn.email({
     email,
     password,
+    callbackURL,
   });
 };
 

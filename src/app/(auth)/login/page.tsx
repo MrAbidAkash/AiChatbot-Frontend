@@ -28,7 +28,8 @@ export default function LoginPage() {
       try {
         const session = await getSession();
         if (session.data?.user) {
-          router.push("/dashboard");
+          window.location.href = "/dashboard";
+          return;
         }
       } catch (err) {
         // User is not logged in, continue to login page
@@ -38,7 +39,7 @@ export default function LoginPage() {
     };
 
     checkAuthStatus();
-  }, [router]);
+  }, []);
 
   if (isCheckingAuth) {
     return (
@@ -64,15 +65,15 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const result = await signInWithEmail(email, password);
-      if (result.data) {
-        router.push("/dashboard");
+      const result = await signInWithEmail(email, password, "/dashboard");
+      if (result?.data) {
+        window.location.href = "/dashboard";
       } else {
-        setError("Invalid email or password");
+        setError(result?.error?.message || "Invalid email or password");
+        setIsLoading(false);
       }
-    } catch (err) {
-      setError("Login failed. Please try again.");
-    } finally {
+    } catch (err: any) {
+      setError(err?.message || "Login failed. Please try again.");
       setIsLoading(false);
     }
   };
@@ -81,8 +82,8 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
     try {
-      await signIn();
-      // Redirect will be handled by the auth callback
+      await signIn("/dashboard");
+      // Redirect will be handled by the auth callback to /dashboard
     } catch (err) {
       setError("Google login failed. Please try again.");
       setIsLoading(false);
