@@ -367,7 +367,7 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Top App Bar */}
         <header className="sticky top-0 z-30 h-14 border-b border-border/80 bg-background/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between">
-          {/* Left: Mobile Toggle & Page Context */}
+          {/* Left: Mobile Toggle & Page Title */}
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -378,45 +378,26 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
               <Menu className="h-4 w-4" />
             </Button>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-foreground">
-                {currentPageTitle}
-              </span>
-              <span className="text-border hidden sm:inline">•</span>
-              <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                F-Commerce AI Desk
-              </span>
-            </div>
+            <span className="text-xs font-semibold text-foreground">
+              {currentPageTitle}
+            </span>
           </div>
 
-          {/* Right: AI Telemetry & Quick CTA */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            {/* AI Status Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {/* Right: Minimal AI Status & Wallet */}
+          <div className="flex items-center gap-2.5">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>২৪/৭ স্বয়ংক্রিয় উত্তর</span>
-            </div>
+              ২৪/৭ AI Active
+            </span>
 
-            {/* Quick Recharge Balance Link */}
-            <Link href="/pricing" className="hidden md:block">
+            <Link href="/pricing" className="hidden sm:block">
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-xs h-8 border-border hover:bg-muted"
               >
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span>রিচার্জ / bKash</span>
-              </Button>
-            </Link>
-
-            {/* Connect Page Primary Button */}
-            <Link href="/connect">
-              <Button
-                size="sm"
-                className="gap-1.5 text-xs h-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-2xs"
-              >
-                <Share2 className="h-3.5 w-3.5" />
-                <span>পেজ কানেক্ট</span>
+                <span>রিচার্জ</span>
               </Button>
             </Link>
           </div>
