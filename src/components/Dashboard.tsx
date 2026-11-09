@@ -392,11 +392,6 @@ export default function Dashboard({ session }: DashboardProps) {
                 count: stats?.recentConversations?.length || 0,
                 icon: MessageSquare,
               },
-              {
-                id: "setup",
-                label: "Meta Webhook ও API",
-                icon: Radio,
-              },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;

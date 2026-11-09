@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   HelpCircle,
   Laptop,
+  Code2,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ export default function ConnectFacebookPage() {
   const [authenticating, setAuthenticating] = useState(false);
   const [showPageSelectorModal, setShowPageSelectorModal] = useState(false);
   const [showSetupGuideModal, setShowSetupGuideModal] = useState(false);
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [discoveredPages, setDiscoveredPages] = useState<DiscoveredPage[]>([]);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [connectingPages, setConnectingPages] = useState(false);
@@ -452,99 +454,36 @@ export default function ConnectFacebookPage() {
               questions by analyzing your business documents.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard/training">
-              <Button variant="outline" className="gap-2">
-                <FaBook className="h-4 w-4 text-primary" />
-                Knowledge Base
-              </Button>
-            </Link>
-            <Button
-              onClick={handleStartFacebookConnect}
-              disabled={authenticating}
-              className="gap-2 bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-md font-semibold px-5"
-            >
-              {authenticating ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <FaFacebook className="h-4 w-4" />
-              )}
-              {authenticating ? "Connecting..." : "Connect Facebook Page"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Webhook Configuration Banner */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-primary font-semibold">
-              <ShieldCheck className="h-4 w-4" />
-              Meta Webhook Settings
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Configure these in your Meta Developer App (Messenger → Webhooks → Edit Subscription).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border bg-background p-2.5">
-              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
-                <span>Callback URL</span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(webhookUrl, "Callback URL")}
-                  className="flex items-center gap-1 text-primary hover:underline"
-                >
-                  <FaCopy className="h-2.5 w-2.5" /> Copy
-                </button>
-              </div>
-              <p className="text-xs font-mono font-semibold break-all text-foreground">
-                {webhookUrl}
-              </p>
-            </div>
-
-            <div className="rounded-lg border bg-background p-2.5">
-              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
-                <span>Verify Token</span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(verifyToken, "Verify Token")}
-                  className="flex items-center gap-1 text-primary hover:underline"
-                >
-                  <FaCopy className="h-2.5 w-2.5" /> Copy
-                </button>
-              </div>
-              <p className="text-xs font-mono font-semibold text-foreground">
-                {verifyToken}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Multi-Client / Friends Access Tips */}
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-full bg-blue-500/10 p-2 text-blue-600 dark:text-blue-400 shrink-0">
-                <FaInfoCircle className="h-4 w-4" />
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-foreground">
-                  Want your friends or clients to connect their own Facebook Pages?
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Meta Apps start in <strong>Development Mode</strong> (only App Admins and invited Testers can log in). To let your friends or clients connect their pages right now without waiting for App Review, add them as <strong>Testers</strong> in your Meta Developer App.
-                </p>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2.5">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowSetupGuideModal(true)}
-              className="shrink-0 text-xs gap-1.5 h-8 bg-background"
+              onClick={() => setShowWebhookModal(true)}
+              className="gap-1.5 text-xs h-9 border-border text-muted-foreground hover:text-foreground"
+              title="Meta Webhook & Developer Settings"
             >
-              <HelpCircle className="h-3.5 w-3.5 text-primary" />
-              Client Setup Guide
+              <Code2 className="h-3.5 w-3.5" />
+              <span>Webhook Settings</span>
             </Button>
+            <Link href="/dashboard/training">
+              <Button variant="outline" size="sm" className="gap-2 text-xs h-9">
+                <FaBook className="h-3.5 w-3.5 text-primary" />
+                Knowledge Base
+              </Button>
+            </Link>
+            {/* <Button
+              onClick={handleStartFacebookConnect}
+              disabled={authenticating}
+              size="sm"
+              className="gap-2 bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-xs font-semibold h-9 px-4 text-xs"
+            >
+              {authenticating ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FaFacebook className="h-3.5 w-3.5" />
+              )}
+              {authenticating ? "Connecting..." : "Connect Facebook Page"}
+            </Button> */}
           </div>
         </div>
 
@@ -1118,6 +1057,106 @@ export default function ConnectFacebookPage() {
               onClick={() => setShowSetupGuideModal(false)}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: HIDDEN / ADVANCED META WEBHOOK & DEVELOPER SETTINGS */}
+      <Dialog open={showWebhookModal} onOpenChange={setShowWebhookModal}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden border-border bg-card">
+          <DialogHeader className="px-5 pt-4 pb-3 border-b border-border bg-muted/20">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold">Meta Webhook & Developer Settings</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Technical configuration for Meta Developer App (Messenger → Webhooks)
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-5 space-y-4 text-xs">
+            {/* Callback URL */}
+            <div className="rounded-lg border bg-background p-3">
+              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
+                <span>Callback URL</span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(webhookUrl, "Callback URL")}
+                  className="flex items-center gap-1 text-primary hover:underline font-semibold"
+                >
+                  <FaCopy className="h-2.5 w-2.5" /> Copy
+                </button>
+              </div>
+              <p className="text-xs font-mono font-semibold break-all text-foreground">
+                {webhookUrl}
+              </p>
+            </div>
+
+            {/* Verify Token */}
+            <div className="rounded-lg border bg-background p-3">
+              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
+                <span>Verify Token</span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(verifyToken, "Verify Token")}
+                  className="flex items-center gap-1 text-primary hover:underline font-semibold"
+                >
+                  <FaCopy className="h-2.5 w-2.5" /> Copy
+                </button>
+              </div>
+              <p className="text-xs font-mono font-semibold text-foreground">
+                {verifyToken}
+              </p>
+            </div>
+
+            {/* Subscription Fields */}
+            <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1.5">
+              <p className="font-semibold text-foreground text-[11px]">Subscription Fields:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {["messages", "messaging_postbacks", "feed"].map((field) => (
+                  <Badge key={field} variant="outline" className="font-mono text-[10px] bg-background">
+                    ✓ {field}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Development Mode Notice */}
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 space-y-2">
+              <p className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
+                <FaInfoCircle className="h-3.5 w-3.5 text-blue-500" />
+                Meta App Development Mode Info
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Meta Apps start in <strong>Development Mode</strong> (only App Admins and invited Testers can log in). To let other clients connect their pages without waiting for App Review, add them as <strong>Testers</strong> in your Meta Developer App.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowWebhookModal(false);
+                  setShowSetupGuideModal(true);
+                }}
+                className="text-xs h-7 gap-1 mt-1"
+              >
+                <HelpCircle className="h-3 w-3 text-primary" />
+                Open Full Client Setup Guide
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter className="px-5 py-3 border-t border-border bg-muted/20">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowWebhookModal(false)}
+            >
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>

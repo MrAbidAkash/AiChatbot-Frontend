@@ -114,12 +114,6 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
           icon: BarChart3,
           badge: null,
         },
-        {
-          name: "Meta Webhook ইন্টিগ্রেশন",
-          href: "/dashboard?tab=setup",
-          icon: Radio,
-          badge: null,
-        },
       ],
     },
     {
