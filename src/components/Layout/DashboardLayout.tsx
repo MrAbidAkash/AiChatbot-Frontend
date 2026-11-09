@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Bot,
   Zap,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,8 +104,14 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
       group: "AI এজেন্ট ও নলেজ",
       items: [
         {
-          name: "শপ রুলস ও ক্যাটালগ",
-          href: "/dashboard/training",
+          name: "ডকুমেন্টস ও ফাইল আপলোড",
+          href: "/dashboard/training?tab=files",
+          icon: Upload,
+          badge: "PDF",
+        },
+        {
+          name: "শপ রুলস ও পলিসি",
+          href: "/dashboard/training?tab=rules",
           icon: BookOpen,
           badge: null,
         },

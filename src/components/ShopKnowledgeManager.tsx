@@ -58,6 +58,17 @@ export default function ShopKnowledgeManager() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Sync tab from URL query params (e.g. ?tab=files)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "files" || tab === "rules" || tab === "test") {
+        setActiveTab(tab);
+      }
+    }
+  }, []);
+
   // Store Policy Form State
   const [insideDhakaCharge, setInsideDhakaCharge] = useState("80");
   const [outsideDhakaCharge, setOutsideDhakaCharge] = useState("150");
@@ -317,12 +328,15 @@ ${customRules}
           </Button>
           <Button
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              setActiveTab("files");
+              fileInputRef.current?.click();
+            }}
             disabled={isUploading}
-            className="gap-1.5 text-xs h-9 bg-primary text-primary-foreground hover:bg-primary/90"
+            className="gap-1.5 text-xs h-9 bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-xs"
           >
             <Upload className="h-4 w-4" />
-            <span>{isUploading ? "আপলোড হচ্ছে..." : "ফাইল আপলোড"}</span>
+            <span>{isUploading ? "আপলোড হচ্ছে..." : "ডকুমেন্ট আপলোড (PDF/Excel)"}</span>
           </Button>
           <input
             type="file"
@@ -340,27 +354,27 @@ ${customRules}
       {/* Tab Navigation */}
       <div className="flex border-b border-border gap-2">
         <button
+          onClick={() => setActiveTab("files")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "files"
+              ? "border-primary text-primary font-semibold"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+          }`}
+        >
+          <Upload className="h-4 w-4" />
+          <span>ডকুমেন্ট ও ফাইল আপলোড ({documents.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab("rules")}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             activeTab === "rules"
-              ? "border-primary text-primary"
+              ? "border-primary text-primary font-semibold"
               : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
           }`}
         >
           <Sliders className="h-4 w-4" />
           <span>শপের নিয়মাবলী ও পলিসি</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("files")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === "files"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-          }`}
-        >
-          <BookOpen className="h-4 w-4" />
-          <span>ক্যাটালগ ও আপলোডকৃত ফাইল ({documents.length})</span>
         </button>
 
         <button

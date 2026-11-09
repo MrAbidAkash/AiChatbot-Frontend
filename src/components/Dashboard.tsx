@@ -25,6 +25,7 @@ import {
   X,
   MessageCircle,
   ExternalLink,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -257,6 +258,17 @@ export default function Dashboard({ session }: DashboardProps) {
             <span>রিফ্রেশ</span>
           </Button>
 
+          <Link href="/dashboard/training?tab=files">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs h-8 text-foreground border-border/80 hover:bg-muted font-medium"
+            >
+              <Upload className="h-3 w-3 text-primary" />
+              <span>ডকুমেন্ট আপলোড</span>
+            </Button>
+          </Link>
+
           <Button
             variant="outline"
             size="sm"
@@ -372,7 +384,7 @@ export default function Dashboard({ session }: DashboardProps) {
         <Card className="border-border/80 bg-card shadow-2xs">
           <CardContent className="p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">শপ রুলস ও ক্যাটালগ</p>
+              <p className="text-xs font-medium text-muted-foreground">ডকুমেন্টস ও নলেজ</p>
               <div className="h-7 w-7 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center">
                 <BookOpen className="h-3.5 w-3.5" />
               </div>
@@ -380,9 +392,15 @@ export default function Dashboard({ session }: DashboardProps) {
             <p className="mt-2 text-2xl font-bold tracking-tight text-foreground font-mono">
               {loading ? "..." : (stats?.totalDocuments || 0)}
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              নলেজবেস ইনডেক্সড
-            </p>
+            <div className="mt-1 flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">ইনডেক্সড ফাইলস</span>
+              <Link
+                href="/dashboard/training?tab=files"
+                className="text-primary hover:underline font-semibold flex items-center gap-0.5"
+              >
+                আপলোড করুন →
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </section>
