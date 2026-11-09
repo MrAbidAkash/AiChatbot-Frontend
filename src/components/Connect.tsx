@@ -520,6 +520,34 @@ export default function ConnectFacebookPage() {
           </CardContent>
         </Card>
 
+        {/* Multi-Client / Friends Access Tips */}
+        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-blue-500/10 p-2 text-blue-600 dark:text-blue-400 shrink-0">
+                <FaInfoCircle className="h-4 w-4" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-foreground">
+                  Want your friends or clients to connect their own Facebook Pages?
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Meta Apps start in <strong>Development Mode</strong> (only App Admins and invited Testers can log in). To let your friends or clients connect their pages right now without waiting for App Review, add them as <strong>Testers</strong> in your Meta Developer App.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSetupGuideModal(true)}
+              className="shrink-0 text-xs gap-1.5 h-8 bg-background"
+            >
+              <HelpCircle className="h-3.5 w-3.5 text-primary" />
+              Client Setup Guide
+            </Button>
+          </div>
+        </div>
+
         {/* Main Grid: Left = Connected Pages & Connect Action, Right = Live AI Simulator */}
         <div className="grid gap-8 lg:grid-cols-12">
           {/* Left Column (7 cols): Connected Pages List & One-Click Connect */}
@@ -1007,34 +1035,45 @@ export default function ConnectFacebookPage() {
               <div className="flex items-center gap-2">
                 <FaFacebook className="h-4 w-4 text-[#1877F2]" />
                 <span className="text-sm font-bold text-foreground">
-                  Live Facebook OAuth Login Setup
+                  Allowing Friends & Clients to Connect Their Own Pages
                 </span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                To enable the official popup where clients log in with Facebook and select pages automatically:
+                By default, Meta keeps new Apps in <strong>Development Mode</strong> (which only allows App Admins and invited Testers to log in and connect pages):
               </p>
-              <ol className="text-xs space-y-1.5 list-decimal pl-4 text-foreground/90">
-                <li>
-                  Go to{" "}
-                  <a
-                    href="https://developers.facebook.com/apps"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1 font-medium"
-                  >
-                    developers.facebook.com <FaExternalLinkAlt className="h-2.5 w-2.5" />
-                  </a>{" "}
-                  and create or open an App.
-                </li>
-                <li>Add the <strong>Messenger</strong> and <strong>Facebook Login for Business</strong> products.</li>
-                <li>
-                  In your <code className="bg-muted px-1 py-0.5 rounded text-[11px]">.env</code> file, set your App credentials:
-                </li>
-              </ol>
+              
+              <div className="space-y-2 text-xs">
+                <div className="rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 p-2.5">
+                  <p className="font-semibold text-blue-900 dark:text-blue-300 mb-1">
+                    👥 For Friends & Test Clients (No Meta Review Needed):
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
+                    <li>Go to Meta Developers &rarr; <strong>App roles</strong> &rarr; <strong>Roles</strong>.</li>
+                    <li>Under <strong>Testers</strong>, click <strong>Add Testers</strong>.</li>
+                    <li>Enter your friend or client&apos;s Facebook profile name or username.</li>
+                    <li>They go to <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="text-primary underline">developers.facebook.com</a> and accept the invite.</li>
+                    <li>Now they can click &ldquo;Connect Facebook Page&rdquo; on your site, and the popup will show <strong>their own pages</strong>!</li>
+                  </ol>
+                </div>
 
-              <div className="rounded-lg bg-muted p-2.5 font-mono text-[11px] text-foreground space-y-0.5">
-                <p>FACEBOOK_CLIENT_ID=your_facebook_app_id</p>
-                <p>FACEBOOK_CLIENT_SECRET=your_facebook_app_secret</p>
+                <div className="rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 p-2.5">
+                  <p className="font-semibold text-emerald-900 dark:text-emerald-300 mb-1">
+                    🌍 For Public SaaS (Anyone in the World):
+                  </p>
+                  <p className="text-muted-foreground text-[11px]">
+                    To let any client connect without manual invites, toggle your Meta App from <strong>Development</strong> to <strong>Live</strong> mode and submit for Meta App Review for <code className="bg-background px-1 rounded">pages_messaging</code> and <code className="bg-background px-1 rounded">pages_show_list</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <p className="text-[11px] font-semibold text-muted-foreground mb-1">
+                  Required credentials in your <code className="bg-muted px-1 py-0.5 rounded text-[11px]">.env</code>:
+                </p>
+                <div className="rounded-lg bg-muted p-2.5 font-mono text-[11px] text-foreground space-y-0.5">
+                  <p>FACEBOOK_CLIENT_ID=your_facebook_app_id</p>
+                  <p>FACEBOOK_CLIENT_SECRET=your_facebook_app_secret</p>
+                </div>
               </div>
             </div>
 

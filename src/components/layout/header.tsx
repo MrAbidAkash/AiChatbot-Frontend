@@ -10,8 +10,8 @@ import AuthHeader from "@/components/auth-header";
 const navLinks = [
   { label: "ফিচারসমূহ", href: "/#features" },
   { label: "ইন্টিগ্রেশন", href: "/#integrations" },
-  { label: "মূল্য", href: "/pricing" },
-  { label: "ব্লগ", href: "/blog" },
+  { label: "AI Desk", href: "/#dashboard" },
+  { label: "মূল্য ও প্যাকেজ", href: "/#pricing" },
   { label: "যোগাযোগ", href: "/contact" },
 ];
 

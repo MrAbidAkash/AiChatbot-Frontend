@@ -38,19 +38,19 @@ const CHAT_MESSAGES: Message[] = [
 const CHANNELS = [
   {
     name: "Facebook Messenger",
-    color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    color: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30",
   },
   {
     name: "Instagram",
-    color: "bg-pink-500/15 text-pink-400 border-pink-500/30",
+    color: "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/30",
   },
   {
     name: "WhatsApp",
-    color: "bg-green-500/15 text-green-400 border-green-500/30",
+    color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
   },
   {
     name: "FB Comments",
-    color: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+    color: "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/30",
   },
 ];
 
@@ -60,13 +60,6 @@ const STATS = [
   { icon: "🌙", label: "রাত-দিন ২৪/৭ অ্যাক্টিভ" },
   { icon: "🛒", label: "অটো COD অর্ডার" },
   { icon: "💳", label: "বিকাশ ও নগদ সাপোর্ট" },
-];
-
-/* ─────────────── floating badge cards ──────────────────────── */
-const FLOAT_BADGES = [
-  { text: "💬 সাবলীল বাংলিশ ও বাংলা", pos: "absolute -left-4 top-10 lg:block hidden" },
-  { text: "🛒 অটোমেটিক COD অর্ডার", pos: "absolute -right-4 top-1/3 lg:block hidden" },
-  { text: "📸 ছবি চিনে প্রোডাক্ট ম্যাচিং", pos: "absolute -left-4 bottom-10 lg:block hidden" },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -205,8 +198,8 @@ function ChatSimulator() {
           <p className="font-semibold text-foreground leading-tight">
             AI Sales Assistant
           </p>
-          <p className="text-xs text-green-400 flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+          <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             Online • আপনার শপের হয়ে কাজ করছে
           </p>
         </div>
@@ -288,28 +281,24 @@ function ChatSimulator() {
 ═══════════════════════════════════════════════════════════════ */
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden py-20 lg:py-28">
-      {/* ── Background ── */}
+    <section className="relative overflow-hidden py-16 lg:py-24">
+      {/* ── Background subtle grid ── */}
       <div className="max-sm:hidden absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        {/* grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,oklch(0.18_0.01_260/0.1)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.18_0.01_260/0.1)_1px,transparent_1px)] bg-[size:5rem_5rem] [mask-image:radial-gradient(ellipse_80%_70%_at_50%_30%,#000_50%,transparent_100%)]" />
-        {/* blobs */}
-        <div className="absolute top-0 right-0 -mr-40 -mt-40 h-[480px] w-[480px] rounded-full bg-primary/15 blur-[90px] opacity-50" />
-        <div className="absolute bottom-0 left-0 -ml-40 -mb-40 h-[480px] w-[480px] rounded-full bg-teal-600/10 blur-[90px] opacity-50" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,oklch(0.55_0.22_260/0.05)_1px,transparent_1px),linear-gradient(to_bottom,oklch(0.55_0.22_260/0.05)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_30%,#000_60%,transparent_100%)]" />
       </div>
 
       <div className="container mx-auto px-4">
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           {/* ══════════════ LEFT COLUMN ══════════════ */}
           <div className="max-w-xl">
             {/* Top badge */}
-            <Badge className="mb-6 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 gap-1.5 py-1 px-3">
-              <Sparkles className="h-3 w-3" />
+            <Badge className="mb-6 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 gap-1.5 py-1 px-3 font-medium">
+              <Sparkles className="h-3.5 w-3.5" />
               ChatTime AI • স্মার্ট F-Commerce অটোমেশন
             </Badge>
 
             {/* Headline */}
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground md:text-5xl lg:text-6xl leading-tight">
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground md:text-5xl lg:text-6xl leading-[1.15]">
               কাস্টমার রিপ্লাইয়ের ক্লান্তি দূর করুন,
               <br />
               <span className="gradient-text">বিজনেসের গ্রোথে নজর দিন</span>
@@ -327,7 +316,7 @@ export function HeroSection() {
               {CHANNELS.map((ch) => (
                 <span
                   key={ch.name}
-                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${ch.color}`}
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${ch.color}`}
                 >
                   {ch.name}
                 </span>
@@ -335,11 +324,11 @@ export function HeroSection() {
             </div>
 
             {/* Stats row */}
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-2.5">
               {STATS.map((s) => (
                 <div
                   key={s.label}
-                  className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
+                  className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-2xs"
                 >
                   <span>{s.icon}</span>
                   <span>{s.label}</span>
@@ -351,9 +340,9 @@ export function HeroSection() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <AuthButton
                 size="lg"
-                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm"
               />
-              <Button size="lg" variant="outline" className="gap-2 font-medium">
+              <Button size="lg" variant="outline" className="gap-2 font-medium border-border hover:bg-muted">
                 <Play className="h-4 w-4 fill-current" />
                 দেখুন কিভাবে কাজ করে
               </Button>
@@ -367,30 +356,15 @@ export function HeroSection() {
 
           {/* ══════════════ RIGHT COLUMN – Chat Widget ══════════════ */}
           <div className="relative">
-            {/* Floating badge cards */}
-            {FLOAT_BADGES.map((b) => (
-              <div
-                key={b.text}
-                className={`${b.pos} z-10 rounded-xl border border-border bg-card/90 backdrop-blur-sm px-3 py-2 shadow-lg`}
-              >
-                <span className="text-sm font-medium text-foreground whitespace-nowrap">
-                  {b.text}
-                </span>
-              </div>
-            ))}
-
             {/* Chat card */}
-            <div className="relative rounded-2xl p-[1.5px] overflow-hidden shadow-2xl">
-              {/* gradient border */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-primary/40 via-teal-500/30 to-primary/20" />
+            <div className="relative rounded-2xl border border-border/80 bg-card shadow-xl overflow-hidden">
+              {/* gradient top bar accent */}
+              <div className="h-1 w-full bg-gradient-to-r from-primary via-teal-500 to-primary" />
               {/* inner */}
-              <div className="relative rounded-[14px] bg-card p-5">
+              <div className="p-5">
                 <ChatSimulator />
               </div>
             </div>
-
-            {/* Decorative glow behind card */}
-            <div className="absolute -inset-2 -z-10 rounded-3xl bg-primary/5 blur-2xl" />
           </div>
         </div>
       </div>

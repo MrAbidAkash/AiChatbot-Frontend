@@ -179,12 +179,21 @@
   background: var(--muted-foreground);
 }
 
-/* GitHub-inspired gradient text */
+/* High-contrast crisp gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, oklch(0.48 0.24 260) 0%, oklch(0.48 0.22 305) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  display: inline-block;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, oklch(0.72 0.2 260) 0%, oklch(0.75 0.2 310) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
 }
 
 .gradient-text-hero {

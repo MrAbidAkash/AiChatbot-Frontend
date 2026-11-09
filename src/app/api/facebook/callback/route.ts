@@ -5,6 +5,7 @@ import { exchangeCodeForPages } from "@/lib/facebook";
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
+  const stateUserId = searchParams.get("state") || "default";
   const errorReason = searchParams.get("error_description") || searchParams.get("error");
 
   const host = request.headers.get("host") || "localhost:3000";
@@ -49,7 +50,8 @@ export async function GET(request: NextRequest) {
           if (window.opener) {
             window.opener.postMessage({
               type: 'FACEBOOK_AUTH_SUCCESS',
-              pages: ${JSON.stringify(pages)}
+              pages: ${JSON.stringify(pages)},
+              userId: ${JSON.stringify(stateUserId)}
             }, '*');
             window.close();
           } else {

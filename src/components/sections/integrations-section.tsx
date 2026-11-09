@@ -24,7 +24,7 @@ const channels = [
     name: "Facebook Messenger",
     icon: Facebook,
     color: "bg-blue-600",
-    textColor: "text-blue-400",
+    textColor: "text-blue-700 dark:text-blue-400 font-semibold",
     description:
       "Messenger এ আসা সব customer query তে AI instant reply দেয় — ২৪/৭।",
     features: [
@@ -40,7 +40,7 @@ const channels = [
     name: "Instagram DM",
     icon: Instagram,
     color: "bg-gradient-to-br from-pink-500 to-purple-600",
-    textColor: "text-pink-400",
+    textColor: "text-pink-700 dark:text-pink-400 font-semibold",
     description:
       "Instagram DM এ order নেওয়া, product জানানো সব AI করে।",
     features: [
@@ -56,7 +56,7 @@ const channels = [
     name: "WhatsApp",
     icon: MessageCircle,
     color: "bg-green-600",
-    textColor: "text-green-400",
+    textColor: "text-emerald-700 dark:text-emerald-400 font-semibold",
     description:
       "WhatsApp এ customer দের সাথে সরাসরি কথা বলুন AI দিয়ে।",
     features: [
@@ -72,7 +72,7 @@ const channels = [
     name: "FB Post Comments",
     icon: MessageSquare,
     color: "bg-orange-600",
-    textColor: "text-orange-400",
+    textColor: "text-orange-700 dark:text-orange-400 font-semibold",
     description:
       "Facebook post এর comment এ auto-reply দিয়ে customer কে inbox এ নিয়ে আসুন।",
     features: [
@@ -88,7 +88,7 @@ const channels = [
     name: "Website Widget",
     icon: Globe,
     color: "bg-purple-600",
-    textColor: "text-purple-400",
+    textColor: "text-purple-700 dark:text-purple-400 font-semibold",
     description:
       "আপনার website এ chat widget যোগ করুন instant support এর জন্য।",
     features: [

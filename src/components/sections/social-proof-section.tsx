@@ -85,18 +85,13 @@ function StarRating({ count = 5 }: { count?: number }) {
 
 export function SocialProofSection() {
   return (
-    <section className="relative py-20 md:py-28 overflow-hidden">
-      {/* Background subtle glow */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-      </div>
-
+    <section className="relative py-20 md:py-24">
       <div className="container mx-auto px-4 md:px-6">
         {/* ── Section Header ── */}
         <div className="mb-12 flex flex-col items-center text-center gap-4">
           <Badge
             variant="outline"
-            className="inline-flex items-center gap-1.5 border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary"
+            className="inline-flex items-center gap-1.5 border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary font-medium"
           >
             <Star className="h-3.5 w-3.5 fill-primary text-primary" />
             ব্যবহারকারীদের মতামত
@@ -104,7 +99,7 @@ export function SocialProofSection() {
 
           <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-foreground">
             হাজারো ব্যবসায়ী আমাদের{" "}
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <span className="gradient-text">
               ভরসা করেন
             </span>
           </h2>
@@ -117,9 +112,9 @@ export function SocialProofSection() {
 
         {/* ── Stats Row ── */}
         <div className="mb-16">
-          <Card className="border-border/50 bg-card/60 backdrop-blur-sm">
+          <Card className="border-border bg-card shadow-xs">
             <CardContent className="p-0">
-              <div className="grid grid-cols-2 divide-x divide-y divide-border/50 md:grid-cols-4 md:divide-y-0">
+              <div className="grid grid-cols-2 divide-x divide-y divide-border/60 md:grid-cols-4 md:divide-y-0">
                 {stats.map((stat, i) => (
                   <div
                     key={i}
@@ -128,7 +123,7 @@ export function SocialProofSection() {
                     <span className="text-3xl font-bold text-foreground md:text-4xl">
                       {stat.value}
                     </span>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground font-medium">
                       {stat.label}
                     </span>
                   </div>
@@ -143,7 +138,7 @@ export function SocialProofSection() {
           {testimonials.map((t, i) => (
             <Card
               key={i}
-              className="group border-border/50 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+              className="group border-border bg-card shadow-xs transition-all duration-300 hover:border-primary/40 hover:shadow-md"
             >
               <CardContent className="flex h-full flex-col gap-4 p-6">
                 {/* Top: Avatar + name + rating */}
@@ -185,8 +180,8 @@ export function SocialProofSection() {
         </div>
 
         {/* ── CTA Banner ── */}
-        <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-primary/20 via-accent/30 to-primary/20">
-          <Card className="rounded-2xl border-0 bg-card/80 backdrop-blur-sm">
+        <div className="relative rounded-2xl border border-primary/20 bg-primary/5 p-1 shadow-sm">
+          <Card className="rounded-xl border-0 bg-card">
             <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center md:px-12">
               {/* Glow dot */}
               <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.6)]" />
