@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
-  Bot,
   LayoutDashboard,
   MessageSquare,
   BookOpen,
@@ -106,14 +106,21 @@ export default function DashboardLayout({ user }: DashboardLayoutProps) {
           {/* Logo & Navigation */}
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="flex items-center gap-2.5 group">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs transition-transform group-hover:scale-105">
-                <Bot className="h-5 w-5" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden shadow-xs transition-transform group-hover:scale-105">
+                <Image
+                  src="/icon-192.png"
+                  alt="ChatTime AI"
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-cover"
+                  priority
+                />
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-lg font-bold tracking-tight text-foreground">
                   ChatTime
                 </span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                   AI
                 </span>
               </div>

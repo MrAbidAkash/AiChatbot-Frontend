@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Bot, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import AuthHeader from "@/components/auth-header";
 
 const navLinks = [
@@ -32,17 +33,19 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Bot className="h-5 w-5 text-primary-foreground" />
-              {/* Green pulse dot — "online" indicator */}
-              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
-              </span>
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden shadow-xs transition-transform group-hover:scale-105">
+              <Image
+                src="/icon-192.png"
+                alt="ChatTime AI"
+                width={36}
+                height={36}
+                className="h-full w-full object-cover"
+                priority
+              />
             </div>
-            <span className="text-xl font-semibold text-foreground">
-              ChatTime AI
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              ChatTime <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">AI</span>
             </span>
           </Link>
 

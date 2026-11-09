@@ -1064,6 +1064,15 @@ export default function ConnectFacebookPage() {
                     To let any client connect without manual invites, toggle your Meta App from <strong>Development</strong> to <strong>Live</strong> mode and submit for Meta App Review for <code className="bg-background px-1 rounded">pages_messaging</code> and <code className="bg-background px-1 rounded">pages_show_list</code>.
                   </p>
                 </div>
+
+                <div className="rounded-lg bg-muted/60 border p-2.5 space-y-1">
+                  <p className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
+                    🎨 Meta App Icon & Details (Solvence Labs):
+                  </p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    In Meta Developers &rarr; <strong>App settings &rarr; Basic</strong>, select your verified <strong>Solvence Labs</strong> portfolio and upload the ChatTime AI icon (<code className="bg-background px-1 rounded font-mono">public/app-icon.png</code>, 1024&times;1024 px).
+                  </p>
+                </div>
               </div>
 
               <div className="pt-1">

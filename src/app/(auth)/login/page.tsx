@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { signIn, signInWithEmail, getSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,10 +92,22 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center space-y-2">
+          <Link href="/" className="inline-flex justify-center mb-1">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden shadow-sm hover:scale-105 transition-transform">
+              <Image
+                src="/icon-192.png"
+                alt="ChatTime AI"
+                width={48}
+                height={48}
+                className="h-full w-full object-cover"
+                priority
+              />
+            </div>
+          </Link>
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-          <p className="text-muted-foreground">
-            Sign in to your account to continue
+          <p className="text-muted-foreground text-sm">
+            Sign in to ChatTime AI to manage your business chatbots
           </p>
         </CardHeader>
         <CardContent className="space-y-6">

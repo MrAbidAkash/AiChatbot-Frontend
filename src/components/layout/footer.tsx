@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Bot, Facebook, Youtube, Twitter } from "lucide-react";
+import Image from "next/image";
+import { Facebook, Youtube, Twitter } from "lucide-react";
 
 const footerLinks = {
   product: [
@@ -39,13 +40,19 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-6">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <Bot className="h-5 w-5 text-primary-foreground" />
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden shadow-xs transition-transform group-hover:scale-105">
+                <Image
+                  src="/icon-192.png"
+                  alt="ChatTime AI"
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-semibold text-foreground">
-                  ChatTime AI
+                <span className="text-xl font-bold tracking-tight text-foreground">
+                  ChatTime <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">AI</span>
                 </span>
                 <span className="text-[10px] text-primary font-medium tracking-wide">
                   A Product of Solvence Labs
