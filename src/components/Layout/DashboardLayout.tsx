@@ -122,12 +122,12 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
           icon: Bot,
           badge: "Test",
         },
-        {
-          name: "অ্যানালিটিক্স ও রিপোর্ট",
-          href: "/dashboard?tab=analytics",
-          icon: BarChart3,
-          badge: null,
-        },
+        // {
+        //   name: "অ্যানালিটিক্স ও রিপোর্ট",
+        //   href: "/dashboard?tab=analytics",
+        //   icon: BarChart3,
+        //   badge: null,
+        // },
       ],
     },
     {
