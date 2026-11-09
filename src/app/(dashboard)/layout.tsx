@@ -24,9 +24,8 @@ export default async function DashboardRootLayout({
   }
 
   return (
-    <>
-      <DashboardLayout user={user} />
+    <DashboardLayout user={user}>
       {children}
-    </>
+    </DashboardLayout>
   );
 }
