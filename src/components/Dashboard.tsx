@@ -258,7 +258,7 @@ export default function Dashboard({ session }: DashboardProps) {
             <span>রিফ্রেশ</span>
           </Button>
 
-          <Link href="/dashboard/training?tab=files">
+          <Link href="/documents">
             <Button
               variant="outline"
               size="sm"
@@ -395,7 +395,7 @@ export default function Dashboard({ session }: DashboardProps) {
             <div className="mt-1 flex items-center justify-between text-[11px]">
               <span className="text-muted-foreground">ইনডেক্সড ফাইলস</span>
               <Link
-                href="/dashboard/training?tab=files"
+                href="/documents"
                 className="text-primary hover:underline font-semibold flex items-center gap-0.5"
               >
                 আপলোড করুন →

@@ -465,7 +465,7 @@ export default function ConnectFacebookPage() {
               <Code2 className="h-3.5 w-3.5" />
               <span>Webhook Settings</span>
             </Button>
-            <Link href="/dashboard/training">
+            <Link href="/documents">
               <Button variant="outline" size="sm" className="gap-2 text-xs h-9">
                 <FaBook className="h-3.5 w-3.5 text-primary" />
                 Knowledge Base
@@ -773,7 +773,7 @@ export default function ConnectFacebookPage() {
                 <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>
                     Reads from{" "}
-                    <Link href="/dashboard/training" className="text-primary hover:underline">
+                    <Link href="/documents" className="text-primary hover:underline">
                       Knowledge Base
                     </Link>
                   </span>

@@ -25,6 +25,7 @@ import {
   Bot,
   Zap,
   Upload,
+  Sliders,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -105,15 +106,21 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
       items: [
         {
           name: "ডকুমেন্টস ও ফাইল আপলোড",
-          href: "/dashboard/training?tab=files",
+          href: "/documents",
           icon: Upload,
-          badge: "PDF",
+          badge: null,
         },
         {
-          name: "শপ রুলস ও পলিসি",
-          href: "/dashboard/training?tab=rules",
-          icon: BookOpen,
+          name: "শপের নিয়মাবলী ও পলিসি",
+          href: "/rules",
+          icon: Sliders,
           badge: null,
+        },
+        {
+          name: "লাইভ AI টেস্ট কনসোল",
+          href: "/playground",
+          icon: Bot,
+          badge: "Test",
         },
         {
           name: "অ্যানালিটিক্স ও রিপোর্ট",
@@ -141,7 +148,9 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
     if (pathname === "/dashboard") return "ড্যাশবোর্ড (Overview)";
     if (pathname === "/inbox") return "কাস্টমার ইনবক্স";
     if (pathname === "/connect") return "Facebook Connect";
-    if (pathname === "/dashboard/training") return "শপ রুলস ও ক্যাটালগ";
+    if (pathname === "/documents") return "ডকুমেন্টস ও ফাইল আপলোড";
+    if (pathname === "/rules" || pathname === "/dashboard/training") return "শপের নিয়মাবলী ও পলিসি";
+    if (pathname === "/playground") return "লাইভ AI টেস্ট কনসোল";
     if (pathname === "/pricing") return "ব্যালেন্স ও রিচার্জ";
     return "ড্যাশবোর্ড";
   })();
@@ -190,7 +199,8 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
                 {group.items.map((item) => {
                   const isActive =
                     pathname === item.href ||
-                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                    (item.href === "/rules" && pathname.startsWith("/dashboard/training")) ||
+                    (item.href !== "/dashboard" && !item.href.includes("?") && pathname.startsWith(item.href));
                   const Icon = item.icon;
 
                   return (
@@ -333,23 +343,29 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
                     <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase px-2">
                       {group.group}
                     </span>
-                    {group.items.map((item) => (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium transition-colors ${
-                          pathname === item.href
-                            ? "bg-primary/10 text-primary font-semibold"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </div>
-                      </Link>
-                    ))}
+                    {group.items.map((item) => {
+                      const isActive =
+                        pathname === item.href ||
+                        (item.href === "/rules" && pathname.startsWith("/dashboard/training")) ||
+                        (item.href !== "/dashboard" && !item.href.includes("?") && pathname.startsWith(item.href));
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium transition-colors ${
+                            isActive
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.name}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 ))}
               </nav>
