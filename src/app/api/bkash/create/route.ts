@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBkashPayment, BkashCreatePaymentRequest } from "@/lib/bkash";
 import { savePaymentRecord } from "@/lib/payment-db";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 export async function POST(req: NextRequest) {
   try {
     console.log("Creating bKash payment...");
 
     const paymentData: BkashCreatePaymentRequest = await req.json();
+
+    let userId = "";
+    let userEmail = "";
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+      if (session?.user?.id) {
+        userId = session.user.id;
+        userEmail = session.user.email || "";
+      }
+    } catch {
+      // non-fatal
+    }
 
     console.log("Payment data:", paymentData);
 
@@ -20,10 +36,10 @@ export async function POST(req: NextRequest) {
         paymentID: bkashResponse.paymentID,
         amount: paymentData.amount,
         transactionStatus: bkashResponse.transactionStatus,
-        // payerReference: paymentData.payerReference,
+        user: userId || undefined,
         customerInfo: {
           name: paymentData.customerInfo?.name || "",
-          email: paymentData.customerInfo?.email || "",
+          email: paymentData.customerInfo?.email || userEmail || "",
           phone: paymentData.customerInfo?.phone || "",
           address: paymentData.customerInfo?.address,
         },

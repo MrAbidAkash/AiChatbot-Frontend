@@ -41,7 +41,6 @@ export async function savePaymentRecord(
     | "trxID"
     | "currency"
     | "merchantInvoiceNo"
-    | "user"
     | "createdAt"
     | "updatedAt"
   >,

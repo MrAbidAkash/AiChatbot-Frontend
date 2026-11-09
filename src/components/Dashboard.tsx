@@ -84,6 +84,16 @@ interface RecentConversation {
   unread?: boolean;
 }
 
+interface WalletStats {
+  totalAllocatedCredits: number;
+  remainingBalance: number;
+  usedCredits: number;
+  totalRechargedAmount: number;
+  isPaidUser: boolean;
+  planTitle: string;
+  isActive: boolean;
+}
+
 interface DbStats {
   totalDocuments: number;
   totalPages: number;
@@ -91,6 +101,7 @@ interface DbStats {
   totalMessages: number;
   totalAiReplies: number;
   responseRate: number;
+  wallet?: WalletStats;
   recentConversations: RecentConversation[];
 }
 
@@ -643,34 +654,107 @@ export default function Dashboard({ session }: DashboardProps) {
           {/* Wallet Card */}
           <Card className="border-border/80 bg-card shadow-2xs">
             <CardHeader className="pb-3">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-primary" />
-                <span>ব্যালেন্স ও ওয়ালেট</span>
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  <span>ব্যালেন্স ও ওয়ালেট</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {stats?.wallet?.isPaidUser ? "Paid Plan" : "Free Trial"}
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">ফ্রি ট্রায়াল ব্যালেন্স:</span>
-                  <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] font-semibold">
-                    সক্রিয়
+                  <span className="text-xs font-medium text-foreground">
+                    {stats?.wallet?.planTitle || "ফ্রি ট্রায়াল ব্যালেন্স"}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-semibold ${
+                      (stats?.wallet?.remainingBalance ?? 35) > 0
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                        : "bg-destructive/10 text-destructive border-destructive/30"
+                    }`}
+                  >
+                    {(stats?.wallet?.remainingBalance ?? 35) > 0 ? "সক্রিয় (Active)" : "ব্যালেন্স শেষ"}
                   </Badge>
                 </div>
-                <p className="mt-1.5 text-2xl font-bold text-foreground font-mono">৳৫০.০০</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  সব ফিচারে ফুল অ্যাক্সেস
-                </p>
+
+                <div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-bold text-foreground font-mono">
+                      ৳{(stats?.wallet?.remainingBalance ?? 35).toFixed(2)}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground font-medium">
+                      (৳১ / রিপ্লাই)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {stats?.wallet?.remainingBalance ?? 35} টি AI রিপ্লাই অবশিষ্ট আছে (ব্যবহৃত: {stats?.wallet?.usedCredits ?? stats?.totalAiReplies ?? 15} টি)
+                  </p>
+                </div>
+
+                {/* Usage Bar */}
+                <div className="space-y-1 pt-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>ক্রেডিট ব্যবহার</span>
+                    <span className="font-mono">
+                      {Math.min(
+                        100,
+                        Math.round(
+                          ((stats?.wallet?.usedCredits ?? 15) /
+                            Math.max(1, stats?.wallet?.totalAllocatedCredits ?? 50)) *
+                            100
+                        )
+                      )}
+                      %
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-primary/15 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.round(
+                            ((stats?.wallet?.usedCredits ?? 15) /
+                              Math.max(1, stats?.wallet?.totalAllocatedCredits ?? 50)) *
+                              100
+                          )
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <Link href="/pricing" className="block pt-1">
-                <Button
-                  size="sm"
-                  className="w-full text-xs h-8 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  <span>বিকাশ দিয়ে রিচার্জ করুন</span>
-                </Button>
-              </Link>
+              <div className="space-y-2 pt-0.5">
+                <Link href="/pricing" className="block">
+                  <Button
+                    size="sm"
+                    className="w-full text-xs h-8 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-2xs"
+                  >
+                    <CreditCard className="h-3 w-3" />
+                    <span>বিকাশ দিয়ে রিচার্জ করুন</span>
+                  </Button>
+                </Link>
+
+                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-pink-500" />
+                    বিকাশ
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                    নগদ
+                  </span>
+                  <span>•</span>
+                  <span>কোনো মেয়াদের সীমাবদ্ধতা নেই</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

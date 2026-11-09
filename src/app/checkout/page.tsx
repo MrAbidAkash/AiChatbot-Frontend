@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -27,19 +28,46 @@ import {
 
 const plans = {
   starter: {
-    name: "Starter",
-    price: 999,
-    features: ["1,000 conversations/month", "1 chatbot", "Basic analytics"],
+    name: "স্টার্টার প্যাক (Starter)",
+    price: 500,
+    features: [
+      "৫০০ টি AI মেসেজ রিপ্লাই (৳১/রিপ্লাই)",
+      "অটোমেটিক COD অর্ডার কনফার্মেশন",
+      "পেজ পোস্ট কমেন্ট অটো-রিপ্লাই",
+      "টিম ইনবক্স ও হ্যান্ডওভার",
+      "মেয়াদের কোনো সীমাবদ্ধতা নেই (No Expiry)",
+    ],
   },
-  professional: {
-    name: "Professional",
-    price: 2999,
-    features: ["4,000 conversations/month", "2 chatbots", "Advanced analytics"],
+  growth: {
+    name: "গ্রোথ প্যাক (Growth - মোস্ট পপুলার)",
+    price: 1000,
+    features: [
+      "১,১০০ টি AI মেসেজ রিপ্লাই (১০% বোনাস)",
+      "Vision AI ছবি চিনে প্রোডাক্ট ম্যাচিং",
+      "ভয়েস মেসেজ ট্রান্সক্রিপশন",
+      "রিয়েল-টাইম টিম ইনবক্স",
+      "মেয়াদের কোনো সীমাবদ্ধতা নেই (No Expiry)",
+    ],
   },
   business: {
-    name: "Business",
-    price: 5999,
-    features: ["10,000 conversations/month", "4 chatbots", "Priority support"],
+    name: "বিজনেস স্কেল (Business)",
+    price: 5000,
+    features: [
+      "৬,০০০ টি AI মেসেজ রিপ্লাই (২০% বোনাস)",
+      "মাল্টি-পেজ কানেকশন",
+      "প্রাইওরিটি রেসপন্স ও ডেডিকেটেড সাপোর্ট",
+      "মেয়াদের কোনো সীমাবদ্ধতা নেই (No Expiry)",
+    ],
+  },
+  // Backward compatibility alias for professional
+  professional: {
+    name: "গ্রোথ প্যাক (Growth)",
+    price: 1000,
+    features: [
+      "১,১০০ টি AI মেসেজ রিপ্লাই (১০% বোনাস)",
+      "Vision AI ও রিয়েল-টাইম টিম ইনবক্স",
+      "মেয়াদের কোনো সীমাবদ্ধতা নেই",
+    ],
   },
 };
 
@@ -71,6 +99,19 @@ function CheckoutContent() {
     email: "",
     name: "",
   });
+
+  useEffect(() => {
+    getSession().then((session) => {
+      const u = session?.data?.user;
+      if (u) {
+        setFormData((prev) => ({
+          ...prev,
+          name: prev.name || u.name || "",
+          email: prev.email || u.email || "",
+        }));
+      }
+    });
+  }, []);
 
   const {
     createPayment,

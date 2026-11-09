@@ -52,46 +52,43 @@ export default function PricingButton({
 
   // Get the appropriate CTA text and href based on plan and auth state
   const getButtonContent = () => {
-    if (planName === "Enterprise") {
+    if (planName === "Free" || planName === "ফ্রি ট্রায়াল") {
       return {
-        text: "Contact Sales",
+        text: isAuthenticated ? "ড্যাশবোর্ডে যান" : "ফ্রি ট্রায়াল শুরু করুন",
+        href: isAuthenticated ? "/dashboard" : "/login",
+      };
+    }
+
+    if (planName === "Enterprise" || planName === "এন্টারপ্রাইজ") {
+      return {
+        text: "কন্টাক্ট করুন",
         href: "/contact",
       };
     }
 
-    if (isAuthenticated) {
-      // User is logged in - show upgrade options
-      if (planName === "Starter") {
-        return {
-          text: "Upgrade to Starter",
-          href: "/checkout?plan=starter",
-        };
-      } else if (planName === "Professional") {
-        return {
-          text: "Upgrade to Professional",
-          href: "/checkout?plan=professional",
-        };
-      } else if (planName === "Business") {
-        return {
-          text: "Upgrade to Business",
-          href: "/checkout?plan=business",
-        };
-      } else if (planName === "Enterprise") {
-        return {
-          text: "Upgrade to Enterprise",
-          href: "/contact",
-        };
-      }
-    } else {
-      // User is not logged in - show start free trial
+    if (planName === "Starter" || planName === "স্টার্টার প্যাক") {
       return {
-        text: "Start Free Trial",
-        href: `/checkout?plan=${planName.toLowerCase()}`,
+        text: "বিকাশ দিয়ে রিচার্জ করুন",
+        href: "/checkout?plan=starter",
+      };
+    } else if (
+      planName === "Growth" ||
+      planName === "গ্রোথ প্যাক" ||
+      planName === "Professional"
+    ) {
+      return {
+        text: "বিকাশ দিয়ে রিচার্জ করুন",
+        href: "/checkout?plan=growth",
+      };
+    } else if (planName === "Business" || planName === "বিজনেস স্কেল") {
+      return {
+        text: "বিকাশ দিয়ে রিচার্জ করুন",
+        href: "/checkout?plan=business",
       };
     }
 
     return {
-      text: "Start Free Trial",
+      text: "রিচার্জ করুন",
       href: `/checkout?plan=${planName.toLowerCase()}`,
     };
   };
