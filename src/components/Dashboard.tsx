@@ -87,6 +87,8 @@ interface RecentConversation {
 interface WalletStats {
   totalAllocatedCredits: number;
   remainingBalance: number;
+  remainingReplies?: number;
+  costPerReply?: number;
   usedCredits: number;
   totalRechargedAmount: number;
   isPaidUser: boolean;
@@ -673,26 +675,26 @@ export default function Dashboard({ session }: DashboardProps) {
                   <Badge
                     variant="outline"
                     className={`text-[10px] font-semibold ${
-                      (stats?.wallet?.remainingBalance ?? 35) > 0
+                      (stats?.wallet?.remainingReplies ?? 35) > 0
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                         : "bg-destructive/10 text-destructive border-destructive/30"
                     }`}
                   >
-                    {(stats?.wallet?.remainingBalance ?? 35) > 0 ? "সক্রিয় (Active)" : "ব্যালেন্স শেষ"}
+                    {(stats?.wallet?.remainingReplies ?? 35) > 0 ? "সক্রিয় (Active)" : "ব্যালেন্স শেষ"}
                   </Badge>
                 </div>
 
                 <div>
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-2xl font-bold text-foreground font-mono">
-                      ৳{(stats?.wallet?.remainingBalance ?? 35).toFixed(2)}
+                      ৳{(stats?.wallet?.remainingBalance ?? 17.5).toFixed(2)}
                     </span>
                     <span className="text-[11px] text-muted-foreground font-medium">
-                      (৳১ / রিপ্লাই)
+                      (৫০ পয়সা / রিপ্লাই)
                     </span>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {stats?.wallet?.remainingBalance ?? 35} টি AI রিপ্লাই অবশিষ্ট আছে (ব্যবহৃত: {stats?.wallet?.usedCredits ?? stats?.totalAiReplies ?? 15} টি)
+                    {stats?.wallet?.remainingReplies ?? 35} টি AI রিপ্লাই অবশিষ্ট আছে (ব্যবহৃত: {stats?.wallet?.usedCredits ?? stats?.totalAiReplies ?? 15} টি)
                   </p>
                 </div>
 

@@ -17,7 +17,7 @@ const rechargePackages = [
   {
     name: "স্টার্টার প্যাক",
     price: "৳৫০০",
-    replies: "~৫০০ কাস্টমার রিপ্লাই",
+    replies: "~১,০০০ কাস্টমার রিপ্লাই",
     icon: <Zap className="h-5 w-5 text-primary" />,
     bonus: null,
     popular: false,
@@ -34,7 +34,7 @@ const rechargePackages = [
   {
     name: "গ্রোথ প্যাক",
     price: "৳১,০০০",
-    replies: "~১,১০০ রিপ্লাই",
+    replies: "~২,২০০ রিপ্লাই",
     icon: <Sparkles className="h-5 w-5 text-primary" />,
     bonus: "১০% বোনাস ক্রেডিট",
     popular: true,
@@ -53,7 +53,7 @@ const rechargePackages = [
   {
     name: "বিজনেস স্কেল",
     price: "৳৫,০০০",
-    replies: "~৬,০০০ রিপ্লাই",
+    replies: "~১২,০০০ রিপ্লাই",
     icon: <CreditCard className="h-5 w-5 text-primary" />,
     bonus: "২০% বোনাস ক্রেডিট",
     popular: false,

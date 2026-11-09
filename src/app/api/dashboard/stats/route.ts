@@ -67,10 +67,22 @@ export async function GET() {
       0
     );
 
-    // Free trial allocation is 50 AI replies (equivalent to ৳50.00)
-    const freeTrialCredits = 50;
-    const totalAllocatedCredits = freeTrialCredits + totalRechargedAmount;
-    const remainingBalance = Math.max(0, totalAllocatedCredits - totalAiReplies);
+    // Pricing: 50 poisa (৳0.50) per reply
+    const COST_PER_REPLY = 0.50;
+
+    // Calculate recharged replies including pack bonuses
+    const rechargedReplies = completedPayments.reduce((total, p) => {
+      const amt = Number(p.amount) || 0;
+      const baseReplies = Math.round(amt / COST_PER_REPLY);
+      const bonusMultiplier = amt >= 5000 ? 1.2 : amt >= 1000 ? 1.1 : 1.0;
+      return total + Math.round(baseReplies * bonusMultiplier);
+    }, 0);
+
+    // Free trial allocation is 50 AI replies (worth ৳25.00)
+    const freeTrialReplies = 50;
+    const totalAllocatedReplies = freeTrialReplies + rechargedReplies;
+    const remainingReplies = Math.max(0, totalAllocatedReplies - totalAiReplies);
+    const remainingBalance = Number((remainingReplies * COST_PER_REPLY).toFixed(2));
     const isPaidUser = totalRechargedAmount > 0;
 
     const totalMessages = totalAiReplies + totalCustomerMessages;
@@ -87,13 +99,15 @@ export async function GET() {
       totalAiReplies,
       responseRate,
       wallet: {
-        totalAllocatedCredits,
+        totalAllocatedCredits: totalAllocatedReplies,
+        remainingReplies,
         remainingBalance,
         usedCredits: totalAiReplies,
+        costPerReply: COST_PER_REPLY,
         totalRechargedAmount,
         isPaidUser,
         planTitle: isPaidUser ? "রিচার্জড পেইড প্যাক" : "ফ্রি ট্রায়াল ব্যালেন্স",
-        isActive: remainingBalance > 0,
+        isActive: remainingReplies > 0,
       },
       recentConversations: recentConversations.map((c) => ({
         ...c,
