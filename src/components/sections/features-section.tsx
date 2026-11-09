@@ -147,8 +147,8 @@ export function FeaturesSection() {
                 className={`relative group cursor-pointer border transition-all duration-300 ${
                   isActive
                     ? "border-primary/50 shadow-lg shadow-primary/10 scale-[1.02]"
-                    : "border-border/50 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5"
-                } bg-card/60 backdrop-blur-sm`}
+                    : "border-border hover:border-primary/40 hover:shadow-md"
+                } bg-card shadow-xs`}
                 onMouseEnter={() => setActiveFeature(feature.id)}
                 onMouseLeave={() => setActiveFeature(null)}
               >
@@ -250,7 +250,7 @@ export function FeaturesSection() {
             </h3>
           </div>
 
-          <Card className="border-border/50 overflow-hidden bg-card/60 backdrop-blur-sm">
+          <Card className="border-border overflow-hidden bg-card shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

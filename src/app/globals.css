@@ -255,10 +255,10 @@
 
 /* Glass morphism */
 .glass {
-  background: oklch(0.08 0.005 260 / 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid oklch(0.2 0.01 260 / 0.6);
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
 }
 
 /* Hero background grid - GitHub style */
@@ -517,13 +517,13 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    oklch(0.05 0.005 260 / 0.9) 100%
+    var(--muted) 100%
   );
 }
 
 /* Code block styling */
 .code-block {
-  background: oklch(0.06 0.008 260);
+  background: var(--muted);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: var(--font-mono);
@@ -627,127 +627,72 @@
   }
 }
 
-/* Section-specific backgrounds with corner light effects */
+/* Section-specific backgrounds - Theme aware, no forced black */
 
-/* Features Section - Teal corner lights */
-.section-features {
-  background: oklch(0.055 0.006 260);
+.section-features,
+.section-integrations,
+.section-dashboard,
+.section-training,
+.section-pricing {
+  background: transparent;
   position: relative;
-  overflow: hidden;
 }
 
+/* Subtle corner light effects */
 .section-features::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, oklch(0.7 0.18 180 / 0.05) 0%, transparent 50%, oklch(0.68 0.16 330 / 0.05) 100%);
+  background: radial-gradient(circle at 10% 20%, oklch(0.55 0.22 260 / 0.04) 0%, transparent 40%);
   pointer-events: none;
-}
-
-/* Integrations Section - Pink/Magenta corner lights */
-.section-integrations {
-  background: oklch(0.04 0.004 265);
-  position: relative;
-  overflow: hidden;
 }
 
 .section-integrations::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, oklch(0.68 0.16 330 / 0.05) 0%, transparent 50%, oklch(0.7 0.18 180 / 0.05) 100%);
+  background: radial-gradient(circle at 90% 20%, oklch(0.65 0.18 330 / 0.04) 0%, transparent 40%);
   pointer-events: none;
-}
-
-/* Dashboard Section - Purple/Violet corner lights */
-.section-dashboard {
-  background: linear-gradient(
-    180deg,
-    oklch(0.05 0.005 270) 0%,
-    oklch(0.06 0.008 275) 50%,
-    oklch(0.05 0.005 270) 100%
-  );
-  position: relative;
-  overflow: hidden;
 }
 
 .section-dashboard::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, oklch(0.65 0.2 280 / 0.05) 0%, transparent 50%, oklch(0.7 0.18 180 / 0.05) 100%);
+  background: radial-gradient(circle at 50% 0%, oklch(0.55 0.22 260 / 0.04) 0%, transparent 50%);
   pointer-events: none;
-}
-
-/* Training Section - Green/Teal corner lights */
-.section-training {
-  background: oklch(0.045 0.005 250);
-  position: relative;
-  overflow: hidden;
 }
 
 .section-training::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(45deg, oklch(0.7 0.18 180 / 0.05) 0%, transparent 50%, oklch(0.72 0.18 145 / 0.05) 100%);
+  background: radial-gradient(circle at 20% 80%, oklch(0.62 0.19 145 / 0.04) 0%, transparent 40%);
   pointer-events: none;
-}
-
-/* Pricing Section - Multi-color corner lights */
-.section-pricing {
-  background: linear-gradient(
-    180deg,
-    oklch(0.05 0.005 260) 0%,
-    oklch(0.06 0.007 265) 50%,
-    oklch(0.05 0.005 260) 100%
-  );
-  position: relative;
-  overflow: hidden;
 }
 
 .section-pricing::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, oklch(0.7 0.18 180 / 0.05) 0%, transparent 50%, oklch(0.68 0.16 330 / 0.05) 100%);
+  background: radial-gradient(circle at 80% 80%, oklch(0.55 0.22 260 / 0.04) 0%, transparent 40%);
   pointer-events: none;
 }
 
-/* Section divider with gradient glow */
+/* Section divider with subtle border */
 .section-divider {
   height: 1px;
   position: relative;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    oklch(0.2 0.01 260) 15%,
-    oklch(0.4 0.04 180) 50%,
-    oklch(0.2 0.01 260) 85%,
-    transparent 100%
-  );
+  background: var(--border);
+  margin: 1rem 0;
 }
 
-.section-divider::before {
-  content: "";
-  position: absolute;
-  inset: -8px 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    oklch(0.7 0.18 180 / 0.15) 50%,
-    transparent 100%
-  );
-  filter: blur(8px);
-  pointer-events: none;
-}
-
-/* Subtle noise texture overlay for sections */
+/* Subtle noise texture overlay */
 .section-noise::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.015;
+  opacity: 0.005;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   pointer-events: none;
 }

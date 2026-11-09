@@ -150,7 +150,7 @@ export function DashboardPreview() {
                     <Bot className="h-4 w-4 text-primary-foreground" />
                   </div>
                   <span className="font-semibold text-sidebar-foreground text-sm">
-                    AI Praktor
+                    ChatTime AI
                   </span>
                 </div>
 
