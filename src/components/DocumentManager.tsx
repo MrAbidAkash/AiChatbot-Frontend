@@ -17,6 +17,9 @@ import {
   ExternalLink,
   ShieldCheck,
   Search,
+  Globe,
+  Layers,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +44,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface DocumentItem {
   _id: string;
+  userId?: string;
+  pageId?: string;
   title: string;
   fileName: string;
   fileType: "pdf" | "txt" | "docx" | "csv" | "manual";
@@ -49,10 +54,22 @@ interface DocumentItem {
   updatedAt?: string;
 }
 
+interface ConnectedPage {
+  pageId: string;
+  pageName: string;
+  isActive: boolean;
+  pictureUrl?: string;
+}
+
 export default function DocumentManager() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Connected Pages & Isolation State
+  const [pages, setPages] = useState<ConnectedPage[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState<string>("all");
+  const [faqTargetPageId, setFaqTargetPageId] = useState<string>("all");
 
   // File Upload State
   const [isUploading, setIsUploading] = useState(false);
@@ -65,10 +82,30 @@ export default function DocumentManager() {
   const [faqAnswer, setFaqAnswer] = useState("");
   const [savingFaq, setSavingFaq] = useState(false);
 
+  // Fetch connected pages
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const res = await fetch("/api/facebook/pages");
+        if (res.ok) {
+          const data = await res.json();
+          setPages(data.pages || []);
+        }
+      } catch (err) {
+        console.error("Failed to load connected pages:", err);
+      }
+    };
+    fetchPages();
+  }, []);
+
   const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/documents");
+      const url =
+        selectedPageId && selectedPageId !== "all"
+          ? `/api/documents?pageId=${selectedPageId}`
+          : "/api/documents";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setDocuments(data.documents || []);
@@ -79,7 +116,7 @@ export default function DocumentManager() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedPageId]);
 
   useEffect(() => {
     fetchDocuments();
@@ -92,6 +129,9 @@ export default function DocumentManager() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
+      if (selectedPageId && selectedPageId !== "all" && selectedPageId !== "global") {
+        formData.append("pageId", selectedPageId);
+      }
 
       const res = await fetch("/api/documents", {
         method: "POST",
@@ -103,7 +143,12 @@ export default function DocumentManager() {
         throw new Error(data.error || "Upload failed");
       }
 
-      toast.success(`'${file.name}' সফলভাবে আপলোড ও ইনডেক্স হয়েছে!`);
+      const targetLabel =
+        selectedPageId && selectedPageId !== "all" && selectedPageId !== "global"
+          ? pages.find((p) => p.pageId === selectedPageId)?.pageName || selectedPageId
+          : "সকল পেজ";
+
+      toast.success(`'${file.name}' সফলভাবে আপলোড হয়েছে (${targetLabel})!`);
       fetchDocuments();
     } catch (err: any) {
       toast.error(err?.message || "ফাইল আপলোড ব্যর্থ হয়েছে");
@@ -137,6 +182,11 @@ export default function DocumentManager() {
     try {
       setSavingFaq(true);
       const content = `প্রশ্ন: ${faqQuestion.trim()}\nউত্তর: ${faqAnswer.trim()}`;
+      const targetPageId =
+        faqTargetPageId && faqTargetPageId !== "all" && faqTargetPageId !== "global"
+          ? faqTargetPageId
+          : undefined;
+
       const res = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -144,6 +194,7 @@ export default function DocumentManager() {
           title: `FAQ: ${faqQuestion.slice(0, 35)}...`,
           content,
           fileType: "manual",
+          pageId: targetPageId,
         }),
       });
 
@@ -179,6 +230,14 @@ export default function DocumentManager() {
       .includes(searchQuery.toLowerCase())
   );
 
+  const getPageName = (pageId?: string) => {
+    if (!pageId) return "সকল পেজে সক্রিয়";
+    const p = pages.find((page) => page.pageId === pageId);
+    return p ? p.pageName : `Page ID: ${pageId}`;
+  };
+
+  const selectedPage = pages.find((p) => p.pageId === selectedPageId);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -197,7 +256,10 @@ export default function DocumentManager() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowFaqModal(true)}
+            onClick={() => {
+              setFaqTargetPageId(selectedPageId);
+              setShowFaqModal(true);
+            }}
             className="gap-1.5 text-xs h-8"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -227,6 +289,61 @@ export default function DocumentManager() {
         </div>
       </div>
 
+      {/* Page Selector & Isolation Bar */}
+      {pages.length > 0 && (
+        <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Layers className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">পেজ আইসোলেশন মোড:</span>
+                <span className="text-xs font-bold text-primary">
+                  {selectedPageId === "all" ? "সকল পেজ (All Pages)" : selectedPage?.pageName || selectedPageId}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {selectedPageId === "all"
+                  ? "সকল পেজের ফাইল দেখাচ্ছে। এখানে আপলোড করলে ডকুমেন্ট সব পেজের AI ব্যবহার করবে।"
+                  : `এখন যা আপলোড করবেন তা কেবল "${selectedPage?.pageName || selectedPageId}" পেজের AI উত্তর দিতে ব্যবহার করবে।`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <Button
+              type="button"
+              size="sm"
+              variant={selectedPageId === "all" ? "default" : "outline"}
+              onClick={() => setSelectedPageId("all")}
+              className="h-7 text-xs px-2.5 rounded-lg shrink-0 gap-1.5"
+            >
+              <Globe className="h-3 w-3" />
+              <span>সকল পেজ</span>
+            </Button>
+
+            {pages.map((p) => (
+              <Button
+                key={p.pageId}
+                type="button"
+                size="sm"
+                variant={selectedPageId === p.pageId ? "default" : "outline"}
+                onClick={() => setSelectedPageId(p.pageId)}
+                className="h-7 text-xs px-2.5 rounded-lg shrink-0 gap-1.5"
+              >
+                <div
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    p.isActive ? "bg-emerald-500" : "bg-muted-foreground"
+                  }`}
+                />
+                <span className="max-w-[130px] truncate">{p.pageName}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Drag & Drop Upload Zone */}
       <div
         onDragOver={(e) => {
@@ -250,7 +367,9 @@ export default function DocumentManager() {
           <Upload className="h-6 w-6" />
         </div>
         <h3 className="text-sm font-semibold text-foreground">
-          প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ফাইল ড্রপ করুন
+          {selectedPageId !== "all"
+            ? `"${selectedPage?.pageName || "নির্বাচিত পেজ"}" এর প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ড্রপ করুন`
+            : "প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ফাইল ড্রপ করুন (সকল পেজে কার্যকর)"}
         </h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
           PDF, Excel (.xlsx, .csv), Word বা Text ফাইল ড্র্যাগ করে এখানে ছাড়ুন অথবা ব্রাউজ করুন। AI স্বয়ংক্রিয়ভাবে টেক্সট ইনডেক্স করবে।
@@ -369,12 +488,32 @@ export default function DocumentManager() {
                       <p className="text-xs font-semibold text-foreground truncate">
                         {doc.title || doc.fileName}
                       </p>
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
                         <span className="uppercase font-mono text-[10px] bg-muted px-1 rounded">
                           {doc.fileType}
                         </span>
                         <span>•</span>
                         <span>{new Date(doc.updatedAt || doc.uploadedAt).toLocaleDateString("bn-BD")}</span>
+                        <span>•</span>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                            doc.pageId
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                              : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                          }`}
+                        >
+                          {doc.pageId ? (
+                            <>
+                              <Share2 className="h-2.5 w-2.5" />
+                              <span className="max-w-[130px] truncate">{getPageName(doc.pageId)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Globe className="h-2.5 w-2.5" />
+                              <span>সকল পেজ (Global)</span>
+                            </>
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -411,6 +550,29 @@ export default function DocumentManager() {
           </DialogHeader>
 
           <div className="space-y-3 py-2 text-xs">
+            {pages.length > 0 && (
+              <div>
+                <label className="font-semibold text-foreground">টার্গেট পেজ (Target Page)</label>
+                <select
+                  value={faqTargetPageId}
+                  onChange={(e) => setFaqTargetPageId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-border bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="all">🌐 সকল কানেক্টেড পেজ (Global Shared)</option>
+                  {pages.map((p) => (
+                    <option key={p.pageId} value={p.pageId}>
+                      📄 {p.pageName} ({p.pageId})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {faqTargetPageId === "all"
+                    ? "এই FAQ আপনার সব কানেক্টেড পেজের AI ব্যবহার করবে।"
+                    : "এই FAQ শুধুমাত্র নির্বাচিত পেজের AI ব্যবহার করবে।"}
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="font-semibold text-foreground">প্রশ্ন (Question)</label>
               <Input

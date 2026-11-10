@@ -12,6 +12,9 @@ import {
   Info,
   CheckCircle2,
   Sparkles,
+  Globe,
+  Layers,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +28,18 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 
+interface ConnectedPage {
+  pageId: string;
+  pageName: string;
+  isActive: boolean;
+  pictureUrl?: string;
+}
+
 export default function ShopRules() {
+  const [pages, setPages] = useState<ConnectedPage[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState<string>("global");
+  const [isPageSpecific, setIsPageSpecific] = useState<boolean>(false);
+
   const [insideDhakaCharge, setInsideDhakaCharge] = useState("80");
   const [outsideDhakaCharge, setOutsideDhakaCharge] = useState("150");
   const [freeDeliveryOver, setFreeDeliveryOver] = useState("2000");
@@ -42,50 +56,99 @@ export default function ShopRules() {
   const [savingRules, setSavingRules] = useState(false);
   const [loadingRules, setLoadingRules] = useState(true);
 
-  // Load existing store policies on mount
+  // Fetch connected pages on mount
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const res = await fetch("/api/facebook/pages");
+        if (res.ok) {
+          const data = await res.json();
+          setPages(data.pages || []);
+        }
+      } catch (err) {
+        console.error("Failed to load connected pages in rules:", err);
+      }
+    };
+    fetchPages();
+  }, []);
+
+  // Populate helper
+  const applyRulesFromDoc = (rulesDoc: any) => {
+    if (rulesDoc.metadata) {
+      const m = rulesDoc.metadata;
+      if (m.insideDhakaCharge !== undefined) setInsideDhakaCharge(String(m.insideDhakaCharge));
+      if (m.outsideDhakaCharge !== undefined) setOutsideDhakaCharge(String(m.outsideDhakaCharge));
+      if (m.freeDeliveryOver !== undefined) setFreeDeliveryOver(String(m.freeDeliveryOver));
+      if (m.deliveryDays !== undefined) setDeliveryDays(String(m.deliveryDays));
+      if (m.returnDays !== undefined) setReturnDays(String(m.returnDays));
+      if (m.returnConditions !== undefined) setReturnConditions(String(m.returnConditions));
+      if (m.codEnabled !== undefined) setCodEnabled(Boolean(m.codEnabled));
+      if (m.brandTone) setBrandTone(m.brandTone);
+      if (m.customRules !== undefined) setCustomRules(String(m.customRules));
+    } else if (rulesDoc.content) {
+      const content = rulesDoc.content;
+      const insideMatch = content.match(/ঢাকার ভেতরে:\s*৳?(\d+)/);
+      if (insideMatch) setInsideDhakaCharge(insideMatch[1]);
+      const outsideMatch = content.match(/ঢাকার বাইরে:\s*৳?(\d+)/);
+      if (outsideMatch) setOutsideDhakaCharge(outsideMatch[1]);
+      const freeMatch = content.match(/ফ্রি ডেলিভারি:\s*৳?(\d+)/);
+      if (freeMatch) setFreeDeliveryOver(freeMatch[1]);
+      const daysMatch = content.match(/আনুমানিক ডেলিভারি সময়:\s*(.*)/);
+      if (daysMatch) setDeliveryDays(daysMatch[1].trim());
+      const returnDaysMatch = content.match(/সময়সীমা:\s*(.*)/);
+      if (returnDaysMatch) setReturnDays(returnDaysMatch[1].trim());
+      const condMatch = content.match(/শর্তাবলী:\s*(.*)/);
+      if (condMatch) setReturnConditions(condMatch[1].trim());
+      const codMatch = content.match(/ক্যাশ অন ডেলিভারি \(COD\):\s*(চালু আছে|বন্ধ)/);
+      if (codMatch) setCodEnabled(codMatch[1] === "চালু আছে");
+      if (content.includes("আপু/ভাইয়া সম্বোধন")) setBrandTone("friendly");
+      else if (content.includes("ফরমাল ও মার্জিত")) setBrandTone("formal");
+      const customMatch = content.match(/৫\.\s*বিশেষ নিয়মাবলী ও নির্দেশনা:\s*([\s\S]*)/);
+      if (customMatch && customMatch[1].trim()) setCustomRules(customMatch[1].trim());
+    }
+  };
+
+  // Load store policies when selected page changes
   useEffect(() => {
     let isMounted = true;
     const fetchExistingRules = async () => {
       try {
         setLoadingRules(true);
-        const res = await fetch("/api/documents");
-        if (res.ok) {
-          const data = await res.json();
-          const rulesDoc = (data.documents || []).find(
-            (d: any) => d.title === "Store Delivery & Policy Rules"
-          );
-          if (rulesDoc && isMounted) {
-            if (rulesDoc.metadata) {
-              const m = rulesDoc.metadata;
-              if (m.insideDhakaCharge !== undefined) setInsideDhakaCharge(String(m.insideDhakaCharge));
-              if (m.outsideDhakaCharge !== undefined) setOutsideDhakaCharge(String(m.outsideDhakaCharge));
-              if (m.freeDeliveryOver !== undefined) setFreeDeliveryOver(String(m.freeDeliveryOver));
-              if (m.deliveryDays !== undefined) setDeliveryDays(String(m.deliveryDays));
-              if (m.returnDays !== undefined) setReturnDays(String(m.returnDays));
-              if (m.returnConditions !== undefined) setReturnConditions(String(m.returnConditions));
-              if (m.codEnabled !== undefined) setCodEnabled(Boolean(m.codEnabled));
-              if (m.brandTone) setBrandTone(m.brandTone);
-              if (m.customRules !== undefined) setCustomRules(String(m.customRules));
-            } else if (rulesDoc.content) {
-              const content = rulesDoc.content;
-              const insideMatch = content.match(/ঢাকার ভেতরে:\s*৳?(\d+)/);
-              if (insideMatch) setInsideDhakaCharge(insideMatch[1]);
-              const outsideMatch = content.match(/ঢাকার বাইরে:\s*৳?(\d+)/);
-              if (outsideMatch) setOutsideDhakaCharge(outsideMatch[1]);
-              const freeMatch = content.match(/ফ্রি ডেলিভারি:\s*৳?(\d+)/);
-              if (freeMatch) setFreeDeliveryOver(freeMatch[1]);
-              const daysMatch = content.match(/আনুমানিক ডেলিভারি সময়:\s*(.*)/);
-              if (daysMatch) setDeliveryDays(daysMatch[1].trim());
-              const returnDaysMatch = content.match(/সময়সীমা:\s*(.*)/);
-              if (returnDaysMatch) setReturnDays(returnDaysMatch[1].trim());
-              const condMatch = content.match(/শর্তাবলী:\s*(.*)/);
-              if (condMatch) setReturnConditions(condMatch[1].trim());
-              const codMatch = content.match(/ক্যাশ অন ডেলিভারি \(COD\):\s*(চালু আছে|বন্ধ)/);
-              if (codMatch) setCodEnabled(codMatch[1] === "চালু আছে");
-              if (content.includes("আপু/ভাইয়া সম্বোধন")) setBrandTone("friendly");
-              else if (content.includes("ফরমাল ও মার্জিত")) setBrandTone("formal");
-              const customMatch = content.match(/৫\.\s*বিশেষ নিয়মাবলী ও নির্দেশনা:\s*([\s\S]*)/);
-              if (customMatch && customMatch[1].trim()) setCustomRules(customMatch[1].trim());
+        if (selectedPageId === "global") {
+          // Fetch global rules
+          const res = await fetch("/api/documents?pageId=global");
+          if (res.ok && isMounted) {
+            const data = await res.json();
+            const rulesDoc = (data.documents || []).find(
+              (d: any) => d.title === "Store Delivery & Policy Rules"
+            );
+            if (rulesDoc) {
+              applyRulesFromDoc(rulesDoc);
+              setIsPageSpecific(false);
+            }
+          }
+        } else {
+          // Fetch strict page-specific rules first
+          const res = await fetch(`/api/documents?pageId=${selectedPageId}&strict=true`);
+          if (res.ok && isMounted) {
+            const data = await res.json();
+            const pageDoc = (data.documents || []).find(
+              (d: any) => d.title === "Store Delivery & Policy Rules"
+            );
+            if (pageDoc) {
+              applyRulesFromDoc(pageDoc);
+              setIsPageSpecific(true);
+            } else {
+              // Fallback to global defaults as starting values
+              setIsPageSpecific(false);
+              const globalRes = await fetch("/api/documents?pageId=global");
+              if (globalRes.ok && isMounted) {
+                const globalData = await globalRes.json();
+                const globalDoc = (globalData.documents || []).find(
+                  (d: any) => d.title === "Store Delivery & Policy Rules"
+                );
+                if (globalDoc) applyRulesFromDoc(globalDoc);
+              }
             }
           }
         }
@@ -100,13 +163,18 @@ export default function ShopRules() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedPageId]);
 
   // Save Store Policies to API
   const handleSavePolicies = async () => {
     try {
       setSavingRules(true);
-      const policyContent = `--- শপের সাধারণ নিয়মাবলী ও পলিসি ---
+      const targetPageName =
+        selectedPageId === "global"
+          ? "সকল পেজ (গ্লোবাল ডিফল্ট)"
+          : pages.find((p) => p.pageId === selectedPageId)?.pageName || selectedPageId;
+
+      const policyContent = `--- শপের সাধারণ নিয়মাবলী ও পলিসি (${targetPageName}) ---
 ১. ডেলিভারি চার্জ:
 - ঢাকার ভেতরে: ৳${insideDhakaCharge}
 - ঢাকার বাইরে: ৳${outsideDhakaCharge}
@@ -151,13 +219,19 @@ ${customRules}
           content: policyContent,
           fileType: "manual",
           replaceExisting: true,
+          pageId: selectedPageId === "global" ? undefined : selectedPageId,
           metadata: rulesData,
         }),
       });
 
       if (!res.ok) throw new Error("Failed to save store rules");
 
-      toast.success("শপের নিয়মাবলী সফলভাবে সেভ ও AI-তে সিঙ্ক হয়েছে!");
+      setIsPageSpecific(selectedPageId !== "global");
+      toast.success(
+        selectedPageId === "global"
+          ? "সকল পেজের গ্লোবাল নিয়মাবলী সফলভাবে সেভ ও সিঙ্ক হয়েছে!"
+          : `"${targetPageName}" এর নিয়মাবলী সফলভাবে সেভ ও AI-তে সিঙ্ক হয়েছে!`
+      );
     } catch (err: any) {
       toast.error(err?.message || "নিয়মাবলী সেভ করতে সমস্যা হয়েছে");
     } finally {
@@ -198,6 +272,67 @@ ${customRules}
           </Button>
         </div>
       </div>
+
+      {/* Page Selector & Isolation Bar */}
+      {pages.length > 0 && (
+        <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Layers className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">পেজ পলিসি কনফিগারেশন:</span>
+                  <Badge variant="outline" className="text-[11px] font-semibold border-primary/30 text-primary bg-primary/5">
+                    {selectedPageId === "global"
+                      ? "সকল পেজ (গ্লোবাল ডিফল্ট)"
+                      : pages.find((p) => p.pageId === selectedPageId)?.pageName || selectedPageId}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {selectedPageId === "global"
+                    ? "যেসব পেজের আলাদা কোনো নিয়ম সেট করা নেই, তারা এই গ্লোবাল পলিসি ব্যবহার করবে।"
+                    : isPageSpecific
+                    ? "এই পেজের জন্য সম্পূর্ণ আলাদা পলিসি কনফিগার করা আছে যা AI স্বয়ংক্রিয়ভাবে ফলো করবে।"
+                    : "এই পেজের জন্য এখনও কাস্টম পলিসি সেট করা হয়নি (গ্লোবাল ডিফল্ট দেখানো হচ্ছে)। পরিবর্তন করে সেভ করলেই এই পেজের জন্য আলাদা নিয়ম চালু হবে।"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <Button
+                type="button"
+                size="sm"
+                variant={selectedPageId === "global" ? "default" : "outline"}
+                onClick={() => setSelectedPageId("global")}
+                className="h-7 text-xs px-2.5 rounded-lg shrink-0 gap-1.5"
+              >
+                <Globe className="h-3 w-3" />
+                <span>গ্লোবাল (All Pages)</span>
+              </Button>
+
+              {pages.map((p) => (
+                <Button
+                  key={p.pageId}
+                  type="button"
+                  size="sm"
+                  variant={selectedPageId === p.pageId ? "default" : "outline"}
+                  onClick={() => setSelectedPageId(p.pageId)}
+                  className="h-7 text-xs px-2.5 rounded-lg shrink-0 gap-1.5"
+                >
+                  <div
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      p.isActive ? "bg-emerald-500" : "bg-muted-foreground"
+                    }`}
+                  />
+                  <span className="max-w-[130px] truncate">{p.pageName}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2-Column Main Layout */}
       <div className="grid gap-6 lg:grid-cols-12">

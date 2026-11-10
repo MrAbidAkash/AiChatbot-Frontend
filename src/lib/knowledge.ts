@@ -84,6 +84,8 @@ export async function saveDocument(doc: {
     }
     if (doc.pageId) {
       filterQuery.pageId = doc.pageId;
+    } else {
+      filterQuery.$or = [{ pageId: null }, { pageId: { $exists: false } }];
     }
 
     const existingDocs = await collection
@@ -156,6 +158,7 @@ export async function saveDocument(doc: {
 export async function getDocuments(filter: {
   userId?: string;
   pageId?: string;
+  strictPage?: boolean;
 } = {}): Promise<BusinessDocument[]> {
   const db = getDb();
   const collection = db.collection<BusinessDocument>(COLLECTION_NAME);
@@ -165,18 +168,32 @@ export async function getDocuments(filter: {
     query.userId = filter.userId;
   }
   if (filter.pageId) {
-    if (query.userId) {
-      query.$or = [
-        { pageId: filter.pageId },
-        { pageId: null },
-        { pageId: { $exists: false } },
-      ];
-    } else {
+    if (filter.pageId === "global") {
+      query.$or = [{ pageId: null }, { pageId: { $exists: false } }];
+    } else if (filter.strictPage) {
       query.pageId = filter.pageId;
+    } else {
+      if (query.userId) {
+        query.$or = [
+          { pageId: filter.pageId },
+          { pageId: null },
+          { pageId: { $exists: false } },
+        ];
+      } else {
+        query.pageId = filter.pageId;
+      }
     }
   }
 
   const docs = await collection.find(query).sort({ updatedAt: -1, uploadedAt: -1 }).toArray();
+
+  // If querying for a specific page, check if page-specific policy exists
+  const hasPageSpecificPolicy =
+    filter.pageId && filter.pageId !== "global"
+      ? docs.some(
+          (d) => d.title === "Store Delivery & Policy Rules" && d.pageId === filter.pageId
+        )
+      : false;
 
   // Deduplicate singleton rules like "Store Delivery & Policy Rules" per user/page
   const seenPolicyKeys = new Set<string>();
@@ -185,6 +202,11 @@ export async function getDocuments(filter: {
 
   for (const doc of docs) {
     if (doc.title === "Store Delivery & Policy Rules") {
+      // If a page-specific policy exists, don't include global policy for this page's context
+      if (hasPageSpecificPolicy && !doc.pageId && filter.pageId && filter.pageId !== "global") {
+        continue;
+      }
+
       const policyKey = `${doc.userId || "default"}_${doc.pageId || "default"}`;
       if (seenPolicyKeys.has(policyKey)) {
         duplicateIdsToDelete.push(doc._id);

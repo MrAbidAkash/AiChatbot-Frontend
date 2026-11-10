@@ -19,9 +19,11 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const pageId = searchParams.get("pageId") || undefined;
+    const pageParam = searchParams.get("pageId");
+    const strict = searchParams.get("strict") === "true";
+    const pageId = pageParam && pageParam !== "all" ? pageParam : undefined;
 
-    const docs = await getDocuments({ userId, pageId });
+    const docs = await getDocuments({ userId, pageId, strictPage: strict });
     return NextResponse.json({ documents: docs });
   } catch (error: any) {
     console.error("Error fetching documents:", error);
@@ -58,9 +60,10 @@ export async function POST(request: NextRequest) {
       }
 
       const docTitle = title && title.trim() ? title.trim() : "Business FAQ / Note";
+      const finalPageId = pageId && pageId !== "all" && pageId !== "global" ? pageId : undefined;
       const doc = await saveDocument({
         userId,
-        pageId,
+        pageId: finalPageId,
         title: docTitle,
         fileName: `${docTitle.toLowerCase().replace(/\s+/g, "_")}.txt`,
         fileType: fileType as any,
@@ -77,7 +80,8 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       const file = formData.get("file") as File | null;
       const customTitle = formData.get("title") as string | null;
-      const pageId = (formData.get("pageId") as string) || undefined;
+      const pageIdRaw = formData.get("pageId") as string | null;
+      const finalPageId = pageIdRaw && pageIdRaw !== "all" && pageIdRaw !== "global" ? pageIdRaw : undefined;
       const replaceExisting = formData.get("replaceExisting") === "true";
 
       if (!file) {
@@ -135,7 +139,7 @@ export async function POST(request: NextRequest) {
 
       const doc = await saveDocument({
         userId,
-        pageId,
+        pageId: finalPageId,
         title,
         fileName,
         fileType,
