@@ -27,6 +27,7 @@ export interface MessageRecord {
   name: string;
   text: string;
   timestamp: Date;
+  mid?: string;
   modelUsed?: string;
 }
 
@@ -45,6 +46,7 @@ export async function recordConversationMessage(params: {
   customerAvatar?: string;
   senderType: "customer" | "ai" | "human";
   text: string;
+  mid?: string;
   modelUsed?: string;
 }): Promise<{ conversationId: string; messageId: string }> {
   const db = getDb();
@@ -119,6 +121,7 @@ export async function recordConversationMessage(params: {
           : "Human Agent",
     text: params.text,
     timestamp: now,
+    mid: params.mid,
     modelUsed: params.modelUsed,
   };
 
@@ -206,5 +209,16 @@ export async function getRecentConversationHistory(
     senderType: m.senderType,
     text: m.text,
   }));
+}
+
+/**
+ * Check if a message with the given Facebook message ID (mid) has already been processed
+ */
+export async function isMessageMidProcessed(mid: string): Promise<boolean> {
+  if (!mid) return false;
+  const db = getDb();
+  const msgCol = db.collection<MessageRecord>(MSG_COLLECTION);
+  const existing = await msgCol.findOne({ mid }, { projection: { _id: 1 } });
+  return !!existing;
 }
 

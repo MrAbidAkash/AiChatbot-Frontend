@@ -60,6 +60,17 @@ export async function getFacebookPageByPageId(
 }
 
 /**
+ * Check if an ID belongs to any connected Facebook Page
+ */
+export async function isConnectedFacebookPage(pageId: string): Promise<boolean> {
+  if (!pageId) return false;
+  const db = getDb();
+  const collection = db.collection<FacebookPageRecord>(COLLECTION_NAME);
+  const page = await collection.findOne({ pageId }, { projection: { _id: 1 } });
+  return !!page;
+}
+
+/**
  * Get all Facebook pages connected by a user
  */
 export async function getFacebookPages(userId?: string): Promise<FacebookPageRecord[]> {
