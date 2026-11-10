@@ -103,7 +103,7 @@ export default function DocumentManager() {
       setLoading(true);
       const url =
         selectedPageId && selectedPageId !== "all"
-          ? `/api/documents?pageId=${selectedPageId}`
+          ? `/api/documents?pageId=${selectedPageId}&strict=true`
           : "/api/documents";
       const res = await fetch(url);
       if (res.ok) {
@@ -121,6 +121,28 @@ export default function DocumentManager() {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  // Reassign document page
+  const handleUpdateDocPage = async (id: string, newPageId: string) => {
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageId: newPageId,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update page");
+      const targetLabel =
+        newPageId !== "all" && newPageId !== "global"
+          ? pages.find((p) => p.pageId === newPageId)?.pageName || newPageId
+          : "সকল পেজ (Global)";
+      toast.success(`ডকুমেন্টটি "${targetLabel}" এর জন্য নির্ধারিত হয়েছে!`);
+      fetchDocuments();
+    } catch (err: any) {
+      toast.error(err?.message || "পেজ পরিবর্তন করতে সমস্যা হয়েছে");
+    }
+  };
 
   // Upload File (PDF, XLSX, CSV, TXT, DOCX)
   const handleFileUpload = async (file: File) => {
@@ -518,7 +540,23 @@ export default function DocumentManager() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+                    {pages.length > 0 && (
+                      <select
+                        value={doc.pageId || "global"}
+                        onChange={(e) => handleUpdateDocPage(doc._id, e.target.value)}
+                        className="h-7 text-[10px] font-medium rounded-md border border-border bg-background px-1.5 text-foreground hover:border-primary/50 cursor-pointer shadow-2xs"
+                        title="এই ডকুমেন্টটির পেজ পরিবর্তন করুন"
+                      >
+                        <option value="global">🌐 সকল পেজ (Global)</option>
+                        {pages.map((p) => (
+                          <option key={p.pageId} value={p.pageId}>
+                            📄 {p.pageName}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
                     <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-[10px]">
                       ইনডেক্সড ও সক্রিয়
                     </Badge>

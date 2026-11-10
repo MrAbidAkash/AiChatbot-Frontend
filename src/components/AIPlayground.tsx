@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Bot,
@@ -13,6 +13,9 @@ import {
   Sliders,
   CheckCircle2,
   Trash2,
+  Globe,
+  Layers,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +28,13 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 
+interface ConnectedPage {
+  pageId: string;
+  pageName: string;
+  isActive: boolean;
+  pictureUrl?: string;
+}
+
 interface TestMessage {
   id: string;
   sender: "user" | "ai";
@@ -32,21 +42,47 @@ interface TestMessage {
   timestamp: string;
   modelUsed?: string;
   hasKnowledge?: boolean;
+  pageName?: string;
+  pageId?: string;
+  docCount?: number;
+  docTitles?: string[];
 }
 
 export default function AIPlayground() {
+  const [pages, setPages] = useState<ConnectedPage[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState<string>("all");
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<TestMessage[]>([
     {
       id: "welcome",
       sender: "ai",
-      text: "আসালামু আলাইকুম! আমি আপনার শপের AI সেলস অ্যাসিস্ট্যান্ট। শপের ডেলিভারি চার্জ, প্রোডাক্টের দাম বা সাইজ নিয়ে যেকোনো প্রশ্ন করে পরীক্ষা করুন!",
+      text: "আসালামু আলাইকুম! আমি আপনার শপের AI সেলস অ্যাসিস্ট্যান্ট। উপরে পেজ সিলেক্ট করে সেই পেজের ডেলিভারি চার্জ, ক্যাটালগ বা পলিসি নিয়ে প্রশ্ন করে টেস্ট করুন!",
       timestamp: "এইমাত্র",
       modelUsed: "Gemini 2.5 Flash",
       hasKnowledge: true,
     },
   ]);
+
+  // Fetch connected pages
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const res = await fetch("/api/facebook/pages");
+        if (res.ok) {
+          const data = await res.json();
+          const pList = data.pages || [];
+          setPages(pList);
+          if (pList.length > 0) {
+            setSelectedPageId(pList[0].pageId);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load connected pages:", err);
+      }
+    };
+    fetchPages();
+  }, []);
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputMessage).trim();
@@ -67,11 +103,24 @@ export default function AIPlayground() {
     setLoading(true);
 
     try {
+      const targetPageId =
+        selectedPageId && selectedPageId !== "all" && selectedPageId !== "global"
+          ? selectedPageId
+          : undefined;
+
       const res = await fetch("/api/facebook/test-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
+          pageId: targetPageId,
+          conversationHistory: messages
+            .filter((m) => m.id !== "welcome")
+            .slice(-6)
+            .map((m) => ({
+              senderType: m.sender === "user" ? "customer" : "ai",
+              text: m.text,
+            })),
         }),
       });
 
@@ -87,6 +136,10 @@ export default function AIPlayground() {
           }),
           modelUsed: data.modelUsed || "Gemini 2.5 Flash",
           hasKnowledge: data.hasKnowledge,
+          pageName: data.pageName,
+          pageId: data.pageId,
+          docCount: data.docCount,
+          docTitles: data.docTitles,
         };
         setMessages((prev) => [...prev, aiMsg]);
       } else {
@@ -155,6 +208,66 @@ export default function AIPlayground() {
         </div>
       </div>
 
+      {/* Page Selector for Testing */}
+      {pages.length > 0 && (
+        <div className="bg-card border border-border/80 rounded-xl p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Layers className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-foreground">টেস্ট মোড:</span>
+                <span className="text-xs font-bold text-primary">
+                  {selectedPageId === "all"
+                    ? "সকল পেজ (গ্লোবাল)"
+                    : pages.find((p) => p.pageId === selectedPageId)?.pageName || selectedPageId}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {selectedPageId === "all"
+                  ? "সব পেজের কমন ডকুমেন্টস ও নলেজ দিয়ে টেস্ট করছে।"
+                  : `শুধুমাত্র "${pages.find((p) => p.pageId === selectedPageId)?.pageName || selectedPageId}" এর নলেজবেস ও পলিসি দিয়ে উত্তর দিচ্ছে।`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {pages.map((p) => (
+              <Button
+                key={p.pageId}
+                type="button"
+                size="sm"
+                variant={selectedPageId === p.pageId ? "default" : "outline"}
+                onClick={() => {
+                  setSelectedPageId(p.pageId);
+                  toast.success(`"${p.pageName}" পেজ সিলেক্ট করা হয়েছে`);
+                }}
+                className="h-7 text-xs px-2.5 rounded-lg shrink-0 gap-1.5"
+              >
+                <div
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    p.isActive ? "bg-emerald-500" : "bg-muted-foreground"
+                  }`}
+                />
+                <span className="max-w-[140px] truncate">{p.pageName}</span>
+              </Button>
+            ))}
+
+            <Button
+              type="button"
+              size="sm"
+              variant={selectedPageId === "all" ? "default" : "outline"}
+              onClick={() => setSelectedPageId("all")}
+              className="h-7 text-xs px-2.5 rounded-lg shrink-0 gap-1.5"
+            >
+              <Globe className="h-3 w-3" />
+              <span>সকল পেজ</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 2-Column Playground Layout */}
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left Column (8 cols): Simulated Messenger Window */}
@@ -198,8 +311,30 @@ export default function AIPlayground() {
                   >
                     <p>{msg.text}</p>
                   </div>
-                  <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground px-1 font-mono">
+                  <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground px-1 font-mono flex-wrap">
                     <span>{msg.timestamp}</span>
+                    {msg.pageName && (
+                      <>
+                        <span>•</span>
+                        <span className="text-primary font-medium">{msg.pageName}</span>
+                      </>
+                    )}
+                    {msg.docCount !== undefined && (
+                      <>
+                        <span>•</span>
+                        <span
+                          className={
+                            msg.docCount > 0
+                              ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                              : "text-amber-500 font-medium"
+                          }
+                        >
+                          {msg.docCount > 0
+                            ? `📚 ${msg.docCount}টি ডকুমেন্ট`
+                            : "⚠️ কোনো ডকুমেন্ট নেই"}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

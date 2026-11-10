@@ -1,7 +1,7 @@
 // src/app/api/facebook/test-ai/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { generateCustomerReply } from "@/lib/gemini";
-import { getRelevantKnowledge } from "@/lib/knowledge";
+import { getRelevantKnowledge, getDocuments } from "@/lib/knowledge";
 import { getFacebookPageByPageId } from "@/lib/facebook";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -39,8 +39,11 @@ export async function POST(request: NextRequest) {
     let fallbackMsg =
       "I don't have that specific information in my documents right now. A team member will assist you shortly!";
 
-    if (pageId) {
-      const page = await getFacebookPageByPageId(pageId);
+    const targetPageId =
+      pageId && pageId !== "all" && pageId !== "global" ? pageId : undefined;
+
+    if (targetPageId) {
+      const page = await getFacebookPageByPageId(targetPageId);
       if (page) {
         businessName = page.pageName;
         activeTone = page.botTone || activeTone;
@@ -49,10 +52,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Retrieve business documents
+    // Retrieve business documents with strict page matching
+    const docs = await getDocuments({
+      userId,
+      pageId: targetPageId,
+    });
+
     const businessKnowledge = await getRelevantKnowledge(message, {
       userId,
-      pageId: pageId || undefined,
+      pageId: targetPageId,
     });
 
     const result = await generateCustomerReply({
@@ -69,6 +77,10 @@ export async function POST(request: NextRequest) {
       success: true,
       reply: result.reply,
       modelUsed: result.modelUsed,
+      pageName: businessName,
+      pageId: targetPageId || null,
+      docCount: docs.length,
+      docTitles: docs.map((d) => d.title),
       hasKnowledge: Boolean(businessKnowledge && businessKnowledge.trim().length > 0),
     });
   } catch (error: any) {
