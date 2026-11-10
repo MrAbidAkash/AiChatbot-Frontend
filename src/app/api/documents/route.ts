@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     // 1. Handle JSON input (direct text or FAQ snippet)
     if (contentType.includes("application/json")) {
       const body = await request.json();
-      const { title, content, pageId, fileType = "manual" } = body;
+      const { title, content, pageId, fileType = "manual", replaceExisting, metadata } = body;
 
       if (!content || !content.trim()) {
         return NextResponse.json(
@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
         fileName: `${docTitle.toLowerCase().replace(/\s+/g, "_")}.txt`,
         fileType: fileType as any,
         content: content.trim(),
+        metadata,
+        replaceExisting: replaceExisting ?? (docTitle === "Store Delivery & Policy Rules"),
       });
 
       return NextResponse.json({ success: true, document: doc });
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
       const file = formData.get("file") as File | null;
       const customTitle = formData.get("title") as string | null;
       const pageId = (formData.get("pageId") as string) || undefined;
+      const replaceExisting = formData.get("replaceExisting") === "true";
 
       if (!file) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -138,6 +141,7 @@ export async function POST(request: NextRequest) {
         fileType,
         size: sizeStr,
         content: extractedText.trim(),
+        replaceExisting,
       });
 
       return NextResponse.json({ success: true, document: doc });

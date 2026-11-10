@@ -40,6 +40,67 @@ export default function ShopRules() {
     "কাস্টমার ডিসকাউন্ট চাইলে বলবে: 'আপু/ভাইয়া আমাদের সব প্রোডাক্ট রিজনেবল প্রাইসে রাখা হয়েছে এবং প্রিমিয়াম কোয়ালিটি নিশ্চিত করা হয়!' স্টক শেষ হলে বিনয়ের সাথে জানিয়ে কাস্টমারের ফোন নম্বর চেয়ে রাখবে।"
   );
   const [savingRules, setSavingRules] = useState(false);
+  const [loadingRules, setLoadingRules] = useState(true);
+
+  // Load existing store policies on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchExistingRules = async () => {
+      try {
+        setLoadingRules(true);
+        const res = await fetch("/api/documents");
+        if (res.ok) {
+          const data = await res.json();
+          const rulesDoc = (data.documents || []).find(
+            (d: any) => d.title === "Store Delivery & Policy Rules"
+          );
+          if (rulesDoc && isMounted) {
+            if (rulesDoc.metadata) {
+              const m = rulesDoc.metadata;
+              if (m.insideDhakaCharge !== undefined) setInsideDhakaCharge(String(m.insideDhakaCharge));
+              if (m.outsideDhakaCharge !== undefined) setOutsideDhakaCharge(String(m.outsideDhakaCharge));
+              if (m.freeDeliveryOver !== undefined) setFreeDeliveryOver(String(m.freeDeliveryOver));
+              if (m.deliveryDays !== undefined) setDeliveryDays(String(m.deliveryDays));
+              if (m.returnDays !== undefined) setReturnDays(String(m.returnDays));
+              if (m.returnConditions !== undefined) setReturnConditions(String(m.returnConditions));
+              if (m.codEnabled !== undefined) setCodEnabled(Boolean(m.codEnabled));
+              if (m.brandTone) setBrandTone(m.brandTone);
+              if (m.customRules !== undefined) setCustomRules(String(m.customRules));
+            } else if (rulesDoc.content) {
+              const content = rulesDoc.content;
+              const insideMatch = content.match(/ঢাকার ভেতরে:\s*৳?(\d+)/);
+              if (insideMatch) setInsideDhakaCharge(insideMatch[1]);
+              const outsideMatch = content.match(/ঢাকার বাইরে:\s*৳?(\d+)/);
+              if (outsideMatch) setOutsideDhakaCharge(outsideMatch[1]);
+              const freeMatch = content.match(/ফ্রি ডেলিভারি:\s*৳?(\d+)/);
+              if (freeMatch) setFreeDeliveryOver(freeMatch[1]);
+              const daysMatch = content.match(/আনুমানিক ডেলিভারি সময়:\s*(.*)/);
+              if (daysMatch) setDeliveryDays(daysMatch[1].trim());
+              const returnDaysMatch = content.match(/সময়সীমা:\s*(.*)/);
+              if (returnDaysMatch) setReturnDays(returnDaysMatch[1].trim());
+              const condMatch = content.match(/শর্তাবলী:\s*(.*)/);
+              if (condMatch) setReturnConditions(condMatch[1].trim());
+              const codMatch = content.match(/ক্যাশ অন ডেলিভারি \(COD\):\s*(চালু আছে|বন্ধ)/);
+              if (codMatch) setCodEnabled(codMatch[1] === "চালু আছে");
+              if (content.includes("আপু/ভাইয়া সম্বোধন")) setBrandTone("friendly");
+              else if (content.includes("ফরমাল ও মার্জিত")) setBrandTone("formal");
+              const customMatch = content.match(/৫\.\s*বিশেষ নিয়মাবলী ও নির্দেশনা:\s*([\s\S]*)/);
+              if (customMatch && customMatch[1].trim()) setCustomRules(customMatch[1].trim());
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load existing rules:", err);
+      } finally {
+        if (isMounted) setLoadingRules(false);
+      }
+    };
+
+    fetchExistingRules();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Save Store Policies to API
   const handleSavePolicies = async () => {
@@ -70,6 +131,18 @@ export default function ShopRules() {
 ${customRules}
 `;
 
+      const rulesData = {
+        insideDhakaCharge,
+        outsideDhakaCharge,
+        freeDeliveryOver,
+        deliveryDays,
+        returnDays,
+        returnConditions,
+        codEnabled,
+        brandTone,
+        customRules,
+      };
+
       const res = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,6 +150,8 @@ ${customRules}
           title: "Store Delivery & Policy Rules",
           content: policyContent,
           fileType: "manual",
+          replaceExisting: true,
+          metadata: rulesData,
         }),
       });
 

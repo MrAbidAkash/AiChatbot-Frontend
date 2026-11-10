@@ -46,6 +46,7 @@ interface DocumentItem {
   fileType: "pdf" | "txt" | "docx" | "csv" | "manual";
   fileSize?: number;
   uploadedAt: string;
+  updatedAt?: string;
 }
 
 export default function DocumentManager() {
@@ -373,7 +374,7 @@ export default function DocumentManager() {
                           {doc.fileType}
                         </span>
                         <span>•</span>
-                        <span>{new Date(doc.uploadedAt).toLocaleDateString("bn-BD")}</span>
+                        <span>{new Date(doc.updatedAt || doc.uploadedAt).toLocaleDateString("bn-BD")}</span>
                       </div>
                     </div>
                   </div>

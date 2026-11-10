@@ -15,6 +15,7 @@ export interface BusinessDocument {
   summary?: string;
   keyTopics?: string[];
   chunks?: string[];
+  metadata?: Record<string, any>;
   status: "ready" | "training" | "trained" | "error";
   uploadedAt: Date;
   updatedAt: Date;
@@ -42,6 +43,8 @@ export function chunkText(text: string, chunkSize = 800, overlap = 100): string[
 
 /**
  * Save a business document to MongoDB
+ * If replaceExisting is true (or for singleton rules like "Store Delivery & Policy Rules"),
+ * it updates the existing document and deletes any stale duplicates.
  */
 export async function saveDocument(doc: {
   userId?: string;
@@ -51,6 +54,8 @@ export async function saveDocument(doc: {
   fileType: "pdf" | "txt" | "docx" | "csv" | "faq" | "manual";
   size?: string;
   content: string;
+  metadata?: Record<string, any>;
+  replaceExisting?: boolean;
 }): Promise<BusinessDocument> {
   const db = getDb();
   const collection = db.collection<BusinessDocument>(COLLECTION_NAME);
@@ -68,6 +73,60 @@ export async function saveDocument(doc: {
     summary = `${doc.title} (${doc.content.length} characters)`;
   }
 
+  const shouldReplace = doc.replaceExisting || doc.title === "Store Delivery & Policy Rules";
+
+  if (shouldReplace) {
+    const filterQuery: any = {
+      title: doc.title,
+    };
+    if (doc.userId && doc.userId !== "all") {
+      filterQuery.userId = doc.userId;
+    }
+    if (doc.pageId) {
+      filterQuery.pageId = doc.pageId;
+    }
+
+    const existingDocs = await collection
+      .find(filterQuery)
+      .sort({ updatedAt: -1, uploadedAt: -1 })
+      .toArray();
+
+    if (existingDocs.length > 0) {
+      const primaryDoc = existingDocs[0];
+      const primaryId = primaryDoc._id;
+
+      // Clean up any duplicates that might have been created previously
+      if (existingDocs.length > 1) {
+        const extraIds = existingDocs.slice(1).map((d) => d._id);
+        await collection.deleteMany({ _id: { $in: extraIds } });
+      }
+
+      const updateData = {
+        fileName: doc.fileName,
+        fileType: doc.fileType,
+        size: doc.size || `${(doc.content.length / 1024).toFixed(1)} KB`,
+        content: doc.content,
+        summary,
+        keyTopics,
+        chunks,
+        metadata: doc.metadata || primaryDoc.metadata,
+        status: "trained" as const,
+        updatedAt: new Date(),
+      };
+
+      await collection.updateOne(
+        { _id: primaryId },
+        { $set: updateData }
+      );
+
+      return {
+        ...primaryDoc,
+        ...updateData,
+        _id: primaryId.toString(),
+      };
+    }
+  }
+
   const newDoc: BusinessDocument = {
     userId: doc.userId || "default",
     pageId: doc.pageId || undefined,
@@ -79,6 +138,7 @@ export async function saveDocument(doc: {
     summary,
     keyTopics,
     chunks,
+    metadata: doc.metadata,
     status: "trained",
     uploadedAt: new Date(),
     updatedAt: new Date(),
@@ -91,6 +151,7 @@ export async function saveDocument(doc: {
 
 /**
  * Get all documents for a user or page
+ * Automatically cleans up and deduplicates singleton rules like "Store Delivery & Policy Rules"
  */
 export async function getDocuments(filter: {
   userId?: string;
@@ -115,9 +176,35 @@ export async function getDocuments(filter: {
     }
   }
 
-  const docs = await collection.find(query).sort({ uploadedAt: -1 }).toArray();
+  const docs = await collection.find(query).sort({ updatedAt: -1, uploadedAt: -1 }).toArray();
 
-  return docs.map((d) => ({
+  // Deduplicate singleton rules like "Store Delivery & Policy Rules" per user/page
+  const seenPolicyKeys = new Set<string>();
+  const duplicateIdsToDelete: any[] = [];
+  const uniqueDocs: typeof docs = [];
+
+  for (const doc of docs) {
+    if (doc.title === "Store Delivery & Policy Rules") {
+      const policyKey = `${doc.userId || "default"}_${doc.pageId || "default"}`;
+      if (seenPolicyKeys.has(policyKey)) {
+        duplicateIdsToDelete.push(doc._id);
+        continue;
+      }
+      seenPolicyKeys.add(policyKey);
+    }
+    uniqueDocs.push(doc);
+  }
+
+  // Auto clean-up stale duplicates from database
+  if (duplicateIdsToDelete.length > 0) {
+    try {
+      await collection.deleteMany({ _id: { $in: duplicateIdsToDelete } });
+    } catch (e) {
+      console.error("Failed to clean up duplicate policy documents:", e);
+    }
+  }
+
+  return uniqueDocs.map((d) => ({
     ...d,
     _id: d._id.toString(),
   }));
