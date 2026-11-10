@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DocumentItem {
   _id: string;
@@ -321,8 +322,28 @@ export default function DocumentManager() {
 
         <CardContent className="pt-1">
           {loading ? (
-            <div className="p-8 text-center text-xs text-muted-foreground">
-              ডকুমেন্টস লোড হচ্ছে...
+            <div className="divide-y divide-border/60 py-1">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 px-2 rounded-lg -mx-2"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-4 w-48 sm:w-64 rounded-md" />
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-3 w-16 rounded-md" />
+                        <Skeleton className="h-3 w-20 rounded-md" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                    <Skeleton className="h-7 w-7 rounded-md" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredDocs.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 p-8 text-center bg-muted/10">

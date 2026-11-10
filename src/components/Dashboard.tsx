@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 
 interface DashboardProps {
   session: {
@@ -244,6 +245,10 @@ export default function Dashboard({ session }: DashboardProps) {
     }
   };
 
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* ==================== 1. CLEAN EXECUTIVE HEADER ==================== */}
@@ -351,7 +356,7 @@ export default function Dashboard({ session }: DashboardProps) {
               </div>
             </div>
             <p className="mt-2 text-2xl font-bold tracking-tight text-foreground font-mono">
-              {loading ? "..." : (stats?.totalAiReplies || 0).toLocaleString()}
+              {(stats?.totalAiReplies || 0).toLocaleString()}
             </p>
             <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -369,7 +374,7 @@ export default function Dashboard({ session }: DashboardProps) {
               </div>
             </div>
             <p className="mt-2 text-2xl font-bold tracking-tight text-foreground font-mono">
-              {loading ? "..." : (stats?.totalConversations || 0).toLocaleString()}
+              {(stats?.totalConversations || 0).toLocaleString()}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {stats?.totalMessages || 0} টি মেসেজ এক্সচেঞ্জ
@@ -386,7 +391,7 @@ export default function Dashboard({ session }: DashboardProps) {
               </div>
             </div>
             <p className="mt-2 text-2xl font-bold tracking-tight text-foreground font-mono">
-              {loading ? "..." : pages.length}
+              {pages.length}
             </p>
             <p className={`mt-1 text-[11px] font-medium ${pages.length > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"}`}>
               {pages.length > 0 ? "সরাসরি লাইভ" : "কানেকশন বাকি"}
@@ -403,7 +408,7 @@ export default function Dashboard({ session }: DashboardProps) {
               </div>
             </div>
             <p className="mt-2 text-2xl font-bold tracking-tight text-foreground font-mono">
-              {loading ? "..." : (stats?.totalDocuments || 0)}
+              {stats?.totalDocuments || 0}
             </p>
             <div className="mt-1 flex items-center justify-between text-[11px]">
               <span className="text-muted-foreground">ইনডেক্সড ফাইলস</span>

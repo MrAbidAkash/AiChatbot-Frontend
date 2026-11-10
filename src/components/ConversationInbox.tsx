@@ -19,6 +19,7 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ConversationItem {
   _id: string;
@@ -244,8 +245,19 @@ export default function ConversationInbox() {
           {/* Conversation List */}
           <div className="overflow-y-auto flex-1 divide-y divide-border">
             {loading ? (
-              <div className="p-8 text-center text-xs text-muted-foreground">
-                Loading conversations...
+              <div className="divide-y divide-border/60">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="p-3.5 flex items-start gap-3">
+                    <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-3.5 w-24 rounded-md" />
+                        <Skeleton className="h-3 w-12 rounded-md" />
+                      </div>
+                      <Skeleton className="h-3 w-3/4 rounded-md" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground space-y-2">

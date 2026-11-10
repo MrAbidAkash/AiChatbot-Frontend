@@ -32,6 +32,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -537,9 +538,28 @@ export default function ConnectFacebookPage() {
               </CardHeader>
               <CardContent className="p-0">
                 {loading ? (
-                  <div className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-                    <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                    Loading connected pages...
+                  <div className="p-4 space-y-3">
+                    {[...Array(2)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="p-4 rounded-xl border border-border/60 flex items-center justify-between gap-3 bg-muted/10"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-4 w-36 rounded-md" />
+                              <Skeleton className="h-4 w-12 rounded-full" />
+                            </div>
+                            <Skeleton className="h-3 w-48 rounded-md" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-8 w-20 rounded-md" />
+                          <Skeleton className="h-8 w-8 rounded-md" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : pages.length === 0 ? (
                   <div className="p-8 text-center space-y-3">
