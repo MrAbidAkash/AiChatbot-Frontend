@@ -134,8 +134,8 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
       group: "বিলিং ও একাউন্ট",
       items: [
         {
-          name: "ব্যালেন্স ও রিচার্জ",
-          href: "/pricing",
+          name: "ব্যালেন্স ও ওয়ালেট",
+          href: "/wallet",
           icon: CreditCard,
           badge: "bKash",
         },
@@ -151,6 +151,7 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
     if (pathname === "/documents") return "ডকুমেন্টস ও ফাইল আপলোড";
     if (pathname === "/rules" || pathname === "/dashboard/training") return "শপের নিয়মাবলী ও পলিসি";
     if (pathname === "/playground") return "লাইভ AI টেস্ট কনসোল";
+    if (pathname === "/wallet" || pathname === "/billing") return "ব্যালেন্স ও ওয়ালেট রিচার্জ";
     if (pathname === "/pricing") return "ব্যালেন্স ও রিচার্জ";
     return "ড্যাশবোর্ড";
   })();

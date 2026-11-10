@@ -26,6 +26,7 @@ import {
   MessageCircle,
   ExternalLink,
   Upload,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -345,6 +346,61 @@ export default function Dashboard({ session }: DashboardProps) {
         </div>
       )}
 
+      {/* ==================== CRITICAL RECHARGE BANNER IF BALANCE IS 0 ==================== */}
+      {stats?.wallet && stats.wallet.remainingReplies !== undefined && stats.wallet.remainingReplies <= 0 && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 dark:bg-rose-950/25 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="h-10 w-10 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-foreground">
+                  আপনার AI রিপ্লাই ব্যালেন্স শেষ! AI অটো-রিপ্লাই স্থগিত আছে।
+                </h3>
+                <Badge variant="destructive" className="text-[10px] uppercase font-bold tracking-wider">
+                  ব্যালেন্স শেষ (0 Credits)
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+                আপনার বরাদ্দকৃত ৫০টি ফ্রি ট্রায়াল ক্রেডিট শেষ হয়েছে (মোট ব্যবহৃত: {stats.wallet.usedCredits} টি)। 
+                ফেসবুক পেজে কাস্টমারদের তাৎক্ষণিক উত্তর দিতে এবং সেলস সচল রাখতে এখনই বিকাশ দিয়ে রিচার্জ করুন।
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <Link href="/wallet">
+              <Button size="sm" className="h-8 text-xs gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-2xs">
+                <CreditCard className="h-3.5 w-3.5" />
+                <span>এখনই রিচার্জ করুন (bKash) →</span>
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Low balance warning */}
+      {stats?.wallet && stats.wallet.remainingReplies !== undefined && stats.wallet.remainingReplies > 0 && stats.wallet.remainingReplies <= 5 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-950/20 p-3.5 shadow-2xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+            <p className="text-xs font-medium text-foreground">
+              ⚠️ আপনার AI ব্যালেন্স প্রায় শেষ! মাত্র{" "}
+              <strong className="text-amber-600 dark:text-amber-400 font-mono">
+                {stats.wallet.remainingReplies}
+              </strong>{" "}
+              টি রিপ্লাই বাকি আছে। নিরবচ্ছিন্ন সার্ভিসের জন্য এখনই রিচার্জ করুন।
+            </p>
+          </div>
+          <Link href="/wallet">
+            <Button size="sm" variant="outline" className="h-7 text-xs border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10">
+              রিচার্জ করুন →
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* ==================== 3. 4 CLEAN, CALM KPI CARDS ==================== */}
       <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="border-border/80 bg-card shadow-2xs">
@@ -358,10 +414,20 @@ export default function Dashboard({ session }: DashboardProps) {
             <p className="mt-2 text-2xl font-bold tracking-tight text-foreground font-mono">
               {(stats?.totalAiReplies || 0).toLocaleString()}
             </p>
-            <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              AI সক্রিয় (Active)
-            </p>
+            {stats?.wallet && stats.wallet.remainingReplies !== undefined && stats.wallet.remainingReplies <= 0 ? (
+              <Link
+                href="/wallet"
+                className="mt-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 hover:underline"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <span>AI স্থগিত (ব্যালেন্স শেষ) • রিচার্জ →</span>
+              </Link>
+            ) : (
+              <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                AI সক্রিয় (Active)
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -602,73 +668,27 @@ export default function Dashboard({ session }: DashboardProps) {
           </Card>
         </div>
 
-        {/* Right Column (4 cols): AI Health & Wallet */}
+        {/* Right Column (4 cols): Wallet Card FIRST (High Visibility) & AI Health */}
         <div className="space-y-6 lg:col-span-4">
-          {/* AI Health Card */}
-          <Card className="border-border/80 bg-card shadow-2xs">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span>AI সিস্টেম হেলথ</span>
-                </CardTitle>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Operational
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2.5 pt-0 text-xs">
-              <div className="flex items-center justify-between py-1.5 border-b border-border/40">
-                <span className="text-muted-foreground">AI স্ট্যাটাস</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  সক্রিয় (Active)
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1.5 border-b border-border/40">
-                <span className="text-muted-foreground">রেসপন্স স্পিড</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-                  &lt; ২ সেকেন্ড
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1.5 border-b border-border/40">
-                <span className="text-muted-foreground">ছবি ও ভিশন AI</span>
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">সক্রিয় (Active)</span>
-              </div>
-
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-muted-foreground">ভাষা সমর্থন</span>
-                <span className="font-medium text-foreground">বাংলা, Banglish, English</span>
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSimulatorOpen(true)}
-                  className="w-full text-xs h-8 gap-1.5 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary font-medium"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>AI টেস্ট কনসোল চালান</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Wallet Card */}
-          <Card className="border-border/80 bg-card shadow-2xs">
+          {/* Wallet Card - Positioned at top of sidebar for immediate visibility */}
+          <Card className={`border shadow-2xs ${
+            stats?.wallet && stats.wallet.remainingReplies !== undefined && stats.wallet.remainingReplies <= 0
+              ? "border-rose-500/40 bg-rose-500/5 ring-1 ring-rose-500/20"
+              : "border-border/80 bg-card"
+          }`}>
             <CardHeader className="pb-3">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-primary" />
                   <span>ব্যালেন্স ও ওয়ালেট</span>
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {stats?.wallet?.isPaidUser ? "Paid Plan" : "Free Trial"}
-                </span>
+                <Link
+                  href="/wallet"
+                  className="text-[10px] text-primary hover:underline font-medium flex items-center gap-0.5 normal-case"
+                >
+                  <span>ডিটেইলস পেজ</span>
+                  <ChevronRight className="h-2.5 w-2.5" />
+                </Link>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
@@ -721,7 +741,11 @@ export default function Dashboard({ session }: DashboardProps) {
                   </div>
                   <div className="h-1.5 w-full bg-primary/15 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full transition-all duration-500"
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        (stats?.wallet?.remainingReplies ?? 35) <= 0
+                          ? "bg-rose-500"
+                          : "bg-primary"
+                      }`}
                       style={{
                         width: `${Math.min(
                           100,
@@ -738,7 +762,7 @@ export default function Dashboard({ session }: DashboardProps) {
               </div>
 
               <div className="space-y-2 pt-0.5">
-                <Link href="/pricing" className="block">
+                <Link href="/wallet" className="block">
                   <Button
                     size="sm"
                     className="w-full text-xs h-8 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-2xs"
@@ -754,13 +778,76 @@ export default function Dashboard({ session }: DashboardProps) {
                     বিকাশ
                   </span>
                   <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                    নগদ
-                  </span>
-                  <span>•</span>
                   <span>কোনো মেয়াদের সীমাবদ্ধতা নেই</span>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Health Card */}
+          <Card className="border-border/80 bg-card shadow-2xs">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  <span>AI সিস্টেম হেলথ</span>
+                </CardTitle>
+                {stats?.wallet && stats.wallet.remainingReplies !== undefined && stats.wallet.remainingReplies <= 0 ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    Paused
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Operational
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2.5 pt-0 text-xs">
+              <div className="flex items-center justify-between py-1.5 border-b border-border/40">
+                <span className="text-muted-foreground">AI স্ট্যাটাস</span>
+                {stats?.wallet && stats.wallet.remainingReplies !== undefined && stats.wallet.remainingReplies <= 0 ? (
+                  <span className="font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                    স্থগিত (ব্যালেন্স শেষ)
+                  </span>
+                ) : (
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    সক্রিয় (Active)
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between py-1.5 border-b border-border/40">
+                <span className="text-muted-foreground">রেসপন্স স্পিড</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
+                  &lt; ২ সেকেন্ড
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1.5 border-b border-border/40">
+                <span className="text-muted-foreground">ছবি ও ভিশন AI</span>
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">সক্রিয় (Active)</span>
+              </div>
+
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-muted-foreground">ভাষা সমর্থন</span>
+                <span className="font-medium text-foreground">বাংলা, Banglish, English</span>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSimulatorOpen(true)}
+                  className="w-full text-xs h-8 gap-1.5 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary font-medium"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>AI টেস্ট কনসোল চালান</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
