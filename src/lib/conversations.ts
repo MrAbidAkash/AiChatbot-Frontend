@@ -21,6 +21,7 @@ export interface ConversationRecord {
 export interface MessageRecord {
   _id?: ObjectId | string;
   conversationId: string;
+  userId?: string;
   senderPsid: string;
   senderType: "customer" | "ai" | "human";
   name: string;
@@ -98,12 +99,16 @@ export async function recordConversationMessage(params: {
     if (params.customerAvatar) {
       updateData.customerAvatar = params.customerAvatar;
     }
+    if (params.userId && (!conv.userId || conv.userId === "default")) {
+      updateData.userId = params.userId;
+    }
     await convCol.updateOne({ _id: conv._id }, { $set: updateData });
   }
 
   // Insert individual message
   const newMsg: MessageRecord = {
     conversationId,
+    userId: params.userId || conv?.userId || "default",
     senderPsid: params.senderPsid,
     senderType: params.senderType,
     name:
@@ -139,7 +144,7 @@ export async function getConversations(options: {
 
   const query: any = {};
   if (options.userId && options.userId !== "all") {
-    query.$or = [{ userId: options.userId }, { userId: "default" }, { userId: { $exists: false } }];
+    query.userId = options.userId;
   }
   if (options.pageId) {
     query.pageId = options.pageId;

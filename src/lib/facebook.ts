@@ -67,7 +67,7 @@ export async function getFacebookPages(userId?: string): Promise<FacebookPageRec
   const collection = db.collection<FacebookPageRecord>(COLLECTION_NAME);
   const query: any = {};
   if (userId && userId !== "all") {
-    query.$or = [{ userId }, { userId: "default" }, { userId: { $exists: false } }];
+    query.userId = userId;
   }
   const pages = await collection.find(query).sort({ updatedAt: -1 }).toArray();
   return pages.map((p) => ({

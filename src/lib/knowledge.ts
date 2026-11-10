@@ -100,34 +100,22 @@ export async function getDocuments(filter: {
   const collection = db.collection<BusinessDocument>(COLLECTION_NAME);
 
   const query: any = {};
-  if (filter.userId && filter.userId !== "all" && filter.userId !== "default") {
-    query.$or = [
-      { userId: filter.userId },
-      { userId: "default" },
-      { userId: { $exists: false } },
-      { userId: null },
-    ];
+  if (filter.userId && filter.userId !== "all") {
+    query.userId = filter.userId;
   }
   if (filter.pageId) {
-    const pageCondition = [
-      { pageId: filter.pageId },
-      { pageId: { $exists: false } },
-      { pageId: null },
-    ];
-    if (query.$or) {
-      query.$and = [{ $or: query.$or }, { $or: pageCondition }];
-      delete query.$or;
+    if (query.userId) {
+      query.$or = [
+        { pageId: filter.pageId },
+        { pageId: null },
+        { pageId: { $exists: false } },
+      ];
     } else {
-      query.$or = pageCondition;
+      query.pageId = filter.pageId;
     }
   }
 
-  let docs = await collection.find(query).sort({ uploadedAt: -1 }).toArray();
-
-  // If no docs matched the narrow filter, fallback to returning all available business documents
-  if (docs.length === 0) {
-    docs = await collection.find({}).sort({ uploadedAt: -1 }).toArray();
-  }
+  const docs = await collection.find(query).sort({ uploadedAt: -1 }).toArray();
 
   return docs.map((d) => ({
     ...d,
@@ -160,12 +148,9 @@ export async function getRelevantKnowledge(
   query: string,
   options: { userId?: string; pageId?: string } = {},
 ): Promise<string> {
-  let docs = await getDocuments(options);
+  const docs = await getDocuments(options);
   if (!docs || docs.length === 0) {
-    docs = await getDocuments({});
-  }
-  if (!docs || docs.length === 0) {
-    console.warn(`[Knowledge] No documents found in database.`);
+    console.warn(`[Knowledge] No documents found in database for user/page.`);
     return "";
   }
 

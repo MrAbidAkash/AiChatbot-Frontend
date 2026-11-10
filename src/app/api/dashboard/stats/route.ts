@@ -22,11 +22,8 @@ export async function GET() {
 
     const db = getDb();
 
-    // Query collections
-    const userFilter: any =
-      userId !== "all"
-        ? { $or: [{ userId }, { userId: "default" }, { userId: { $exists: false } }] }
-        : {};
+    // Query collections strictly isolated by user
+    const userFilter: any = userId !== "all" ? { userId } : {};
 
     // Completed bKash / payment records for user
     const paymentFilter: any = {
@@ -37,6 +34,22 @@ export async function GET() {
         ...(userEmail ? [{ "customerInfo.email": userEmail }] : []),
         ...(userId ? [{ user: userId }, { userId }] : []),
       ];
+    }
+
+    // Get user's conversation IDs to accurately count messages
+    const userConversations = await db
+      .collection("fb_conversations")
+      .find(userFilter, { projection: { _id: 1 } })
+      .toArray();
+
+    const userConvIds = userConversations.map((c) => c._id.toString());
+
+    const messageFilterAi: any = { senderType: "ai" };
+    const messageFilterCustomer: any = { senderType: "customer" };
+
+    if (userId !== "all") {
+      messageFilterAi.conversationId = { $in: userConvIds };
+      messageFilterCustomer.conversationId = { $in: userConvIds };
     }
 
     const [
@@ -50,9 +63,13 @@ export async function GET() {
     ] = await Promise.all([
       db.collection("business_knowledge").countDocuments(userFilter),
       db.collection("facebook_pages").countDocuments(userFilter),
-      db.collection("fb_conversations").countDocuments(userFilter),
-      db.collection("fb_messages").countDocuments({ senderType: "ai" }),
-      db.collection("fb_messages").countDocuments({ senderType: "customer" }),
+      userConversations.length,
+      userId !== "all" && userConvIds.length === 0
+        ? Promise.resolve(0)
+        : db.collection("fb_messages").countDocuments(messageFilterAi),
+      userId !== "all" && userConvIds.length === 0
+        ? Promise.resolve(0)
+        : db.collection("fb_messages").countDocuments(messageFilterCustomer),
       db
         .collection("fb_conversations")
         .find(userFilter)
