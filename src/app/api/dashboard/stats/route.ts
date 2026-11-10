@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { getUserWallet } from "@/lib/billing";
 
 export async function GET() {
   try {
@@ -25,17 +26,6 @@ export async function GET() {
     // Query collections strictly isolated by user
     const userFilter: any = userId !== "all" ? { userId } : {};
 
-    // Completed bKash / payment records for user
-    const paymentFilter: any = {
-      transactionStatus: "Completed",
-    };
-    if (userEmail || (userId && userId !== "default")) {
-      paymentFilter.$or = [
-        ...(userEmail ? [{ "customerInfo.email": userEmail }] : []),
-        ...(userId ? [{ user: userId }, { userId }] : []),
-      ];
-    }
-
     // Get user's conversation IDs to accurately count messages
     const userConversations = await db
       .collection("fb_conversations")
@@ -44,11 +34,8 @@ export async function GET() {
 
     const userConvIds = userConversations.map((c) => c._id.toString());
 
-    const messageFilterAi: any = { senderType: "ai" };
     const messageFilterCustomer: any = { senderType: "customer" };
-
     if (userId !== "all") {
-      messageFilterAi.conversationId = { $in: userConvIds };
       messageFilterCustomer.conversationId = { $in: userConvIds };
     }
 
@@ -56,17 +43,13 @@ export async function GET() {
       totalDocuments,
       totalPages,
       totalConversations,
-      totalAiReplies,
       totalCustomerMessages,
       recentConversations,
-      completedPayments,
+      wallet,
     ] = await Promise.all([
       db.collection("business_knowledge").countDocuments(userFilter),
       db.collection("facebook_pages").countDocuments(userFilter),
       userConversations.length,
-      userId !== "all" && userConvIds.length === 0
-        ? Promise.resolve(0)
-        : db.collection("fb_messages").countDocuments(messageFilterAi),
       userId !== "all" && userConvIds.length === 0
         ? Promise.resolve(0)
         : db.collection("fb_messages").countDocuments(messageFilterCustomer),
@@ -76,32 +59,10 @@ export async function GET() {
         .sort({ lastMessageAt: -1 })
         .limit(5)
         .toArray(),
-      db.collection("payments").find(paymentFilter).toArray(),
+      getUserWallet({ userId, userEmail }),
     ]);
 
-    const totalRechargedAmount = completedPayments.reduce(
-      (sum, p) => sum + (Number(p.amount) || 0),
-      0
-    );
-
-    // Pricing: 50 poisa (৳0.50) per reply
-    const COST_PER_REPLY = 0.50;
-
-    // Calculate recharged replies including pack bonuses
-    const rechargedReplies = completedPayments.reduce((total, p) => {
-      const amt = Number(p.amount) || 0;
-      const baseReplies = Math.round(amt / COST_PER_REPLY);
-      const bonusMultiplier = amt >= 5000 ? 1.2 : amt >= 1000 ? 1.1 : 1.0;
-      return total + Math.round(baseReplies * bonusMultiplier);
-    }, 0);
-
-    // Free trial allocation is 50 AI replies (worth ৳25.00)
-    const freeTrialReplies = 50;
-    const totalAllocatedReplies = freeTrialReplies + rechargedReplies;
-    const remainingReplies = Math.max(0, totalAllocatedReplies - totalAiReplies);
-    const remainingBalance = Number((remainingReplies * COST_PER_REPLY).toFixed(2));
-    const isPaidUser = totalRechargedAmount > 0;
-
+    const totalAiReplies = wallet.usedCredits;
     const totalMessages = totalAiReplies + totalCustomerMessages;
     const responseRate =
       totalCustomerMessages > 0
@@ -115,17 +76,7 @@ export async function GET() {
       totalMessages,
       totalAiReplies,
       responseRate,
-      wallet: {
-        totalAllocatedCredits: totalAllocatedReplies,
-        remainingReplies,
-        remainingBalance,
-        usedCredits: totalAiReplies,
-        costPerReply: COST_PER_REPLY,
-        totalRechargedAmount,
-        isPaidUser,
-        planTitle: isPaidUser ? "রিচার্জড পেইড প্যাক" : "ফ্রি ট্রায়াল ব্যালেন্স",
-        isActive: remainingReplies > 0,
-      },
+      wallet,
       recentConversations: recentConversations.map((c) => ({
         ...c,
         _id: c._id.toString(),

@@ -14,6 +14,7 @@ import {
   getRecentConversationHistory,
   isMessageMidProcessed,
 } from "@/lib/conversations";
+import { getUserWallet } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -118,10 +119,24 @@ async function processIncomingMessage(item: ValidEventItem) {
     return;
   }
 
-  // 7. Show typing indicator in Messenger
+  // 7. Check user AI credits and wallet balance
+  const wallet = await getUserWallet({
+    userId: page.userId,
+    pageId: page.pageId,
+  });
+
+  if (!wallet.hasCredits) {
+    console.warn(
+      `[FB Webhook] Balance exhausted for user "${page.userId}" on page "${page.pageName}". Remaining replies: 0 (Used: ${wallet.usedCredits}/${wallet.totalAllocatedCredits}, Balance: ৳${wallet.remainingBalance}). Halting AI auto-reply.`
+    );
+    // The incoming customer message is already recorded as 'pending' in the Inbox so human agent can reply manually.
+    return;
+  }
+
+  // 8. Show typing indicator in Messenger
   await sendTypingIndicator(page.pageAccessToken, senderPsid, true);
 
-  // 8. Retrieve isolated knowledge documents for this specific page
+  // 9. Retrieve isolated knowledge documents for this specific page
   const businessKnowledge = await getRelevantKnowledge(customerMessage, {
     userId: page.userId,
     pageId: page.pageId,
@@ -131,10 +146,10 @@ async function processIncomingMessage(item: ValidEventItem) {
     `[FB Webhook] Knowledge loaded (${businessKnowledge.length} chars) for page "${page.pageName}". Generating AI reply...`,
   );
 
-  // 9. Retrieve recent conversation history for multi-turn context
+  // 10. Retrieve recent conversation history for multi-turn context
   const history = await getRecentConversationHistory(conversationId, 6);
 
-  // 10. Generate AI reply with Gemini
+  // 11. Generate AI reply with Gemini
   let aiReplyText = "";
   let modelUsed = "";
 
