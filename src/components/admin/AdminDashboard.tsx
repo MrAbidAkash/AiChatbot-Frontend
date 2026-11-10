@@ -27,9 +27,19 @@ import {
   Sliders,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   Database,
   Globe,
   Radio,
+  User,
+  UserCheck,
+  Filter,
+  X,
+  FileText,
+  Clock,
+  ArrowUpRight,
+  BadgeAlert,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +74,9 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  // Global / Tab Merchant Filter
+  const [userFilter, setUserFilter] = useState<string>("all");
+
   // Data states
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
@@ -81,6 +94,13 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   // Inspect modals
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
   const [selectedConv, setSelectedConv] = useState<any | null>(null);
+
+  // User 360 Deep Inspection State
+  const [inspectingUserId, setInspectingUserId] = useState<string | null>(null);
+  const [userDetailLoading, setUserDetailLoading] = useState(false);
+  const [userDetailData, setUserDetailData] = useState<any | null>(null);
+  const [userModalTab, setUserModalTab] = useState<"pages" | "conversations" | "documents" | "payments">("pages");
+  const [userModalSelectedConv, setUserModalSelectedConv] = useState<any | null>(null);
 
   // Developer AI test state
   const [aiTestPrompt, setAiTestPrompt] = useState("");
@@ -107,10 +127,11 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
     }
   }, [router]);
 
-  // Fetch specific tab data on demand
-  const fetchTabData = useCallback(async (tabName: string) => {
+  // Fetch specific tab data on demand, supporting optional user filtering
+  const fetchTabData = useCallback(async (tabName: string, filterUid?: string) => {
     try {
-      const res = await fetch(`/api/admin/data?type=${tabName}`);
+      const filterParam = filterUid && filterUid !== "all" ? `&userId=${filterUid}` : "";
+      const res = await fetch(`/api/admin/data?type=${tabName}${filterParam}`);
       if (res.ok) {
         const data = await res.json();
         if (tabName === "users") setUsers(data.users || []);
@@ -124,15 +145,18 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    fetchTabData("users"); // Always load user directory for merchant filtering
+  }, [fetchStats, fetchTabData]);
 
+  // When active tab or user filter changes, fetch updated dataset
   useEffect(() => {
     if (activeTab !== "overview" && activeTab !== "developer") {
-      fetchTabData(activeTab);
+      fetchTabData(activeTab, userFilter);
     }
-  }, [activeTab, fetchTabData]);
+  }, [activeTab, userFilter, fetchTabData]);
 
   const handleLogout = async () => {
     try {
@@ -152,6 +176,43 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  // Inspect User 360 Action
+  const handleInspectUser = async (userId: string) => {
+    setInspectingUserId(userId);
+    setUserDetailLoading(true);
+    setUserModalTab("pages");
+    setUserModalSelectedConv(null);
+
+    try {
+      const res = await fetch(`/api/admin/data?type=user-detail&userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUserDetailData(data);
+      } else {
+        toast.error("Failed to load merchant dossier");
+      }
+    } catch (err) {
+      toast.error("Error retrieving user details");
+    } finally {
+      setUserDetailLoading(false);
+    }
+  };
+
+  const handleFilterByUser = (userId: string, targetTab?: "pages" | "documents" | "conversations") => {
+    setUserFilter(userId);
+    if (targetTab) {
+      setActiveTab(targetTab);
+    }
+    setInspectingUserId(null);
+    const targetUser = users.find((u) => u.id === userId);
+    toast.info(`Filtered view to merchant: ${targetUser?.name || targetUser?.email || userId}`);
+  };
+
+  const handleClearUserFilter = () => {
+    setUserFilter("all");
+    toast.success("Showing all merchants' data");
+  };
+
   const handleTogglePage = async (id: string) => {
     try {
       const res = await fetch("/api/admin/data", {
@@ -161,8 +222,17 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
       });
       if (res.ok) {
         toast.success("Page status updated");
-        fetchTabData("pages");
+        fetchTabData("pages", userFilter);
         fetchStats();
+        // Also update local userDetailData if inspecting this user
+        if (userDetailData && userDetailData.pages) {
+          setUserDetailData({
+            ...userDetailData,
+            pages: userDetailData.pages.map((p: any) =>
+              p.id === id ? { ...p, isActive: !p.isActive } : p,
+            ),
+          });
+        }
       }
     } catch {
       toast.error("Failed to update page");
@@ -179,8 +249,14 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
       });
       if (res.ok) {
         toast.success("Page deleted");
-        fetchTabData("pages");
+        fetchTabData("pages", userFilter);
         fetchStats();
+        if (userDetailData && userDetailData.pages) {
+          setUserDetailData({
+            ...userDetailData,
+            pages: userDetailData.pages.filter((p: any) => p.id !== id),
+          });
+        }
       }
     } catch {
       toast.error("Failed to delete page");
@@ -197,8 +273,14 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
       });
       if (res.ok) {
         toast.success("Document removed");
-        fetchTabData("documents");
+        fetchTabData("documents", userFilter);
         fetchStats();
+        if (userDetailData && userDetailData.documents) {
+          setUserDetailData({
+            ...userDetailData,
+            documents: userDetailData.documents.filter((d: any) => d.id !== id),
+          });
+        }
       }
     } catch {
       toast.error("Failed to delete document");
@@ -237,6 +319,9 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
     }
   };
 
+  // Helper for active filtered user object
+  const activeFilteredUser = userFilter !== "all" ? users.find((u) => u.id === userFilter) : null;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
       {/* Top Navigation Bar */}
@@ -263,7 +348,22 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/50 border border-slate-700/60 text-xs text-slate-300">
+          {activeFilteredUser && (
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
+              <Filter className="h-3 w-3" />
+              <span>Merchant:</span>
+              <span className="font-semibold">{activeFilteredUser.name || activeFilteredUser.email}</span>
+              <button
+                onClick={handleClearUserFilter}
+                className="ml-1 hover:text-white"
+                title="Clear filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+
+          <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/50 border border-slate-700/60 text-xs text-slate-300">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-mono text-[11px]">{adminEmail}</span>
           </div>
@@ -271,7 +371,12 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchStats(true)}
+            onClick={() => {
+              fetchStats(true);
+              if (activeTab !== "overview" && activeTab !== "developer") {
+                fetchTabData(activeTab, userFilter);
+              }
+            }}
             disabled={refreshing}
             className="h-8 gap-1.5 text-xs bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800"
           >
@@ -332,10 +437,83 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
               </button>
             );
           })}
+
+          {/* Quick Active Filter Pill in Sidebar */}
+          {userFilter !== "all" && (
+            <div className="pt-3">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                <div className="flex items-center justify-between text-emerald-400 mb-1 font-semibold">
+                  <span className="flex items-center gap-1">
+                    <Filter className="h-3.5 w-3.5" />
+                    Filtered View
+                  </span>
+                  <button onClick={handleClearUserFilter} className="text-slate-400 hover:text-white">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                <p className="text-white font-medium truncate">{activeFilteredUser?.name || "Merchant"}</p>
+                <p className="text-[11px] text-slate-400 truncate">{activeFilteredUser?.email}</p>
+                <div className="mt-2 pt-2 border-t border-emerald-500/20 flex gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleInspectUser(userFilter)}
+                    className="h-6 text-[10px] px-2 text-emerald-300 hover:bg-emerald-500/20 w-full"
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    Inspect 360°
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* Content Area */}
         <main className="flex-1 min-w-0 space-y-6">
+          {/* Active Global User Filter Notification Banner */}
+          {userFilter !== "all" && activeFilteredUser && activeTab !== "overview" && (
+            <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <UserCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white">Viewing Merchant Scoped Data:</span>
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]">
+                      {activeFilteredUser.name || "Merchant"}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {activeFilteredUser.email} • ID: <span className="font-mono text-slate-300">{activeFilteredUser.id}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInspectUser(userFilter)}
+                  className="h-7 text-xs bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25"
+                >
+                  <Eye className="h-3.5 w-3.5 mr-1" />
+                  View 360° Dossier
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearUserFilter}
+                  className="h-7 text-xs bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Reset to All
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* ========================================================= */}
           {/* TAB 1: EXECUTIVE OVERVIEW */}
           {/* ========================================================= */}
@@ -448,14 +626,23 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                   </CardHeader>
                   <CardContent className="pt-3 divide-y divide-slate-800/60">
                     {stats?.recentUsers?.map((u: any) => (
-                      <div key={u.id} className="py-2.5 flex items-center justify-between text-xs">
+                      <div
+                        key={u.id}
+                        onClick={() => handleInspectUser(u.id)}
+                        className="py-2.5 flex items-center justify-between text-xs hover:bg-slate-800/30 px-2 rounded-lg cursor-pointer transition-colors"
+                      >
                         <div>
-                          <p className="font-semibold text-white">{u.name || "Unnamed User"}</p>
+                          <p className="font-semibold text-white hover:text-emerald-400 transition-colors">
+                            {u.name || "Unnamed User"}
+                          </p>
                           <p className="text-[11px] text-slate-400">{u.email}</p>
                         </div>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "Active"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "Active"}
+                          </span>
+                          <Eye className="h-3.5 w-3.5 text-slate-500" />
+                        </div>
                       </div>
                     ))}
                   </CardContent>
@@ -479,7 +666,11 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                   </CardHeader>
                   <CardContent className="pt-3 divide-y divide-slate-800/60">
                     {stats?.recentConversations?.map((c: any) => (
-                      <div key={c.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
+                      <div
+                        key={c.id}
+                        onClick={() => setSelectedConv(c)}
+                        className="py-2.5 flex items-center justify-between text-xs gap-3 hover:bg-slate-800/30 px-2 rounded-lg cursor-pointer transition-colors"
+                      >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-white truncate">{c.customerName || "Customer"}</p>
@@ -510,7 +701,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
           )}
 
           {/* ========================================================= */}
-          {/* TAB 2: REGISTERED USERS */}
+          {/* TAB 2: REGISTERED USERS (USER-WISE DATA HUB) */}
           {/* ========================================================= */}
           {activeTab === "users" && (
             <div className="space-y-4 animate-in fade-in duration-300">
@@ -518,28 +709,31 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search users by name or email..."
+                    placeholder="Search users by name, email or ID..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     className="pl-9 bg-slate-900 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
                   />
                 </div>
-                <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300 self-start sm:self-auto">
-                  {users.length} Users Total
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300">
+                    {users.length} Registered Merchants
+                  </Badge>
+                </div>
               </div>
 
-              <Card className="bg-slate-900/60 border-slate-800 overflow-hidden">
+              <Card className="bg-slate-900/60 border-slate-800 overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs text-slate-300">
                     <thead className="bg-slate-900 border-b border-slate-800 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
                       <tr>
-                        <th className="p-3">User</th>
-                        <th className="p-3">Email</th>
+                        <th className="p-3">Merchant User</th>
+                        <th className="p-3">Email Address</th>
                         <th className="p-3 text-center">Connected Pages</th>
                         <th className="p-3 text-center">Knowledge Docs</th>
                         <th className="p-3 text-center">Conversations</th>
                         <th className="p-3">Registered</th>
+                        <th className="p-3 text-right">User Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
@@ -547,27 +741,120 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                         .filter(
                           (u) =>
                             u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
-                            u.email?.toLowerCase().includes(userSearch.toLowerCase()),
+                            u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                            u.id?.toLowerCase().includes(userSearch.toLowerCase()),
                         )
                         .map((u) => (
-                          <tr key={u.id} className="hover:bg-slate-800/30 transition-colors">
-                            <td className="p-3 font-semibold text-white">{u.name || "Merchant"}</td>
-                            <td className="p-3 font-mono text-[11px] text-slate-300">{u.email}</td>
+                          <tr
+                            key={u.id}
+                            className={`hover:bg-slate-800/30 transition-colors ${
+                              userFilter === u.id ? "bg-emerald-500/5" : ""
+                            }`}
+                          >
+                            <td className="p-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="h-8 w-8 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                  {(u.name || u.email || "M").slice(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-white flex items-center gap-1.5">
+                                    <span>{u.name || "Merchant"}</span>
+                                    {userFilter === u.id && (
+                                      <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[9px] px-1 py-0">
+                                        Filtered
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                                    <span>ID: {u.id.slice(0, 10)}...</span>
+                                    <button
+                                      onClick={() => copyToClipboard(u.id, "User ID")}
+                                      className="hover:text-slate-300"
+                                    >
+                                      <Copy className="h-2.5 w-2.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="p-3 font-mono text-[11px] text-slate-300">
+                              <div className="flex items-center gap-1.5">
+                                <span>{u.email}</span>
+                                <button
+                                  onClick={() => copyToClipboard(u.email, "Email")}
+                                  className="text-slate-500 hover:text-slate-300"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </td>
+
                             <td className="p-3 text-center font-mono">
-                              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px]">
-                                {u.pagesCount}
-                              </Badge>
+                              <button
+                                onClick={() => handleFilterByUser(u.id, "pages")}
+                                className="group inline-flex items-center gap-1"
+                                title="View this user's pages"
+                              >
+                                <Badge
+                                  variant="outline"
+                                  className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] group-hover:bg-blue-500/20 transition-all cursor-pointer"
+                                >
+                                  <Facebook className="h-2.5 w-2.5 mr-1" />
+                                  {u.pagesCount}
+                                  {u.activePagesCount ? ` (${u.activePagesCount} active)` : ""}
+                                </Badge>
+                              </button>
                             </td>
+
                             <td className="p-3 text-center font-mono">
-                              <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px]">
-                                {u.docsCount}
-                              </Badge>
+                              <button
+                                onClick={() => handleFilterByUser(u.id, "documents")}
+                                className="group inline-flex items-center gap-1"
+                                title="View this user's documents"
+                              >
+                                <Badge
+                                  variant="outline"
+                                  className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px] group-hover:bg-purple-500/20 transition-all cursor-pointer"
+                                >
+                                  <BookOpen className="h-2.5 w-2.5 mr-1" />
+                                  {u.docsCount}
+                                </Badge>
+                              </button>
                             </td>
-                            <td className="p-3 text-center font-mono text-slate-300">
-                              {u.conversationsCount}
+
+                            <td className="p-3 text-center font-mono">
+                              <button
+                                onClick={() => handleFilterByUser(u.id, "conversations")}
+                                className="group inline-flex items-center gap-1"
+                                title="View this user's conversations"
+                              >
+                                <Badge
+                                  variant="outline"
+                                  className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] group-hover:bg-emerald-500/20 transition-all cursor-pointer"
+                                >
+                                  <MessageSquare className="h-2.5 w-2.5 mr-1" />
+                                  {u.conversationsCount}
+                                </Badge>
+                              </button>
                             </td>
-                            <td className="p-3 text-[11px] text-slate-500">
+
+                            <td className="p-3 text-[11px] text-slate-500 font-mono">
                               {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "N/A"}
+                            </td>
+
+                            <td className="p-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleInspectUser(u.id)}
+                                  className="h-7 text-xs bg-emerald-500/10 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/20 font-semibold"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Inspect 360°
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -584,80 +871,137 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
           {activeTab === "pages" && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Search pages by name or Page ID..."
-                    value={pageSearch}
-                    onChange={(e) => setPageSearch(e.target.value)}
-                    className="pl-9 bg-slate-900 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
-                  />
+                <div className="flex flex-wrap items-center gap-2 flex-1">
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Search pages by name or Page ID..."
+                      value={pageSearch}
+                      onChange={(e) => setPageSearch(e.target.value)}
+                      className="pl-9 bg-slate-900 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  {/* Merchant Filter Dropdown */}
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-300">
+                    <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="text-slate-400 font-medium shrink-0">Merchant:</span>
+                    <select
+                      value={userFilter}
+                      onChange={(e) => setUserFilter(e.target.value)}
+                      className="bg-transparent border-none text-white text-xs font-semibold focus:outline-none cursor-pointer pr-1"
+                    >
+                      <option value="all" className="bg-slate-900 text-white">All Merchants ({users.length})</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id} className="bg-slate-900 text-white">
+                          {u.name || "Merchant"} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {userFilter !== "all" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearUserFilter}
+                      className="h-8 text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 gap-1 border border-amber-500/20"
+                    >
+                      <span>✕ Clear</span>
+                    </Button>
+                  )}
                 </div>
-                <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300 self-start sm:self-auto">
+
+                <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300 self-start sm:self-auto shrink-0">
                   {pages.length} Pages Configured
                 </Badge>
               </div>
 
-              <div className="grid gap-3">
-                {pages
-                  .filter(
-                    (p) =>
-                      p.pageName?.toLowerCase().includes(pageSearch.toLowerCase()) ||
-                      p.pageId?.includes(pageSearch),
-                  )
-                  .map((p) => (
-                    <Card key={p.id} className="bg-slate-900/60 border-slate-800 p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-blue-600/15 text-blue-400 flex items-center justify-center shrink-0">
-                            <Facebook className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-bold text-white">{p.pageName}</h3>
-                              <Badge
-                                variant="outline"
-                                className={`text-[10px] px-1.5 py-0 ${
-                                  p.isActive
-                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                    : "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                                }`}
-                              >
-                                {p.isActive ? "Active (Replying)" : "Paused"}
-                              </Badge>
+              {pages.length === 0 ? (
+                <Card className="bg-slate-900/40 border-slate-800 p-8 text-center text-xs text-slate-400">
+                  <Facebook className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                  <p className="font-semibold text-slate-300">No Facebook Pages Found</p>
+                  <p className="mt-1">
+                    {userFilter !== "all"
+                      ? "This merchant has not connected any Facebook pages yet."
+                      : "No Facebook pages have been connected on the platform."}
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid gap-3">
+                  {pages
+                    .filter(
+                      (p) =>
+                        p.pageName?.toLowerCase().includes(pageSearch.toLowerCase()) ||
+                        p.pageId?.includes(pageSearch),
+                    )
+                    .map((p) => (
+                      <Card key={p.id} className="bg-slate-900/60 border-slate-800 p-4 hover:border-slate-700/80 transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-blue-600/15 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+                              <Facebook className="h-5 w-5" />
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-1 font-mono">
-                              <span>Page ID: {p.pageId}</span>
-                              <span>•</span>
-                              <span>Owner: {p.owner?.email || "Unknown"}</span>
-                              <span>•</span>
-                              <span>Tone: {p.botTone}</span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-white">{p.pageName}</h3>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] px-1.5 py-0 ${
+                                    p.isActive
+                                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                      : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                  }`}
+                                >
+                                  {p.isActive ? "Active (Replying)" : "Paused"}
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-700 text-slate-300">
+                                  Tone: {p.botTone}
+                                </Badge>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-1 font-mono">
+                                <span className="flex items-center gap-1">
+                                  Page ID: {p.pageId}
+                                  <button onClick={() => copyToClipboard(p.pageId, "Page ID")} className="hover:text-white">
+                                    <Copy className="h-2.5 w-2.5" />
+                                  </button>
+                                </span>
+                                <span>•</span>
+                                <button
+                                  onClick={() => handleInspectUser(p.owner?.id || p.userId)}
+                                  className="text-emerald-400 hover:underline flex items-center gap-1 font-sans font-medium"
+                                  title="Inspect merchant 360°"
+                                >
+                                  <User className="h-3 w-3" />
+                                  <span>Owner: {p.owner?.name || p.owner?.email || "Merchant"}</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 self-end sm:self-auto">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTogglePage(p.id)}
-                            className="text-xs h-8 bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
-                          >
-                            {p.isActive ? "Pause AI" : "Activate AI"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeletePage(p.id, p.pageName)}
-                            className="text-xs h-8 bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTogglePage(p.id)}
+                              className="text-xs h-8 bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
+                            >
+                              {p.isActive ? "Pause AI" : "Activate AI"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeletePage(p.id, p.pageName)}
+                              className="text-xs h-8 bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </Card>
-                  ))}
-              </div>
+                      </Card>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -667,71 +1011,123 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
           {activeTab === "documents" && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Search documents by title or owner..."
-                    value={docSearch}
-                    onChange={(e) => setDocSearch(e.target.value)}
-                    className="pl-9 bg-slate-900 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
-                  />
+                <div className="flex flex-wrap items-center gap-2 flex-1">
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Search documents by title or owner..."
+                      value={docSearch}
+                      onChange={(e) => setDocSearch(e.target.value)}
+                      className="pl-9 bg-slate-900 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  {/* Merchant Filter Dropdown */}
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-300">
+                    <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="text-slate-400 font-medium shrink-0">Merchant:</span>
+                    <select
+                      value={userFilter}
+                      onChange={(e) => setUserFilter(e.target.value)}
+                      className="bg-transparent border-none text-white text-xs font-semibold focus:outline-none cursor-pointer pr-1"
+                    >
+                      <option value="all" className="bg-slate-900 text-white">All Merchants ({users.length})</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id} className="bg-slate-900 text-white">
+                          {u.name || "Merchant"} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {userFilter !== "all" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearUserFilter}
+                      className="h-8 text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 gap-1 border border-amber-500/20"
+                    >
+                      <span>✕ Clear</span>
+                    </Button>
+                  )}
                 </div>
-                <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300 self-start sm:self-auto">
+
+                <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300 self-start sm:self-auto shrink-0">
                   {documents.length} Files Ingested
                 </Badge>
               </div>
 
-              <div className="grid gap-3">
-                {documents
-                  .filter(
-                    (d) =>
-                      d.title?.toLowerCase().includes(docSearch.toLowerCase()) ||
-                      d.owner?.email?.toLowerCase().includes(docSearch.toLowerCase()),
-                  )
-                  .map((d) => (
-                    <Card key={d.id} className="bg-slate-900/60 border-slate-800 p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="h-10 w-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
-                            <BookOpen className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-bold text-white truncate">{d.title}</h3>
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 uppercase font-mono border-slate-700 text-slate-300">
-                                {d.fileType}
-                              </Badge>
-                              <span>•</span>
-                              <span>{d.charCount?.toLocaleString()} chars</span>
-                              <span>•</span>
-                              <span className="font-mono text-slate-400">{d.owner?.email || "System"}</span>
+              {documents.length === 0 ? (
+                <Card className="bg-slate-900/40 border-slate-800 p-8 text-center text-xs text-slate-400">
+                  <BookOpen className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                  <p className="font-semibold text-slate-300">No Knowledge Base Documents</p>
+                  <p className="mt-1">
+                    {userFilter !== "all"
+                      ? "This merchant has not uploaded any business documents yet."
+                      : "No knowledge files exist on the platform."}
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid gap-3">
+                  {documents
+                    .filter(
+                      (d) =>
+                        d.title?.toLowerCase().includes(docSearch.toLowerCase()) ||
+                        d.owner?.email?.toLowerCase().includes(docSearch.toLowerCase()) ||
+                        d.owner?.name?.toLowerCase().includes(docSearch.toLowerCase()),
+                    )
+                    .map((d) => (
+                      <Card key={d.id} className="bg-slate-900/60 border-slate-800 p-4 hover:border-slate-700/80 transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-10 w-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/20">
+                              <BookOpen className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-sm font-bold text-white truncate">{d.title}</h3>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 uppercase font-mono border-slate-700 text-slate-300">
+                                  {d.fileType}
+                                </Badge>
+                                <span>•</span>
+                                <span>{d.charCount?.toLocaleString()} chars</span>
+                                <span>•</span>
+                                <button
+                                  onClick={() => handleInspectUser(d.owner?.id || d.userId)}
+                                  className="text-emerald-400 hover:underline flex items-center gap-1 font-medium"
+                                  title="Inspect merchant 360°"
+                                >
+                                  <User className="h-3 w-3" />
+                                  <span>{d.owner?.name || d.owner?.email || "Merchant"}</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedDoc(d)}
-                            className="text-xs h-8 bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            Inspect
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteDoc(d.id, d.title)}
-                            className="text-xs h-8 bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedDoc(d)}
+                              className="text-xs h-8 bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              Inspect
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteDoc(d.id, d.title)}
+                              className="text-xs h-8 bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </Card>
-                  ))}
-              </div>
+                      </Card>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -741,76 +1137,132 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
           {activeTab === "conversations" && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Search conversations by customer or page..."
-                    value={convSearch}
-                    onChange={(e) => setConvSearch(e.target.value)}
-                    className="pl-9 bg-slate-900 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
-                  />
+                <div className="flex flex-wrap items-center gap-2 flex-1">
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Search conversations by customer, page or merchant..."
+                      value={convSearch}
+                      onChange={(e) => setConvSearch(e.target.value)}
+                      className="pl-9 bg-slate-900 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  {/* Merchant Filter Dropdown */}
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-300">
+                    <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="text-slate-400 font-medium shrink-0">Merchant:</span>
+                    <select
+                      value={userFilter}
+                      onChange={(e) => setUserFilter(e.target.value)}
+                      className="bg-transparent border-none text-white text-xs font-semibold focus:outline-none cursor-pointer pr-1"
+                    >
+                      <option value="all" className="bg-slate-900 text-white">All Merchants ({users.length})</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id} className="bg-slate-900 text-white">
+                          {u.name || "Merchant"} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {userFilter !== "all" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearUserFilter}
+                      className="h-8 text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 gap-1 border border-amber-500/20"
+                    >
+                      <span>✕ Clear</span>
+                    </Button>
+                  )}
                 </div>
-                <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300 self-start sm:self-auto">
+
+                <Badge variant="outline" className="text-xs bg-slate-900 border-slate-800 text-slate-300 self-start sm:self-auto shrink-0">
                   {conversations.length} Active Conversations
                 </Badge>
               </div>
 
-              <div className="grid gap-3">
-                {conversations
-                  .filter(
-                    (c) =>
-                      c.customerName?.toLowerCase().includes(convSearch.toLowerCase()) ||
-                      c.pageName?.toLowerCase().includes(convSearch.toLowerCase()) ||
-                      c.lastMessage?.toLowerCase().includes(convSearch.toLowerCase()),
-                  )
-                  .map((c) => (
-                    <Card key={c.id} className="bg-slate-900/60 border-slate-800 p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="h-9 w-9 rounded-full bg-primary/20 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">
-                            {(c.customerName || "Customer").slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-xs font-bold text-white">{c.customerName || "Customer"}</h4>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-slate-700 bg-slate-800 text-slate-300">
-                                {c.pageName || "Facebook Page"}
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className={`text-[9px] px-1.5 py-0 ${
-                                  c.status === "ai_replied"
-                                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                                    : "border-blue-500/30 text-blue-400 bg-blue-500/10"
-                                }`}
-                              >
-                                {c.status === "ai_replied" ? "AI Replied" : "Pending"}
-                              </Badge>
+              {conversations.length === 0 ? (
+                <Card className="bg-slate-900/40 border-slate-800 p-8 text-center text-xs text-slate-400">
+                  <MessageSquare className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                  <p className="font-semibold text-slate-300">No Conversations Found</p>
+                  <p className="mt-1">
+                    {userFilter !== "all"
+                      ? "No customer conversations recorded yet for this merchant."
+                      : "No customer conversations exist on the platform."}
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid gap-3">
+                  {conversations
+                    .filter(
+                      (c) =>
+                        c.customerName?.toLowerCase().includes(convSearch.toLowerCase()) ||
+                        c.pageName?.toLowerCase().includes(convSearch.toLowerCase()) ||
+                        c.lastMessage?.toLowerCase().includes(convSearch.toLowerCase()) ||
+                        c.owner?.name?.toLowerCase().includes(convSearch.toLowerCase()) ||
+                        c.owner?.email?.toLowerCase().includes(convSearch.toLowerCase()),
+                    )
+                    .map((c) => (
+                      <Card key={c.id} className="bg-slate-900/60 border-slate-800 p-4 hover:border-slate-700/80 transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="h-9 w-9 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0 border border-emerald-500/30">
+                              {(c.customerName || "Customer").slice(0, 2).toUpperCase()}
                             </div>
-                            <p className="text-xs text-slate-400 mt-1 truncate max-w-lg">
-                              {c.lastMessage || "No message content"}
-                            </p>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-xs font-bold text-white">{c.customerName || "Customer"}</h4>
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 border-slate-700 bg-slate-800 text-slate-300">
+                                  {c.pageName || "Facebook Page"}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[9px] px-1.5 py-0 ${
+                                    c.status === "ai_replied"
+                                      ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                                      : "border-blue-500/30 text-blue-400 bg-blue-500/10"
+                                  }`}
+                                >
+                                  {c.status === "ai_replied" ? "AI Replied" : "Pending"}
+                                </Badge>
+                                {c.owner && (
+                                  <button
+                                    onClick={() => handleInspectUser(c.owner.id || c.userId)}
+                                    className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-mono"
+                                    title="Inspect merchant 360°"
+                                  >
+                                    <User className="h-2.5 w-2.5" />
+                                    <span>{c.owner.name || c.owner.email}</span>
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-400 mt-1 truncate max-w-lg">
+                                {c.lastMessage || "No message content"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                            <span className="text-[11px] text-slate-500 font-mono">
+                              {c.messagesCount} msgs
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedConv(c)}
+                              className="text-xs h-8 bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              View Chat
+                            </Button>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
-                          <span className="text-[11px] text-slate-500 font-mono">
-                            {c.messagesCount} msgs
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedConv(c)}
-                            className="text-xs h-8 bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            View Chat
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-              </div>
+                      </Card>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -829,7 +1281,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                 </Badge>
               </div>
 
-              <Card className="bg-slate-900/60 border-slate-800 overflow-hidden">
+              <Card className="bg-slate-900/60 border-slate-800 overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs text-slate-300">
                     <thead className="bg-slate-900 border-b border-slate-800 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
@@ -1059,6 +1511,454 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
         </main>
       </div>
 
+      {/* ========================================================= */}
+      {/* 🌟 360° USER / MERCHANT DEEP INSPECTION DIALOG */}
+      {/* ========================================================= */}
+      <Dialog open={Boolean(inspectingUserId)} onOpenChange={(open) => !open && setInspectingUserId(null)}>
+        <DialogContent className="max-w-4xl bg-slate-950 border-slate-800 text-slate-100 p-0 overflow-hidden max-h-[90vh] flex flex-col shadow-2xl">
+          {userDetailLoading || !userDetailData ? (
+            <div className="p-12 flex flex-col items-center justify-center space-y-3">
+              <RefreshCw className="h-8 w-8 text-emerald-400 animate-spin" />
+              <p className="text-xs text-slate-400 font-medium">Loading merchant 360° dossier...</p>
+            </div>
+          ) : (
+            <>
+              {/* Modal Top Profile Header */}
+              <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-950/40 via-slate-900/80 to-slate-900 border-b border-slate-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shrink-0 shadow-lg shadow-emerald-500/10">
+                      <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-emerald-400 font-bold text-lg">
+                        {(userDetailData.user.name || "M").slice(0, 2).toUpperCase()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base sm:text-lg font-bold text-white">
+                          {userDetailData.user.name || "Merchant"}
+                        </h2>
+                        <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
+                          Merchant Profile
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-400 mt-1">
+                        <span className="font-mono text-slate-300">{userDetailData.user.email}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 font-mono text-[11px]">
+                          ID: {userDetailData.user.id}
+                          <button
+                            onClick={() => copyToClipboard(userDetailData.user.id, "Merchant ID")}
+                            className="hover:text-white"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </span>
+                        {userDetailData.user.createdAt && (
+                          <>
+                            <span>•</span>
+                            <span className="text-[11px] text-slate-500">
+                              Joined {new Date(userDetailData.user.createdAt).toLocaleDateString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleFilterByUser(userDetailData.user.id)}
+                      className="h-8 text-xs bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25"
+                    >
+                      <Filter className="h-3.5 w-3.5 mr-1" />
+                      Filter Main Dashboard
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 5 KPI Metric Badges Strip */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mt-5">
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                    <span className="text-slate-400 text-[11px]">Facebook Pages</span>
+                    <p className="text-base font-bold font-mono text-white mt-0.5">
+                      {userDetailData.stats.pagesCount}
+                      <span className="text-xs font-normal text-emerald-400 ml-1">
+                        ({userDetailData.stats.activePagesCount} active)
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                    <span className="text-slate-400 text-[11px]">Knowledge Base</span>
+                    <p className="text-base font-bold font-mono text-purple-400 mt-0.5">
+                      {userDetailData.stats.docsCount} docs
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono">
+                      {(userDetailData.stats.totalDocsChars || 0).toLocaleString()} chars
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                    <span className="text-slate-400 text-[11px]">Conversations</span>
+                    <p className="text-base font-bold font-mono text-blue-400 mt-0.5">
+                      {userDetailData.stats.convsCount} chats
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                    <span className="text-slate-400 text-[11px]">AI Replies</span>
+                    <p className="text-base font-bold font-mono text-amber-400 mt-0.5">
+                      {userDetailData.stats.totalAiReplies} msgs
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {userDetailData.stats.totalCustomerMessages} customer
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs col-span-2 sm:col-span-1">
+                    <span className="text-slate-400 text-[11px]">Total Spent</span>
+                    <p className="text-base font-bold font-mono text-emerald-400 mt-0.5">
+                      ৳{(userDetailData.stats.totalSpent || 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-Tab Navigation inside User 360 Dialog */}
+              <div className="flex border-b border-slate-800 bg-slate-900/40 px-5 text-xs font-medium">
+                {[
+                  { id: "pages", label: `Connected Pages (${userDetailData.pages.length})`, icon: Facebook },
+                  { id: "conversations", label: `Conversations (${userDetailData.conversations.length})`, icon: MessageSquare },
+                  { id: "documents", label: `Knowledge Docs (${userDetailData.documents.length})`, icon: BookOpen },
+                  { id: "payments", label: `Billing & Payments (${userDetailData.payments.length})`, icon: CreditCard },
+                ].map((st) => {
+                  const Icon = st.icon;
+                  const isActive = userModalTab === st.id;
+                  return (
+                    <button
+                      key={st.id}
+                      onClick={() => {
+                        setUserModalTab(st.id as any);
+                        setUserModalSelectedConv(null);
+                      }}
+                      className={`flex items-center gap-1.5 py-3 px-3.5 border-b-2 font-medium transition-colors ${
+                        isActive
+                          ? "border-emerald-400 text-emerald-400 font-semibold"
+                          : "border-transparent text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{st.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Modal Body: Active Tab Content */}
+              <div className="p-5 overflow-y-auto flex-1 max-h-[500px] text-xs">
+                {/* 1. Pages Tab */}
+                {userModalTab === "pages" && (
+                  <div className="space-y-3">
+                    {userDetailData.pages.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                        <Facebook className="h-6 w-6 mx-auto mb-1 text-slate-600" />
+                        <p>No Facebook Pages connected by this merchant.</p>
+                      </div>
+                    ) : (
+                      userDetailData.pages.map((p: any) => (
+                        <div
+                          key={p.id}
+                          className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
+                              <Facebook className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-white text-sm">{p.pageName}</h4>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[9px] px-1.5 py-0 ${
+                                    p.isActive
+                                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                      : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                  }`}
+                                >
+                                  {p.isActive ? "Active (Replying)" : "Paused"}
+                                </Badge>
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-slate-700 text-slate-300">
+                                  Tone: {p.botTone}
+                                </Badge>
+                              </div>
+                              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                Page ID: {p.pageId} • Access Token: {p.hasToken ? "Stored" : "Missing"}
+                              </p>
+                              {p.customInstructions && (
+                                <p className="text-[11px] text-slate-400 italic mt-1 bg-slate-950 p-2 rounded border border-slate-800/80">
+                                  Instructions: &ldquo;{p.customInstructions}&rdquo;
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTogglePage(p.id)}
+                              className="h-7 text-xs bg-slate-950 border-slate-800 text-slate-300 hover:text-white"
+                            >
+                              {p.isActive ? "Pause AI" : "Activate AI"}
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* 2. Conversations Tab */}
+                {userModalTab === "conversations" && (
+                  <div>
+                    {userModalSelectedConv ? (
+                      /* Conversation Bubble Inspector */
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                          <button
+                            onClick={() => setUserModalSelectedConv(null)}
+                            className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                            Back to Conversations List
+                          </button>
+                          <div className="text-right text-[11px] text-slate-400">
+                            Page: <span className="text-white font-medium">{userModalSelectedConv.pageName}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto p-2">
+                          {userModalSelectedConv.messages?.map((msg: any) => (
+                            <div
+                              key={msg.id}
+                              className={`flex flex-col ${msg.senderType === "customer" ? "items-start" : "items-end"}`}
+                            >
+                              <div
+                                className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs ${
+                                  msg.senderType === "customer"
+                                    ? "bg-slate-800 text-slate-100 rounded-bl-xs border border-slate-700/60"
+                                    : "bg-emerald-500 text-slate-950 font-medium rounded-br-xs shadow-md shadow-emerald-500/10"
+                                }`}
+                              >
+                                <p>{msg.text}</p>
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-1 px-1 font-mono">
+                                <span>{msg.name || (msg.senderType === "ai" ? "ChatTime Bot" : "Customer")}</span>
+                                <span>•</span>
+                                <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                                {msg.modelUsed && (
+                                  <>
+                                    <span>•</span>
+                                    <Badge variant="outline" className="text-[8px] py-0 px-1 border-emerald-500/30 text-emerald-400">
+                                      {msg.modelUsed}
+                                    </Badge>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Conversations List */
+                      <div className="space-y-2.5">
+                        {userDetailData.conversations.length === 0 ? (
+                          <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                            <MessageSquare className="h-6 w-6 mx-auto mb-1 text-slate-600" />
+                            <p>No conversations recorded yet for this merchant&apos;s pages.</p>
+                          </div>
+                        ) : (
+                          userDetailData.conversations.map((c: any) => (
+                            <div
+                              key={c.id}
+                              className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition-colors"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-8 w-8 rounded-full bg-emerald-500/15 text-emerald-400 font-bold flex items-center justify-center text-xs shrink-0">
+                                  {(c.customerName || "Customer").slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h5 className="font-bold text-white text-xs">{c.customerName || "Customer"}</h5>
+                                    <Badge variant="outline" className="text-[9px] px-1 py-0 border-slate-700 bg-slate-800 text-slate-300">
+                                      {c.pageName}
+                                    </Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[8px] px-1 py-0 ${
+                                        c.status === "ai_replied"
+                                          ? "text-emerald-400 border-emerald-500/30"
+                                          : "text-blue-400 border-blue-500/30"
+                                      }`}
+                                    >
+                                      {c.status === "ai_replied" ? "AI Replied" : "Pending"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 truncate mt-0.5 max-w-md">
+                                    {c.lastMessage || "No message content"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  {c.messagesCount} msgs
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setUserModalSelectedConv(c)}
+                                  className="h-7 text-xs bg-slate-950 border-slate-800 text-slate-300 hover:text-white"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View Messages
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Knowledge Base Documents Tab */}
+                {userModalTab === "documents" && (
+                  <div className="space-y-3">
+                    {userDetailData.documents.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                        <BookOpen className="h-6 w-6 mx-auto mb-1 text-slate-600" />
+                        <p>No training documents uploaded by this merchant.</p>
+                      </div>
+                    ) : (
+                      userDetailData.documents.map((d: any) => (
+                        <div
+                          key={d.id}
+                          className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="h-8 w-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
+                                <BookOpen className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-white text-xs truncate">{d.title}</h4>
+                                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase border-slate-700">
+                                    {d.fileType}
+                                  </Badge>
+                                  <span>•</span>
+                                  <span>{d.charCount?.toLocaleString()} chars</span>
+                                  <span>•</span>
+                                  <span>{d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString() : "Recent"}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedDoc(d)}
+                              className="h-7 text-xs bg-slate-950 border-slate-800 text-slate-300 hover:text-white shrink-0"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              Inspect
+                            </Button>
+                          </div>
+
+                          {d.summary && (
+                            <p className="text-[11px] text-slate-300 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 leading-relaxed">
+                              {d.summary}
+                            </p>
+                          )}
+
+                          {d.keyTopics && d.keyTopics.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {d.keyTopics.map((topic: string, i: number) => (
+                                <Badge key={i} variant="outline" className="bg-slate-950 text-slate-400 border-slate-800 text-[10px]">
+                                  {topic}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Billing & Payments Tab */}
+                {userModalTab === "payments" && (
+                  <div className="space-y-3">
+                    {userDetailData.payments.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                        <CreditCard className="h-6 w-6 mx-auto mb-1 text-slate-600" />
+                        <p>No bKash payments recorded for this merchant.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-slate-800">
+                        <table className="w-full text-left text-xs text-slate-300">
+                          <thead className="bg-slate-900 border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                            <tr>
+                              <th className="p-2.5">TrxID / Payment ID</th>
+                              <th className="p-2.5">Phone</th>
+                              <th className="p-2.5">Amount</th>
+                              <th className="p-2.5">Status</th>
+                              <th className="p-2.5">Date</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60 font-mono">
+                            {userDetailData.payments.map((p: any) => (
+                              <tr key={p.id} className="hover:bg-slate-900/40">
+                                <td className="p-2.5 text-[11px] text-white">
+                                  <div>{p.trxID}</div>
+                                  <div className="text-[9px] text-slate-500">{p.paymentID}</div>
+                                </td>
+                                <td className="p-2.5 text-[11px] text-slate-300">{p.customerPhone}</td>
+                                <td className="p-2.5 font-bold text-emerald-400">
+                                  ৳{Number(p.amount || 0).toLocaleString()}
+                                </td>
+                                <td className="p-2.5">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[9px] ${
+                                      p.transactionStatus === "Completed"
+                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                        : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                    }`}
+                                  >
+                                    {p.transactionStatus}
+                                  </Badge>
+                                </td>
+                                <td className="p-2.5 text-[10px] text-slate-500 font-sans">
+                                  {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "N/A"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Inspect Document Modal */}
       <Dialog open={Boolean(selectedDoc)} onOpenChange={(open) => !open && setSelectedDoc(null)}>
         <DialogContent className="max-w-xl bg-slate-900 border-slate-800 text-slate-100">
@@ -1068,7 +1968,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
               <span>{selectedDoc?.title}</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
-              Uploaded by {selectedDoc?.owner?.email || "System"} • {selectedDoc?.charCount?.toLocaleString()} characters
+              Uploaded by {selectedDoc?.owner?.name || selectedDoc?.owner?.email || "System"} • {selectedDoc?.charCount?.toLocaleString()} characters
             </DialogDescription>
           </DialogHeader>
 
@@ -1132,6 +2032,12 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                   <span>{msg.name || msg.senderType}</span>
                   <span>•</span>
                   <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  {msg.modelUsed && (
+                    <>
+                      <span>•</span>
+                      <span className="text-emerald-400 font-semibold">{msg.modelUsed}</span>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -1141,4 +2047,3 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
     </div>
   );
 }
-
