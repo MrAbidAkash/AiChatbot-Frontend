@@ -164,25 +164,42 @@ export async function getDocuments(filter: {
   const collection = db.collection<BusinessDocument>(COLLECTION_NAME);
 
   const query: any = {};
-  if (filter.userId && filter.userId !== "all") {
-    query.userId = filter.userId;
-  }
   if (filter.pageId) {
     if (filter.pageId === "global") {
-      query.$or = [{ pageId: null }, { pageId: { $exists: false } }];
+      const pageConditions: any[] = [{ pageId: null }, { pageId: { $exists: false } }];
+      if (filter.userId && filter.userId !== "all") {
+        query.$and = [
+          { $or: [{ userId: filter.userId }, { userId: "default" }, { userId: { $exists: false } }] },
+          { $or: pageConditions },
+        ];
+      } else {
+        query.$or = pageConditions;
+      }
     } else if (filter.strictPage) {
       query.pageId = filter.pageId;
     } else {
-      if (query.userId) {
+      // For a specific page, return docs explicitly assigned to this page,
+      // OR global docs (with matching userId or default)
+      if (filter.userId && filter.userId !== "all") {
+        query.$or = [
+          { pageId: filter.pageId },
+          {
+            $and: [
+              { $or: [{ userId: filter.userId }, { userId: "default" }, { userId: { $exists: false } }] },
+              { $or: [{ pageId: null }, { pageId: { $exists: false } }] },
+            ],
+          },
+        ];
+      } else {
         query.$or = [
           { pageId: filter.pageId },
           { pageId: null },
           { pageId: { $exists: false } },
         ];
-      } else {
-        query.pageId = filter.pageId;
       }
     }
+  } else if (filter.userId && filter.userId !== "all") {
+    query.$or = [{ userId: filter.userId }, { userId: "default" }, { userId: { $exists: false } }];
   }
 
   const docs = await collection.find(query).sort({ updatedAt: -1, uploadedAt: -1 }).toArray();
