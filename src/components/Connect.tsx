@@ -26,7 +26,6 @@ import {
   ShieldCheck,
   HelpCircle,
   Laptop,
-  Code2,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -82,7 +81,6 @@ export default function ConnectFacebookPage() {
   const [authenticating, setAuthenticating] = useState(false);
   const [showPageSelectorModal, setShowPageSelectorModal] = useState(false);
   const [showSetupGuideModal, setShowSetupGuideModal] = useState(false);
-  const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [discoveredPages, setDiscoveredPages] = useState<DiscoveredPage[]>([]);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [connectingPages, setConnectingPages] = useState(false);
@@ -437,9 +435,6 @@ export default function ConnectFacebookPage() {
     }
   };
 
-  const webhookUrl = `${origin || "https://chattimeai.com"}/api/webhook/facebook`;
-  const verifyToken = "chattime_ai_webhook_verify_token_2026";
-
   return (
     <div className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -456,16 +451,6 @@ export default function ConnectFacebookPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowWebhookModal(true)}
-              className="gap-1.5 text-xs h-9 border-border text-muted-foreground hover:text-foreground"
-              title="Meta Webhook & Developer Settings"
-            >
-              <Code2 className="h-3.5 w-3.5" />
-              <span>Webhook Settings</span>
-            </Button>
             <Link href="/documents">
               <Button variant="outline" size="sm" className="gap-2 text-xs h-9">
                 <FaBook className="h-3.5 w-3.5 text-primary" />
@@ -984,60 +969,17 @@ export default function ConnectFacebookPage() {
               </div>
             </div>
 
-            {/* Option B: Live Facebook Login App Setup */}
-            <div className="rounded-xl border bg-card p-4 space-y-3">
+            {/* Option B: Connect with Official Facebook Login */}
+            <div className="rounded-xl border bg-card p-4 space-y-2.5">
               <div className="flex items-center gap-2">
                 <FaFacebook className="h-4 w-4 text-[#1877F2]" />
                 <span className="text-sm font-bold text-foreground">
-                  Allowing Friends & Clients to Connect Their Own Pages
+                  Connect via Facebook Login
                 </span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                By default, Meta keeps new Apps in <strong>Development Mode</strong> (which only allows App Admins and invited Testers to log in and connect pages):
+                Click &ldquo;Select &amp; Connect Page&rdquo; on the main screen. A secure Facebook dialog will open, allowing you to select your business pages and authorize ChatTime AI to reply to customer messages automatically.
               </p>
-              
-              <div className="space-y-2 text-xs">
-                <div className="rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 p-2.5">
-                  <p className="font-semibold text-blue-900 dark:text-blue-300 mb-1">
-                    👥 For Friends & Test Clients (No Meta Review Needed):
-                  </p>
-                  <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
-                    <li>Go to Meta Developers &rarr; <strong>App roles</strong> &rarr; <strong>Roles</strong>.</li>
-                    <li>Under <strong>Testers</strong>, click <strong>Add Testers</strong>.</li>
-                    <li>Enter your friend or client&apos;s Facebook profile name or username.</li>
-                    <li>They go to <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="text-primary underline">developers.facebook.com</a> and accept the invite.</li>
-                    <li>Now they can click &ldquo;Connect Facebook Page&rdquo; on your site, and the popup will show <strong>their own pages</strong>!</li>
-                  </ol>
-                </div>
-
-                <div className="rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 p-2.5">
-                  <p className="font-semibold text-emerald-900 dark:text-emerald-300 mb-1">
-                    🌍 For Public SaaS (Anyone in the World):
-                  </p>
-                  <p className="text-muted-foreground text-[11px]">
-                    To let any client connect without manual invites, toggle your Meta App from <strong>Development</strong> to <strong>Live</strong> mode and submit for Meta App Review for <code className="bg-background px-1 rounded">pages_messaging</code> and <code className="bg-background px-1 rounded">pages_show_list</code>.
-                  </p>
-                </div>
-
-                <div className="rounded-lg bg-muted/60 border p-2.5 space-y-1">
-                  <p className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
-                    🎨 Meta App Icon & Details (Solvence Labs):
-                  </p>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    In Meta Developers &rarr; <strong>App settings &rarr; Basic</strong>, select your verified <strong>Solvence Labs</strong> portfolio and upload the ChatTime AI icon (<code className="bg-background px-1 rounded font-mono">public/app-icon.png</code>, 1024&times;1024 px).
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-1">
-                <p className="text-[11px] font-semibold text-muted-foreground mb-1">
-                  Required credentials in your <code className="bg-muted px-1 py-0.5 rounded text-[11px]">.env</code>:
-                </p>
-                <div className="rounded-lg bg-muted p-2.5 font-mono text-[11px] text-foreground space-y-0.5">
-                  <p>FACEBOOK_CLIENT_ID=your_facebook_app_id</p>
-                  <p>FACEBOOK_CLIENT_SECRET=your_facebook_app_secret</p>
-                </div>
-              </div>
             </div>
 
             {/* Option C: Direct Page Access Token Input */}
@@ -1072,106 +1014,6 @@ export default function ConnectFacebookPage() {
               onClick={() => setShowSetupGuideModal(false)}
             >
               Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL 3: HIDDEN / ADVANCED META WEBHOOK & DEVELOPER SETTINGS */}
-      <Dialog open={showWebhookModal} onOpenChange={setShowWebhookModal}>
-        <DialogContent className="max-w-lg p-0 overflow-hidden border-border bg-card">
-          <DialogHeader className="px-5 pt-4 pb-3 border-b border-border bg-muted/20">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-bold">Meta Webhook & Developer Settings</DialogTitle>
-                <DialogDescription className="text-xs">
-                  Technical configuration for Meta Developer App (Messenger → Webhooks)
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="p-5 space-y-4 text-xs">
-            {/* Callback URL */}
-            <div className="rounded-lg border bg-background p-3">
-              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
-                <span>Callback URL</span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(webhookUrl, "Callback URL")}
-                  className="flex items-center gap-1 text-primary hover:underline font-semibold"
-                >
-                  <FaCopy className="h-2.5 w-2.5" /> Copy
-                </button>
-              </div>
-              <p className="text-xs font-mono font-semibold break-all text-foreground">
-                {webhookUrl}
-              </p>
-            </div>
-
-            {/* Verify Token */}
-            <div className="rounded-lg border bg-background p-3">
-              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
-                <span>Verify Token</span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(verifyToken, "Verify Token")}
-                  className="flex items-center gap-1 text-primary hover:underline font-semibold"
-                >
-                  <FaCopy className="h-2.5 w-2.5" /> Copy
-                </button>
-              </div>
-              <p className="text-xs font-mono font-semibold text-foreground">
-                {verifyToken}
-              </p>
-            </div>
-
-            {/* Subscription Fields */}
-            <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1.5">
-              <p className="font-semibold text-foreground text-[11px]">Subscription Fields:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {["messages", "messaging_postbacks", "feed"].map((field) => (
-                  <Badge key={field} variant="outline" className="font-mono text-[10px] bg-background">
-                    ✓ {field}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Development Mode Notice */}
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 space-y-2">
-              <p className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
-                <FaInfoCircle className="h-3.5 w-3.5 text-blue-500" />
-                Meta App Development Mode Info
-              </p>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Meta Apps start in <strong>Development Mode</strong> (only App Admins and invited Testers can log in). To let other clients connect their pages without waiting for App Review, add them as <strong>Testers</strong> in your Meta Developer App.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowWebhookModal(false);
-                  setShowSetupGuideModal(true);
-                }}
-                className="text-xs h-7 gap-1 mt-1"
-              >
-                <HelpCircle className="h-3 w-3 text-primary" />
-                Open Full Client Setup Guide
-              </Button>
-            </div>
-          </div>
-
-          <DialogFooter className="px-5 py-3 border-t border-border bg-muted/20">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowWebhookModal(false)}
-            >
-              Done
             </Button>
           </DialogFooter>
         </DialogContent>
