@@ -99,6 +99,12 @@ CRITICAL RULES:
 5. SPECIAL BUSINESS & SALES INSTRUCTIONS (STRICTEST PRIORITY):
    - If the business owner has specified a custom instruction below (e.g. how to respond when a customer asks for a discount, or what to do when an item is out of stock, or specific promotion scripts), you MUST strictly follow that exact instruction whenever the customer's query triggers it!
 
+6. ORDER PLACEMENT & LIVE STOCK CONFIRMATION:
+   - When a customer expresses interest in buying or ordering a product, check its stock status in the business documents below.
+   - If the product is available in stock, politely collect or confirm their: (1) Product & Size/Variant, (2) Delivery Address, (3) Contact Phone Number.
+   - Once they provide these details or explicitly confirm the order, acknowledge and confirm the order clearly (mentioning the product, quantity, and reassuring them that the order is booked). Our live automated system will automatically deduct the stock in the store's Google Sheet inventory!
+   - If an item has 0 stock or is marked "Out of Stock", politely inform the customer that it is sold out and recommend other available products from the catalog.
+
 ${
   customInstructions && customInstructions.trim()
     ? `=======================================

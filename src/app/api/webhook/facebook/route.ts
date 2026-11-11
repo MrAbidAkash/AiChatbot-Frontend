@@ -15,6 +15,7 @@ import {
   isMessageMidProcessed,
 } from "@/lib/conversations";
 import { getUserWallet } from "@/lib/billing";
+import { handleAutoStockDeductionOnOrder } from "@/lib/google-sheets-stock";
 
 export const dynamic = "force-dynamic";
 
@@ -208,6 +209,19 @@ async function processIncomingMessage(item: ValidEventItem) {
     text: aiReplyText,
     mid: replyMid,
     modelUsed,
+  });
+
+  // 14. If customer confirmed an order, automatically decrement product stock in Google Sheet
+  handleAutoStockDeductionOnOrder({
+    userId: page.userId || "default",
+    pageId: page.pageId,
+    customerMessage,
+    aiReply: aiReplyText,
+    conversationHistory: history,
+    customerName: customerProfile.name,
+    senderPsid,
+  }).catch((stockErr) => {
+    console.warn("[FB Webhook] Background Google Sheet stock update error:", stockErr);
   });
 }
 

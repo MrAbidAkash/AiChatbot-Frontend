@@ -758,7 +758,7 @@ export default function DocumentManager() {
             </div>
 
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              আপনার Google Sheet-এ থাকা স্টক ও দামের তালিকা অথবা Google Doc-এর পলিসি সহজেই AI-তে ইমপোর্ট করুন।
+              আপনার Google Sheet-এ প্রোডাক্ট ও স্টক তালিকা রাখুন — কাস্টমার মেসেঞ্জারে অর্ডার কনফার্ম করলে AI স্বয়ংক্রিয়ভাবে Google Sheet-এ স্টক কমিয়ে আপডেট করবে।
             </p>
 
             <div className="grid grid-cols-2 gap-2 mt-3.5">
@@ -880,7 +880,7 @@ export default function DocumentManager() {
                 const isGoogleDoc = doc.fileType === "doc" || doc.metadata?.source === "google_docs";
                 const isGoogleSheet = doc.fileType === "sheet" || doc.metadata?.source === "google_sheets";
                 const isGoogleDrive = doc.fileType === "drive" || doc.metadata?.source === "google_drive";
-                const isFromGoogle = isGoogleDoc || isGoogleSheet || isGoogleDrive;
+                const isUpdatable = isGoogleDoc || isGoogleSheet;
 
                 return (
                   <div
@@ -898,17 +898,17 @@ export default function DocumentManager() {
                           </p>
                           {isGoogleSheet && (
                             <Badge variant="outline" className="text-[9px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 px-1 py-0 h-4">
-                              Google Sheet
+                              Google Sheet • অটো-আপডেটেবল
                             </Badge>
                           )}
                           {isGoogleDoc && (
                             <Badge variant="outline" className="text-[9px] bg-blue-500/10 text-blue-600 border-blue-500/20 px-1 py-0 h-4">
-                              Google Doc
+                              Google Doc • অটো-আপডেটেবল
                             </Badge>
                           )}
                           {isGoogleDrive && !isGoogleSheet && !isGoogleDoc && (
                             <Badge variant="outline" className="text-[9px] bg-sky-500/10 text-sky-600 border-sky-500/20 px-1 py-0 h-4">
-                              Google Drive
+                              Google Drive (Read-only)
                             </Badge>
                           )}
                         </div>
@@ -963,18 +963,18 @@ export default function DocumentManager() {
                         </select>
                       )}
 
-                      {/* Google Re-sync button */}
-                      {isFromGoogle && (
+                      {/* Google Re-sync button (ONLY for Google Docs and Google Sheets) */}
+                      {isUpdatable && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleSyncDoc(doc._id, doc.title || doc.fileName)}
                           disabled={isSyncingDocId === doc._id}
                           className="h-7 text-[10px] px-2 gap-1 border-primary/30 text-primary hover:bg-primary/10"
-                          title="গুগল ড্রাইভ থেকে সর্বশেষ ডাটা সিঙ্ক করুন"
+                          title="Google Docs বা Google Sheets থেকে লাইভ ডাটা রি-সিঙ্ক ও আপডেট করুন"
                         >
                           <RefreshCw className={`h-3 w-3 ${isSyncingDocId === doc._id ? "animate-spin" : ""}`} />
-                          <span>{isSyncingDocId === doc._id ? "সিঙ্ক হচ্ছে..." : "সিঙ্ক"}</span>
+                          <span>{isSyncingDocId === doc._id ? "আপডেট হচ্ছে..." : "আপডেট / সিঙ্ক"}</span>
                         </Button>
                       )}
 

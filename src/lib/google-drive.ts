@@ -51,6 +51,8 @@ export function getGoogleOAuthUrl(redirectUri: string, state: string): string {
 
   const scopes = [
     "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/documents.readonly",
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
   ].join(" ");
@@ -717,6 +719,14 @@ export async function syncGoogleDocument(
   const doc = await collection.findOne({ _id: docObjectId as any });
   if (!doc) {
     throw new Error("Document not found in database.");
+  }
+
+  // Strictly enforce: ONLY Google Sheets and Google Docs can be updated/synced
+  const isSheet = doc.fileType === "sheet" || doc.metadata?.source === "google_sheets";
+  const isDoc = doc.fileType === "doc" || doc.metadata?.source === "google_docs";
+
+  if (!isSheet && !isDoc) {
+    throw new Error("Only Google Sheets and Google Docs can be dynamically updated. PDF and static Drive files cannot be updated via sync.");
   }
 
   const googleFileId = doc.metadata?.googleFileId;

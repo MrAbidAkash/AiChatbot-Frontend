@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateCustomerReply } from "@/lib/gemini";
 import { getRelevantKnowledge, getDocuments } from "@/lib/knowledge";
 import { getFacebookPageByPageId } from "@/lib/facebook";
+import { handleAutoStockDeductionOnOrder } from "@/lib/google-sheets-stock";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -73,6 +74,21 @@ export async function POST(request: NextRequest) {
       conversationHistory,
     });
 
+    // Auto-deduct stock if order is confirmed
+    let stockUpdateResult = null;
+    try {
+      stockUpdateResult = await handleAutoStockDeductionOnOrder({
+        userId,
+        pageId: targetPageId,
+        customerMessage: message,
+        aiReply: result.reply,
+        conversationHistory,
+        customerName: "Test Customer",
+      });
+    } catch (stockErr) {
+      console.warn("Test AI auto stock deduction warning:", stockErr);
+    }
+
     return NextResponse.json({
       success: true,
       reply: result.reply,
@@ -82,6 +98,7 @@ export async function POST(request: NextRequest) {
       docCount: docs.length,
       docTitles: docs.map((d) => d.title),
       hasKnowledge: Boolean(businessKnowledge && businessKnowledge.trim().length > 0),
+      stockUpdate: stockUpdateResult,
     });
   } catch (error: any) {
     console.error("Test AI error:", error);
