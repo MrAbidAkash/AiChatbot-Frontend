@@ -64,6 +64,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 interface AdminDashboardProps {
@@ -2108,37 +2115,42 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
       </div>
 
       {/* ========================================================= */}
-      {/* 🌟 360° USER / MERCHANT DEEP INSPECTION DIALOG */}
+      {/* 🌟 360° USER / MERCHANT DEEP INSPECTION DRAWER (SLIDE-OVER) */}
       {/* ========================================================= */}
-      <Dialog open={Boolean(inspectingUserId)} onOpenChange={(open) => !open && setInspectingUserId(null)}>
-        <DialogContent className="max-w-4xl bg-[#131314] border-zinc-800 text-zinc-100 p-0 overflow-hidden max-h-[90vh] flex flex-col shadow-2xl">
+      <Sheet open={Boolean(inspectingUserId)} onOpenChange={(open) => !open && setInspectingUserId(null)}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-none sm:w-[50vw] md:w-[50vw] lg:w-[50vw] xl:w-[50vw] h-full p-0 bg-[#131314] border-l border-zinc-800 text-zinc-100 flex flex-col shadow-2xl z-50 overflow-hidden gap-0"
+        >
+          <SheetTitle className="sr-only">Merchant 360° Dossier</SheetTitle>
+          <SheetDescription className="sr-only">Comprehensive merchant account inspection drawer</SheetDescription>
           {userDetailLoading || !userDetailData ? (
-            <div className="p-12 flex flex-col items-center justify-center space-y-3">
+            <div className="p-12 flex flex-col items-center justify-center space-y-3 flex-1">
               <RefreshCw className="h-7 w-7 text-zinc-400 animate-spin" />
               <p className="text-xs text-zinc-400 font-medium">Loading merchant 360° dossier...</p>
             </div>
           ) : (
             <>
-              {/* Modal Top Profile Header */}
-              <div className="p-5 sm:p-6 bg-[#18181b] border-b border-zinc-800">
+              {/* Drawer Top Profile Header */}
+              <div className="p-5 sm:p-6 bg-[#18181b] border-b border-zinc-800 pr-14 shrink-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
+                  <div className="flex items-center gap-3.5 min-w-0">
                     <div className="h-11 w-11 rounded-full bg-zinc-800 border border-zinc-700/60 text-zinc-100 font-medium flex items-center justify-center text-sm shrink-0">
                       {(userDetailData.user.name || "M").slice(0, 2).toUpperCase()}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-base font-semibold text-white">
+                        <h2 className="text-base font-semibold text-white truncate">
                           {userDetailData.user.name || "Merchant"}
                         </h2>
-                        <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px] px-2 py-0.5 rounded font-mono">
+                        <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px] px-2 py-0.5 rounded font-mono shrink-0">
                           Merchant Profile
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2.5 text-xs text-zinc-400 mt-1">
-                        <span className="font-mono text-zinc-300">{userDetailData.user.email}</span>
+                        <span className="font-mono text-zinc-300 truncate">{userDetailData.user.email}</span>
                         <span>•</span>
-                        <span className="flex items-center gap-1 font-mono text-[11px]">
+                        <span className="flex items-center gap-1 font-mono text-[11px] shrink-0">
                           ID: {userDetailData.user.id}
                           <button
                             onClick={() => copyToClipboard(userDetailData.user.id, "Merchant ID")}
@@ -2150,7 +2162,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                         {userDetailData.user.createdAt && (
                           <>
                             <span>•</span>
-                            <span className="text-[11px] text-zinc-500 font-mono">
+                            <span className="text-[11px] text-zinc-500 font-mono shrink-0">
                               Joined {new Date(userDetailData.user.createdAt).toLocaleDateString()}
                             </span>
                           </>
@@ -2159,7 +2171,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
@@ -2220,8 +2232,8 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                 </div>
               </div>
 
-              {/* Sub-Tab Navigation inside User 360 Dialog */}
-              <div className="flex border-b border-zinc-800 bg-[#18181b]/50 px-5 text-xs font-medium">
+              {/* Sub-Tab Navigation inside User 360 Drawer */}
+              <div className="flex border-b border-zinc-800 bg-[#18181b]/50 px-5 text-xs font-medium shrink-0 overflow-x-auto">
                 {[
                   { id: "pages", label: `Connected Pages (${userDetailData.pages.length})`, icon: Facebook },
                   { id: "conversations", label: `Conversations (${userDetailData.conversations.length})`, icon: MessageSquare },
@@ -2237,7 +2249,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                         setUserModalTab(st.id as any);
                         setUserModalSelectedConv(null);
                       }}
-                      className={`flex items-center gap-1.5 py-3 px-3.5 border-b-2 font-medium transition-colors cursor-pointer ${
+                      className={`flex items-center gap-1.5 py-3 px-3.5 border-b-2 font-medium transition-colors cursor-pointer whitespace-nowrap ${
                         isActive
                           ? "border-white text-white font-medium"
                           : "border-transparent text-zinc-400 hover:text-zinc-200"
@@ -2250,8 +2262,8 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                 })}
               </div>
 
-              {/* Modal Body: Active Tab Content */}
-              <div className="p-5 overflow-y-auto flex-1 max-h-[500px] text-xs">
+              {/* Drawer Body: Full Height Active Tab Content */}
+              <div className="p-5 overflow-y-auto flex-1 text-xs">
                 {/* 1. Pages Tab */}
                 {userModalTab === "pages" && (
                   <div className="space-y-3">
@@ -2529,8 +2541,8 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
               </div>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Inspect Document Modal */}
       <Dialog open={Boolean(selectedDoc)} onOpenChange={(open) => !open && setSelectedDoc(null)}>
