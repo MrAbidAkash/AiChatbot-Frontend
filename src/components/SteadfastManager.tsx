@@ -61,7 +61,6 @@ import { SteadfastParcel } from "@/lib/steadfast";
 interface ConfigState {
   isConfigured: boolean;
   apiKeyMasked: string;
-  baseUrl: string;
   updatedAt?: string;
 }
 
@@ -70,7 +69,6 @@ function SteadfastManagerContent() {
   const [config, setConfig] = useState<ConfigState>({
     isConfigured: false,
     apiKeyMasked: "",
-    baseUrl: "https://portal.steadfast.com.bd/api/v1",
   });
   const [configLoading, setConfigLoading] = useState(true);
 
@@ -97,7 +95,6 @@ function SteadfastManagerContent() {
   // Settings form state
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [secretKeyInput, setSecretKeyInput] = useState("");
-  const [baseUrlInput, setBaseUrlInput] = useState("https://portal.steadfast.com.bd/api/v1");
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -245,7 +242,6 @@ function SteadfastManagerContent() {
         body: JSON.stringify({
           apiKey: apiKeyInput.trim(),
           secretKey: secretKeyInput.trim(),
-          baseUrl: baseUrlInput.trim(),
           testConnection: true,
         }),
       });
@@ -1029,19 +1025,6 @@ function SteadfastManagerContent() {
                   {showSecretKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
               </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">API Base URL (Default)</label>
-              <Input
-                value={baseUrlInput}
-                onChange={(e) => setBaseUrlInput(e.target.value)}
-                placeholder="https://portal.steadfast.com.bd/api/v1"
-                className="h-9 text-xs font-mono bg-muted/30"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                ডিফল্ট: <code>https://portal.steadfast.com.bd/api/v1</code> (পরিবর্তন না করাই ভালো)
-              </p>
             </div>
 
             <DialogFooter className="pt-2">
