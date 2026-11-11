@@ -9,7 +9,7 @@ export interface BusinessDocument {
   pageId?: string; // Optional: specific to a Facebook Page or all pages
   title: string;
   fileName: string;
-  fileType: "pdf" | "txt" | "docx" | "csv" | "faq" | "manual";
+  fileType: "pdf" | "txt" | "docx" | "csv" | "faq" | "manual" | "sheet" | "doc" | "drive";
   size: string;
   content: string; // Plain text content used by AI
   summary?: string;
@@ -51,7 +51,7 @@ export async function saveDocument(doc: {
   pageId?: string;
   title: string;
   fileName: string;
-  fileType: "pdf" | "txt" | "docx" | "csv" | "faq" | "manual";
+  fileType: "pdf" | "txt" | "docx" | "csv" | "faq" | "manual" | "sheet" | "doc" | "drive";
   size?: string;
   content: string;
   metadata?: Record<string, any>;

@@ -4,6 +4,38 @@ import { deleteDocument } from "@/lib/knowledge";
 import { getDb } from "@/lib/db";
 import { ObjectId } from "mongodb";
 
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await context.params;
+    if (!id) {
+      return NextResponse.json({ error: "Document ID is required" }, { status: 400 });
+    }
+
+    const db = getDb();
+    const collection = db.collection("business_knowledge");
+
+    let filter: any;
+    try {
+      filter = { _id: new ObjectId(id) };
+    } catch {
+      filter = { _id: id };
+    }
+
+    const doc = await collection.findOne(filter);
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ document: doc });
+  } catch (error: any) {
+    console.error("Get document error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> },
