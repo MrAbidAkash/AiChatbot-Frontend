@@ -27,6 +27,7 @@ import {
   ExternalLink,
   Upload,
   AlertTriangle,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -848,6 +849,41 @@ export default function Dashboard({ session }: DashboardProps) {
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>AI টেস্ট কনসোল চালান</span>
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Steadfast Courier Quick Action Card */}
+          <Card className="border-border/80 bg-card shadow-2xs">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-primary" />
+                  <span>Steadfast কুরিয়ার</span>
+                </CardTitle>
+                <Link
+                  href="/courier"
+                  className="text-[10px] text-primary hover:underline font-medium flex items-center gap-0.5"
+                >
+                  <span>ম্যানেজ করুন</span>
+                  <ChevronRight className="h-2.5 w-2.5" />
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0 text-xs">
+              <p className="text-[11px] text-muted-foreground">
+                ড্যাশবোর্ড হতে সরাসরি Steadfast কুরিয়ারে ১-ক্লিকে পার্সেল পাঠান ও লাইভ ট্র্যাকিং করুন।
+              </p>
+              <div className="flex items-center gap-2">
+                <Link href="/courier" className="flex-1">
+                  <Button
+                    size="sm"
+                    className="w-full text-xs h-8 gap-1.5 bg-primary text-primary-foreground font-medium"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>নতুন পার্সেল তৈরি করুন</span>
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>

@@ -26,6 +26,7 @@ import {
   Zap,
   Upload,
   Sliders,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -131,6 +132,17 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
       ],
     },
     {
+      group: "ডেলিভারি ও কুরিয়ার",
+      items: [
+        {
+          name: "কুরিয়ার ও পার্সেল",
+          href: "/courier",
+          icon: Truck,
+          badge: "Steadfast",
+        },
+      ],
+    },
+    {
       group: "বিলিং ও একাউন্ট",
       items: [
         {
@@ -151,6 +163,7 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
     if (pathname === "/documents") return "ডকুমেন্টস ও ফাইল আপলোড";
     if (pathname === "/rules" || pathname === "/dashboard/training") return "শপের নিয়মাবলী ও পলিসি";
     if (pathname === "/playground") return "লাইভ AI টেস্ট কনসোল";
+    if (pathname === "/courier") return "কুরিয়ার ও পার্সেল (Steadfast)";
     if (pathname === "/wallet" || pathname === "/billing") return "ব্যালেন্স ও ওয়ালেট রিচার্জ";
     if (pathname === "/pricing") return "ব্যালেন্স ও রিচার্জ";
     return "ড্যাশবোর্ড";

@@ -18,6 +18,7 @@ import {
   FaSync,
 } from "react-icons/fa";
 import Link from "next/link";
+import { Truck } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -375,6 +376,14 @@ export default function ConversationInbox() {
                 </div>
 
                 <div className="flex items-center space-x-2">
+                  <Link
+                    href={`/courier?name=${encodeURIComponent(selectedConv.customerName)}`}
+                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium shadow-2xs"
+                    title="এই কাস্টমারের জন্য Steadfast পার্সেল বুক করুন"
+                  >
+                    <Truck size={12} />
+                    <span>পার্সেল পাঠান</span>
+                  </Link>
                   <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
                     Auto-Reply Active
                   </span>
