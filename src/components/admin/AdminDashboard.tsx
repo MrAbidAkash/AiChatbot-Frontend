@@ -406,9 +406,12 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   const activeFilteredUser = userFilter !== "all" ? users.find((u) => u.id === userFilter) : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
+    <div className="min-h-screen bg-[#080b11] text-slate-100 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-white relative">
+      {/* Ambient background glow */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[360px] bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
+
       {/* Top Navigation Bar */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-40 px-4 sm:px-8 py-3 flex items-center justify-between">
+      <header className="border-b border-slate-800/60 bg-[#080b11]/80 backdrop-blur-xl sticky top-0 z-40 px-4 sm:px-8 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 flex items-center justify-center shadow-lg shadow-emerald-500/20">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
@@ -418,9 +421,10 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-white tracking-tight">
-                ChatTime AI Master Admin
+                ChatTime AI <span className="text-emerald-400 font-semibold">Master Admin</span>
               </h1>
-              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px] px-1.5 py-0 font-mono">
+              <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Super Admin
               </Badge>
             </div>
@@ -446,7 +450,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
             </div>
           )}
 
-          <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/50 border border-slate-700/60 text-xs text-slate-300">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-mono text-[11px]">{adminEmail}</span>
           </div>
@@ -456,7 +460,9 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
             size="sm"
             onClick={() => {
               fetchStats(true);
-              if (activeTab !== "overview" && activeTab !== "developer") {
+              if (activeTab === "credits") {
+                fetchCreditsData();
+              } else if (activeTab !== "overview" && activeTab !== "developer") {
                 fetchTabData(activeTab, userFilter);
               }
             }}
@@ -482,10 +488,11 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
       {/* Main Container */}
       <div className="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 gap-6">
         {/* Navigation Sidebar */}
-        <aside className="lg:w-60 shrink-0 space-y-1">
+        <aside className="lg:w-64 shrink-0 space-y-1">
           {[
             { id: "overview", label: "Executive Overview", icon: Activity, count: null },
             { id: "users", label: "Registered Users", icon: Users, count: stats?.metrics?.totalUsers },
+            { id: "credits", label: "Free Credits & Wallets", icon: Gift, count: creditStats?.totalGrantsCount || null },
             { id: "pages", label: "Connected Pages", icon: Facebook, count: stats?.metrics?.totalPages },
             { id: "documents", label: "Knowledge Base", icon: BookOpen, count: stats?.metrics?.totalDocuments },
             { id: "conversations", label: "Live Conversations", icon: MessageSquare, count: stats?.metrics?.totalConversations },
@@ -500,18 +507,20 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                   isActive
-                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
+                    ? "bg-slate-800/90 text-white border border-slate-700/80 font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <Icon className={`h-4 w-4 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
+                  <div className={`p-1 rounded-lg ${isActive ? "bg-emerald-500/20 text-emerald-400" : "text-slate-500"}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
                   <span>{tab.label}</span>
                 </div>
                 {tab.count !== null && tab.count !== undefined && (
                   <span
-                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
-                      isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-800 text-slate-400"
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                      isActive ? "bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30" : "bg-slate-800 text-slate-400"
                     }`}
                   >
                     {tab.count}
@@ -931,6 +940,19 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={() => {
+                                    setSelectedCreditUser(u.id);
+                                    setActiveTab("credits");
+                                  }}
+                                  className="h-7 text-xs bg-amber-500/10 border-amber-500/25 text-amber-300 hover:bg-amber-500/20 font-medium"
+                                  title="মার্চেন্টকে ফ্রি ক্রেডিট উপহার দিন"
+                                >
+                                  <Gift className="h-3 w-3 mr-1" />
+                                  Gift Credits
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => handleInspectUser(u.id)}
                                   className="h-7 text-xs bg-emerald-500/10 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/20 font-semibold"
                                 >
@@ -941,6 +963,482 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                             </td>
                           </tr>
                         ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: FREE CREDITS & WALLETS (ADMIN GRANT SYSTEM) */}
+          {/* ========================================================= */}
+          {activeTab === "credits" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Header Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border border-amber-500/20 shadow-xl">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                    <Gift className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                      Free Credits & Merchant Wallets
+                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px]">
+                        Admin Gift Suite
+                      </Badge>
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      মার্চেন্টদের অ্যাকাউন্টে সরাসরি ফ্রি ক্রেডিট প্রদান করুন এবং তাদের লাইভ ওয়ালেট ও খরচ পর্যবেক্ষণ করুন।
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchCreditsData}
+                  disabled={creditLoading}
+                  className="h-8 text-xs bg-slate-900 border-slate-800 text-slate-300 hover:text-white shrink-0 gap-1.5"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${creditLoading ? "animate-spin text-amber-400" : ""}`} />
+                  <span>ওয়ালেট রিফ্রেশ</span>
+                </Button>
+              </div>
+
+              {/* 4 Top KPI Stat Cards */}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <Card className="bg-slate-900/80 border-slate-800 shadow-xl">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span>মোট ফ্রি গিফট ক্রেডিট</span>
+                      <Coins className="h-4 w-4 text-amber-400" />
+                    </div>
+                    <p className="mt-2 text-2xl font-bold font-mono text-white">
+                      {creditLoading ? "..." : (creditStats?.totalGiftedCredits || 0).toLocaleString()} টি
+                    </p>
+                    <p className="mt-1 text-[11px] text-amber-400 font-medium">
+                      ৳{((creditStats?.totalGiftedCredits || 0) * 0.5).toFixed(2)} সমমূল্য
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-slate-900/80 border-slate-800 shadow-xl">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span>সফল অনুদান সংখ্যা</span>
+                      <Award className="h-4 w-4 text-emerald-400" />
+                    </div>
+                    <p className="mt-2 text-2xl font-bold font-mono text-white">
+                      {creditLoading ? "..." : creditStats?.totalGrantsCount || 0} বার
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">অ্যাডমিন কর্তৃক প্রদত্ত</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-slate-900/80 border-slate-800 shadow-xl">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span>মোট সক্রিয় মার্চেন্ট</span>
+                      <Users className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <p className="mt-2 text-2xl font-bold font-mono text-white">
+                      {creditsMerchants.length} জন
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {creditsMerchants.filter((m) => m.wallet?.remainingReplies > 0).length} জনের ব্যালেন্স অবশিষ্ট আছে
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-slate-900/80 border-slate-800 shadow-xl">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span>শূন্য ব্যালেন্স মার্চেন্ট</span>
+                      <BadgeAlert className="h-4 w-4 text-rose-400" />
+                    </div>
+                    <p className="mt-2 text-2xl font-bold font-mono text-rose-400">
+                      {creditsMerchants.filter((m) => m.wallet?.remainingReplies === 0).length} জন
+                    </p>
+                    <p className="mt-1 text-[11px] text-rose-400/80">রিচার্জ বা ফ্রি ক্রেডিট প্রয়োজন</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Middle Section: Quick Grant Card & Merchant Directory */}
+              <div className="grid gap-6 lg:grid-cols-12">
+                {/* Left: Give Free Credits Card (5 cols) */}
+                <div className="lg:col-span-5">
+                  <Card className="bg-slate-900/80 border-slate-800 shadow-xl sticky top-20">
+                    <CardHeader className="pb-3 border-b border-slate-800/80">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-white">
+                        <PlusCircle className="h-4 w-4 text-amber-400" />
+                        <span>মার্চেন্টকে ফ্রি ক্রেডিট প্রদান (Give Free Credits)</span>
+                      </CardTitle>
+                      <CardDescription className="text-xs text-slate-400">
+                        যেকোনো মার্চেন্টকে এক ক্লিকে ফ্রি মেসেজ ক্রেডিট দিন
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-5 space-y-4 text-xs">
+                      {/* Target User Selector */}
+                      <div>
+                        <label className="font-semibold text-slate-300 block mb-1">
+                          মার্চেন্ট নির্বাচন করুন:
+                        </label>
+                        <select
+                          value={selectedCreditUser}
+                          onChange={(e) => setSelectedCreditUser(e.target.value)}
+                          className="w-full h-9 rounded-lg bg-slate-950 border border-slate-800 px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        >
+                          <option value="">-- মার্চেন্ট সিলেক্ট করুন --</option>
+                          {creditsMerchants.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name || "Merchant"} ({m.email}) — বাকি: {m.wallet?.remainingReplies || 0} টি
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Display current user balance info */}
+                      {selectedCreditUser && (() => {
+                        const target = creditsMerchants.find((m) => m.id === selectedCreditUser);
+                        if (!target) return null;
+                        return (
+                          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">বর্তমান অবশিষ্ট:</span>
+                              <span className="font-mono font-bold text-emerald-400">
+                                {target.wallet?.remainingReplies || 0} টি রিপ্লাই (৳{target.wallet?.remainingBalance || "0.00"})
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400">ব্যবহৃত ক্রেডিট:</span>
+                              <span className="font-mono text-slate-300">
+                                {target.wallet?.usedCredits || 0} টি
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400">প্ল্যান স্ট্যাটাস:</span>
+                              <Badge className={`text-[9px] py-0 px-1.5 ${
+                                target.wallet?.isPaidUser
+                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                  : target.wallet?.remainingReplies > 0
+                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                  : "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                              }`}>
+                                {target.wallet?.planTitle || "Free Trial"}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Preset Quick Buttons */}
+                      <div>
+                        <label className="font-semibold text-slate-300 block mb-1.5">
+                          দ্রুত অ্যামাউন্ট সিলেক্ট করুন:
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { count: "50", label: "+৫০ টি (৳২৫)" },
+                            { count: "100", label: "+১০০ টি (৳৫০)" },
+                            { count: "250", label: "+২৫০ টি (৳১২৫)" },
+                            { count: "500", label: "+৫০০ টি (৳২৫০)" },
+                            { count: "1000", label: "+১,০০০ টি (৳৫০০)" },
+                            { count: "2500", label: "+২,৫০০ টি (৳১,২৫০)" },
+                          ].map((preset) => (
+                            <button
+                              key={preset.count}
+                              type="button"
+                              onClick={() => setGrantCreditsAmount(preset.count)}
+                              className={`py-1.5 px-2 rounded-lg border text-center text-[11px] font-medium transition-all ${
+                                grantCreditsAmount === preset.count
+                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40 font-semibold shadow-xs"
+                                  : "bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Credit Amount Input */}
+                      <div>
+                        <label className="font-semibold text-slate-300 block mb-1">
+                          ক্রেডিট সংখ্যা (Custom Replies):
+                        </label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={grantCreditsAmount}
+                            onChange={(e) => setGrantCreditsAmount(e.target.value)}
+                            placeholder="যেমন: ১০০"
+                            className="bg-slate-950 border-slate-800 text-xs h-9 text-white pl-8 font-mono"
+                          />
+                          <Coins className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          সমমূল্য আনুমানিক: ৳{(parseInt(grantCreditsAmount || "0", 10) * 0.5).toFixed(2)} (৫০ পয়সা/রিপ্লাই)
+                        </p>
+                      </div>
+
+                      {/* Note / Reason */}
+                      <div>
+                        <label className="font-semibold text-slate-300 block mb-1">
+                          কারণ / রেফারেন্স নোট:
+                        </label>
+                        <Input
+                          type="text"
+                          value={grantCreditsNote}
+                          onChange={(e) => setGrantCreditsNote(e.target.value)}
+                          placeholder="যেমন: বিশেষ ফ্রি ট্রায়াল বোনাস / সাপোর্ট সৌজন্য"
+                          className="bg-slate-950 border-slate-800 text-xs h-9 text-white placeholder:text-slate-500"
+                        />
+                      </div>
+
+                      {/* Submit Button */}
+                      <Button
+                        onClick={() => handleGrantCredit()}
+                        disabled={grantingCredit || !selectedCreditUser}
+                        className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs h-9 shadow-lg shadow-amber-500/20 cursor-pointer"
+                      >
+                        {grantingCredit ? (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            ক্রেডিট প্রদান করা হচ্ছে...
+                          </>
+                        ) : (
+                          <>
+                            <Gift className="h-4 w-4 mr-1.5" />
+                            মার্চেন্টকে ফ্রি ক্রেডিট প্রদান করুন
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right: Merchants Wallets Directory (7 cols) */}
+                <div className="lg:col-span-7 space-y-4">
+                  <Card className="bg-slate-900/80 border-slate-800 shadow-xl overflow-hidden">
+                    <CardHeader className="pb-3 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-white">
+                          <Wallet className="h-4 w-4 text-emerald-400" />
+                          <span>মার্চেন্ট ওয়ালেট ডিরেক্টরি</span>
+                        </CardTitle>
+                        <CardDescription className="text-xs text-slate-400">
+                          সকল মার্চেন্টের বর্তমান ক্রেডিট ব্যালেন্স ও ব্যবহারের বিবরণ
+                        </CardDescription>
+                      </div>
+
+                      {/* Search in Wallets */}
+                      <div className="relative w-full sm:w-56">
+                        <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-500" />
+                        <Input
+                          placeholder="মার্চেন্ট খুঁজুন..."
+                          value={creditSearch}
+                          onChange={(e) => setCreditSearch(e.target.value)}
+                          className="pl-8 bg-slate-950 border-slate-800 text-xs h-8 text-white placeholder:text-slate-500"
+                        />
+                      </div>
+                    </CardHeader>
+
+                    {/* Filter Pills */}
+                    <div className="p-3 bg-slate-950/60 border-b border-slate-800/60 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+                      {[
+                        { id: "all", label: `সকল মার্চেন্ট (${creditsMerchants.length})` },
+                        {
+                          id: "zero",
+                          label: `ব্যালেন্স শেষ (${creditsMerchants.filter((m) => m.wallet?.remainingReplies === 0).length})`,
+                        },
+                        {
+                          id: "trial",
+                          label: `ফ্রি ট্রায়াল (${creditsMerchants.filter((m) => !m.wallet?.isPaidUser).length})`,
+                        },
+                        {
+                          id: "paid",
+                          label: `পেইড প্যাক (${creditsMerchants.filter((m) => m.wallet?.isPaidUser).length})`,
+                        },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => setCreditFilter(f.id as any)}
+                          className={`px-2.5 py-1 rounded-lg border transition-all whitespace-nowrap font-medium ${
+                            creditFilter === f.id
+                              ? "bg-slate-800 text-white border-slate-700 shadow-xs"
+                              : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-slate-300">
+                        <thead className="bg-slate-900/90 border-b border-slate-800 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                          <tr>
+                            <th className="p-3">মার্চেন্ট</th>
+                            <th className="p-3 text-center">অবশিষ্ট ক্রেডিট</th>
+                            <th className="p-3 text-center">ব্যালেন্স (৳)</th>
+                            <th className="p-3 text-center">ব্যবহার</th>
+                            <th className="p-3 text-right">অ্যাকশন</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {creditsMerchants
+                            .filter((m) => {
+                              const matchesSearch =
+                                m.name?.toLowerCase().includes(creditSearch.toLowerCase()) ||
+                                m.email?.toLowerCase().includes(creditSearch.toLowerCase()) ||
+                                m.id?.toLowerCase().includes(creditSearch.toLowerCase());
+                              if (!matchesSearch) return false;
+                              if (creditFilter === "zero") return m.wallet?.remainingReplies === 0;
+                              if (creditFilter === "trial") return !m.wallet?.isPaidUser;
+                              if (creditFilter === "paid") return Boolean(m.wallet?.isPaidUser);
+                              return true;
+                            })
+                            .map((m) => {
+                              const remaining = m.wallet?.remainingReplies ?? 0;
+                              const isZero = remaining === 0;
+                              const isLow = remaining > 0 && remaining <= 20;
+
+                              return (
+                                <tr
+                                  key={m.id}
+                                  className={`hover:bg-slate-800/30 transition-colors ${
+                                    selectedCreditUser === m.id ? "bg-amber-500/5" : ""
+                                  }`}
+                                >
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="h-8 w-8 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                        {(m.name || m.email || "M").slice(0, 2).toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-white truncate max-w-[150px]">
+                                          {m.name || "Merchant"}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 font-mono truncate max-w-[150px]">
+                                          {m.email}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td className="p-3 text-center font-mono">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] font-semibold ${
+                                        isZero
+                                          ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                          : isLow
+                                          ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                          : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                      }`}
+                                    >
+                                      {remaining} টি বাকি
+                                    </Badge>
+                                  </td>
+
+                                  <td className="p-3 text-center font-mono font-semibold text-slate-200">
+                                    ৳{m.wallet?.remainingBalance || "0.00"}
+                                  </td>
+
+                                  <td className="p-3 text-center font-mono text-[11px] text-slate-400">
+                                    <span>{m.wallet?.usedCredits || 0}</span>
+                                    <span className="text-slate-600"> / </span>
+                                    <span>{m.wallet?.totalAllocatedCredits || 0}</span>
+                                  </td>
+
+                                  <td className="p-3 text-right">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedCreditUser(m.id);
+                                        toast.info(`"${m.name || m.email}" সিলেক্ট করা হয়েছে`);
+                                      }}
+                                      className={`h-7 text-xs ${
+                                        selectedCreditUser === m.id
+                                          ? "bg-amber-500/20 border-amber-500/40 text-amber-300 font-bold"
+                                          : "bg-slate-900 border-slate-800 text-slate-300 hover:text-white"
+                                      }`}
+                                    >
+                                      <Gift className="h-3 w-3 mr-1" />
+                                      ক্রেডিট দিন
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Bottom Card: Gift History Audit Log */}
+              <Card className="bg-slate-900/80 border-slate-800 shadow-xl overflow-hidden">
+                <CardHeader className="pb-3 border-b border-slate-800/80">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-white">
+                    <History className="h-4 w-4 text-amber-400" />
+                    <span>ফ্রি ক্রেডিট অনুদানের ইতিহাস (Gift History Audit Log)</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-400">
+                    সাম্প্রতিক অ্যাডমিন কর্তৃক প্রদত্ত সকল ফ্রি ক্রেডিট ও রেফারেন্স নোট
+                  </CardDescription>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-900/90 border-b border-slate-800 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                      <tr>
+                        <th className="p-3">তারিখ ও সময়</th>
+                        <th className="p-3">মার্চেন্ট</th>
+                        <th className="p-3 text-center">প্রদত্ত ক্রেডিট</th>
+                        <th className="p-3 text-center">সমমূল্য (৳)</th>
+                        <th className="p-3">কারণ / নোট</th>
+                        <th className="p-3 text-right">প্রদানকারী অ্যাডমিন</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {creditHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-500">
+                            এখনো কোনো ফ্রি ক্রেডিট রেকর্ড নেই।
+                          </td>
+                        </tr>
+                      ) : (
+                        creditHistory.map((h) => (
+                          <tr key={h.id} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="p-3 font-mono text-[11px] text-slate-400">
+                              {h.createdAt ? new Date(h.createdAt).toLocaleString("bn-BD") : "N/A"}
+                            </td>
+                            <td className="p-3">
+                              <p className="font-semibold text-white">{h.userName}</p>
+                              <p className="text-[10px] text-slate-500 font-mono">{h.userEmail}</p>
+                            </td>
+                            <td className="p-3 text-center font-mono">
+                              <Badge className="bg-amber-500/15 text-amber-300 border-amber-500/30 font-bold">
+                                +{h.credits} টি
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-center font-mono font-semibold text-slate-200">
+                              ৳{(h.amount || h.credits * 0.5).toFixed(2)}
+                            </td>
+                            <td className="p-3 text-slate-300 max-w-xs truncate">
+                              {h.note || "Free Promotional Credit"}
+                            </td>
+                            <td className="p-3 text-right font-mono text-[11px] text-slate-400">
+                              {h.adminEmail || "Admin"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
