@@ -79,6 +79,22 @@ export default function PrivacyPolicy() {
                 </ul>
               </div>
 
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-foreground mb-3 flex items-center">
+                  <FaShieldAlt className="mr-2 text-blue-500" />
+                  Google User Data (Drive, Docs & Sheets)
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  When you voluntarily connect your Google Account or import business files:
+                </p>
+                <ul className="space-y-2 text-muted-foreground text-sm">
+                  <li>• <strong>Google Account Profile:</strong> Your name, email address, and avatar to verify your account connection.</li>
+                  <li>• <strong>Google Drive Documents:</strong> Read access to files (PDFs, Docs, Sheets) that you explicitly select to import into your AI chatbot knowledge base.</li>
+                  <li>• <strong>Google Docs:</strong> Text content from store policies, guides, and FAQs you choose to index for customer support.</li>
+                  <li>• <strong>Google Sheets:</strong> Product inventory tables (product names, pricing, and stock counts). We read this data for AI answers and write/decrement stock values when a customer confirms an order on Messenger.</li>
+                </ul>
+              </div>
+
               <div className="bg-success/5 rounded-xl p-6">
                 <h3 className="font-semibold text-lg text-foreground mb-3 flex items-center">
                   <FaUserSecret className="mr-2 text-success" />
@@ -134,6 +150,82 @@ export default function PrivacyPolicy() {
                   <li>• Develop new capabilities</li>
                   <li>• Provide customer support</li>
                 </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Google API Services User Data Policy & Limited Use Disclosure */}
+          <section className="mb-12 border-2 border-primary/20 bg-primary/5 rounded-2xl p-6 md:p-8">
+            <h2 className="text-2xl font-bold text-foreground mb-4 flex items-center">
+              <FaShieldAlt className="mr-3 text-primary" />
+              Google API Services User Data Policy (Limited Use Disclosure)
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              ChatTime AI integrates with Google Workspace APIs (Google Drive, Google Docs, and Google Sheets) to enable store merchants to import their business knowledge and synchronize inventory stock in real-time.
+            </p>
+
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  1. Limited Use Requirements & Strict Adherence
+                </p>
+                <p className="leading-relaxed">
+                  ChatTime AI&apos;s use and transfer to any other app of information received from Google APIs will adhere to{" "}
+                  <a
+                    href="https://developers.google.com/terms/api-services-user-data-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary font-semibold underline"
+                  >
+                    Google API Services User Data Policy
+                  </a>
+                  , including the Limited Use requirements.
+                </p>
+              </div>
+
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  2. No Sale or Transfer of Google User Data
+                </p>
+                <p className="leading-relaxed">
+                  We do not sell, rent, lease, or transfer your Google user data to any third parties, advertising networks, data brokers, or information resellers under any circumstances.
+                </p>
+              </div>
+
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  3. No Advertising Use
+                </p>
+                <p className="leading-relaxed">
+                  Data accessed via Google Workspace APIs is never used to serve personalized, retargeted, or interest-based advertisements.
+                </p>
+              </div>
+
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  4. No Human Viewing or AI Model Retraining
+                </p>
+                <p className="leading-relaxed">
+                  Human employees or contractors do not read your Google Docs or Sheets content unless you provide explicit consent for troubleshooting, or as strictly required for security/legal compliance. Furthermore, your Google document content is used exclusively to answer questions for your specific store and is NOT used to train generalized or public AI foundation models.
+                </p>
+              </div>
+
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  5. Revocation & Data Deletion
+                </p>
+                <p className="leading-relaxed">
+                  You can disconnect your Google account and remove your indexed Google files at any time directly from the ChatTime AI dashboard under <strong>Documents & Files (/documents)</strong>. You can also revoke access anytime through{" "}
+                  <a
+                    href="https://myaccount.google.com/permissions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary font-semibold underline"
+                  >
+                    Google Account Security Permissions
+                  </a>
+                  . Upon disconnection, stored access and refresh tokens are permanently purged.
+                </p>
               </div>
             </div>
           </section>

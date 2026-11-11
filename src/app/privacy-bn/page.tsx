@@ -78,6 +78,22 @@ export default function PrivacyPolicyBN() {
                 </ul>
               </div>
 
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-foreground mb-3 flex items-center">
+                  <FaShieldAlt className="mr-2 text-blue-500" />
+                  গুগল ব্যবহারকারী ডেটা (Google Drive, Docs ও Sheets)
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  আপনি যখন স্বেচ্ছায় আপনার গুগল অ্যাকাউন্ট কানেক্ট করেন বা ফাইল ইমপোর্ট করেন:
+                </p>
+                <ul className="space-y-2 text-muted-foreground text-sm">
+                  <li>• <strong>গুগল প্রোফাইল:</strong> কানেকশন যাচাইয়ের জন্য আপনার নাম, ইমেইল ও প্রোফাইল ছবি।</li>
+                  <li>• <strong>গুগল ড্রাইভ ফাইল:</strong> আপনার অনুমোদিত ফাইল (PDF, Doc, Sheet) যা আপনি AI নলেজবেইজে যুক্ত করার জন্য নির্বাচন করেন।</li>
+                  <li>• <strong>Google Docs:</strong> শপের নিয়মাবলী, নির্দেশিকা ও FAQ-এর টেক্সট যা AI কাস্টমারকে উত্তর দিতে ব্যবহার করে।</li>
+                  <li>• <strong>Google Sheets:</strong> পণ্যের নাম, দাম ও স্টক তালিকা। কাস্টমার অর্ডার কনফার্ম করলে স্বয়ংক্রিয়ভাবে স্টক সংখ্যা কমানো হয়।</li>
+                </ul>
+              </div>
+
               <div className="bg-success/5 rounded-xl p-6">
                 <h3 className="font-semibold text-lg text-foreground mb-3 flex items-center">
                   <FaUserSecret className="mr-2 text-success" />
@@ -135,6 +151,73 @@ export default function PrivacyPolicyBN() {
                   <li>• নতুন ক্ষমতা বিকাশ</li>
                   <li>• গ্রাহক সহায়তা প্রদান</li>
                 </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Google API Services User Data Policy & Limited Use Disclosure */}
+          <section className="mb-12 border-2 border-primary/20 bg-primary/5 rounded-2xl p-6 md:p-8">
+            <h2 className="text-2xl font-bold text-foreground mb-4 flex items-center">
+              <FaShieldAlt className="mr-3 text-primary" />
+              গুগল এপিআই ব্যবহারকারী ডেটা পলিসি (Limited Use Disclosure)
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              ChatTime AI গুগল ওয়ার্কস্পেস (Google Drive, Docs ও Sheets)-এর সাথে সংযুক্ত হয়ে শপের তথ্য ইনডেক্স ও রিয়েল-টাইম স্টক আপডেট করতে কাজ করে।
+            </p>
+
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  ১. লিমিটেড ইউজ রিকোয়ারমেন্টস (Limited Use Policy)
+                </p>
+                <p className="leading-relaxed">
+                  ChatTime AI&apos;s use and transfer to any other app of information received from Google APIs will adhere to{" "}
+                  <a
+                    href="https://developers.google.com/terms/api-services-user-data-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary font-semibold underline"
+                  >
+                    Google API Services User Data Policy
+                  </a>
+                  , including the Limited Use requirements.
+                </p>
+              </div>
+
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  ২. কোনো বিজ্ঞাপন বা তৃতীয় পক্ষের কাছে ডেটা বিক্রি নিষিদ্ধ
+                </p>
+                <p className="leading-relaxed">
+                  আমরা কোনো অবস্থাতেই আপনার গুগলের কোনো ডেটা কোনো বিজ্ঞাপনদাতা, ডেটা ব্রোকার বা তৃতীয় পক্ষের কাছে বিক্রি বা শেয়ার করি না।
+                </p>
+              </div>
+
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  ৩. সাধারণ AI মডেল ট্রেইনিং বা মানুষের নজরদারি নিষিদ্ধ
+                </p>
+                <p className="leading-relaxed">
+                  আপনার অনুমতি ছাড়া আমাদের কোনো কর্মী আপনার ফাইল পড়তে পারবে না এবং আপনার ক্যাটালগের ডেটা দিয়ে অন্য কারও জন্য সাধারণ AI মডেল ট্রেইন করা হয় না।
+                </p>
+              </div>
+
+              <div className="p-4 bg-background/80 rounded-xl border border-border">
+                <p className="font-semibold text-foreground mb-1">
+                  ৪. ডেটা মুছে ফেলা ও সংযোগ বিচ্ছিন্ন করা
+                </p>
+                <p className="leading-relaxed">
+                  আপনি যেকোনো সময় আপনার ড্যাশবোর্ডের <strong>ডকুমেন্টস ও ফাইল (/documents)</strong> পেজ থেকে এক ক্লিকে গুগল ড্রাইভ ডিসকানেক্ট করতে পারেন অথবা{" "}
+                  <a
+                    href="https://myaccount.google.com/permissions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary font-semibold underline"
+                  >
+                    Google Account Permissions
+                  </a>{" "}
+                  থেকে পারমিশন বাতিল করতে পারেন।
+                </p>
               </div>
             </div>
           </section>

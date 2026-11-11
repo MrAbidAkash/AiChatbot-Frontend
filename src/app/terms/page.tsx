@@ -58,6 +58,7 @@ export default function TermsEN() {
               <ul className="space-y-2 text-muted-foreground">
                 <li>• Facebook & Instagram message automation</li>
                 <li>• AI-powered customer support</li>
+                <li>• Google Workspace integration (Google Drive, Docs, and Sheets live inventory sync)</li>
                 <li>• Message analytics and reporting</li>
                 <li>• Multi-platform social media management</li>
                 <li>• Custom AI training and content control</li>
@@ -154,6 +155,25 @@ export default function TermsEN() {
                 <li>• Monthly Subscription: auto-renews</li>
                 <li>• Annual Subscription: 20% discount, auto-renews</li>
                 <li>• Enterprise: custom pricing and terms</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Google Workspace & Third-Party Integrations */}
+          <section className="mb-12">
+            <h2 className="text-2xl font-bold mb-4 text-foreground">
+              Google Workspace & Cloud Integrations
+            </h2>
+            <div className="bg-muted p-6 rounded-xl space-y-3 text-muted-foreground text-sm">
+              <p>
+                ChatTime AI allows merchants to connect their Google accounts to import business knowledge from Google Drive, Google Docs, and Google Sheets.
+              </p>
+              <ul className="space-y-2 list-disc list-inside pl-1">
+                <li><strong>Ownership:</strong> You retain complete ownership of all documents, spreadsheets, and files stored in your Google account. ChatTime AI does not claim any intellectual property rights over your files.</li>
+                <li><strong>Access Control:</strong> Our system accesses only the documents and spreadsheets you explicitly choose to index for your AI assistant.</li>
+                <li><strong>Automated Stock Adjustments:</strong> If you connect a Google Sheet containing inventory data, you authorize our automated system to decrement product stock cells in your sheet when a customer confirms a valid purchase order on Messenger.</li>
+                <li><strong>Compliance with Google Policies:</strong> Our integration strictly complies with the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
+                <li><strong>Disconnection:</strong> You may revoke or disconnect Google Workspace access at any time through your dashboard or via your Google Account security settings.</li>
               </ul>
             </div>
           </section>
