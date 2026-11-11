@@ -33,6 +33,8 @@ interface ConnectedPage {
   pageName: string;
   isActive: boolean;
   pictureUrl?: string;
+  botTone?: "friendly" | "formal" | "casual" | "professional";
+  customInstructions?: string;
 }
 
 export default function ShopRules() {
@@ -128,7 +130,22 @@ export default function ShopRules() {
             }
           }
         } else {
-          // Fetch strict page-specific rules first
+          // Sync directly from page record if available
+          const targetPage = pages.find((p) => p.pageId === selectedPageId);
+          if (targetPage) {
+            if (targetPage.botTone) {
+              setBrandTone(
+                targetPage.botTone === "professional"
+                  ? "formal"
+                  : (targetPage.botTone as "friendly" | "formal" | "casual")
+              );
+            }
+            if (targetPage.customInstructions) {
+              setCustomRules(targetPage.customInstructions);
+            }
+          }
+
+          // Fetch strict page-specific rules from documents
           const res = await fetch(`/api/documents?pageId=${selectedPageId}&strict=true`);
           if (res.ok && isMounted) {
             const data = await res.json();
@@ -225,6 +242,36 @@ ${customRules}
       });
 
       if (!res.ok) throw new Error("Failed to save store rules");
+
+      // Sync botTone and customInstructions directly to facebook_pages
+      try {
+        const patchRes = await fetch("/api/facebook/pages", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pageId: selectedPageId,
+            botTone: brandTone,
+            customInstructions: customRules,
+          }),
+        });
+
+        if (patchRes.ok) {
+          setPages((prev) =>
+            prev.map((p) => {
+              if (selectedPageId === "global" || p.pageId === selectedPageId) {
+                return {
+                  ...p,
+                  botTone: brandTone,
+                  customInstructions: customRules,
+                };
+              }
+              return p;
+            })
+          );
+        }
+      } catch (patchErr) {
+        console.warn("Could not patch facebook_pages settings directly:", patchErr);
+      }
 
       setIsPageSpecific(selectedPageId !== "global");
       toast.success(
@@ -488,6 +535,46 @@ ${customRules}
                   className="mt-1 w-full rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="এখানে আপনার শপের যেকোনো বিশেষ নিয়ম লিখে দিন..."
                 />
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[11px] text-muted-foreground mr-1">রেডিমেড স্ক্রিপ্ট:</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomRules(
+                        "কাস্টমার ডিসকাউন্ট চাইলে বলবে: 'আপু/ভাইয়া আমাদের সব প্রোডাক্ট রিজনেবল প্রাইসে রাখা হয়েছে এবং প্রিমিয়াম কোয়ালিটি নিশ্চিত করা হয়!' স্টক শেষ হলে বিনয়ের সাথে জানিয়ে কাস্টমারের ফোন নম্বর চেয়ে রাখবে।"
+                      )
+                    }
+                    className="text-[11px] bg-muted/60 hover:bg-muted text-foreground px-2 py-0.5 rounded border border-border/80 transition-colors"
+                  >
+                    🏷️ ডিসকাউন্ট ও স্টক-আউট স্ক্রিপ্ট
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomRules((prev) =>
+                        prev
+                          ? `${prev}\n\nজরুরি ডেলিভারি: কাস্টমার খুব দ্রুত ডেলিভারি চাইলে জানাবে ২৪ ঘণ্টার মধ্যে এক্সপ্রেস ডেলিভারি সম্ভব এবং অতিরিক্ত ১০০ টাকা চার্জ প্রযোজ্য হবে।`
+                          : "জরুরি ডেলিভারি: কাস্টমার খুব দ্রুত ডেলিভারি চাইলে জানাবে ২৪ ঘণ্টার মধ্যে এক্সপ্রেস ডেলিভারি সম্ভব এবং অতিরিক্ত ১০০ টাকা চার্জ প্রযোজ্য হবে।"
+                      )
+                    }
+                    className="text-[11px] bg-muted/60 hover:bg-muted text-foreground px-2 py-0.5 rounded border border-border/80 transition-colors"
+                  >
+                    ⚡ জরুরি ডেলিভারি
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomRules((prev) =>
+                        prev
+                          ? `${prev}\n\nঅফার ও উপহার: ২টি প্রোডাক্ট বা ড্রেস একসাথে অর্ডার করলে ফ্রি ডেলিভারির সাথে একটি আকর্ষণীয় উপহার পাবেন।`
+                          : "অফার ও উপহার: ২টি প্রোডাক্ট বা ড্রেস একসাথে অর্ডার করলে ফ্রি ডেলিভারির সাথে একটি আকর্ষণীয় উপহার পাবেন।"
+                      )
+                    }
+                    className="text-[11px] bg-muted/60 hover:bg-muted text-foreground px-2 py-0.5 rounded border border-border/80 transition-colors"
+                  >
+                    🎁 কম্বো গিফট অফার
+                  </button>
+                </div>
               </div>
 
               <div className="pt-2 flex justify-end">

@@ -4,6 +4,7 @@ import {
   getFacebookPages,
   upsertFacebookPage,
   deleteFacebookPage,
+  updateFacebookPageSettings,
 } from "@/lib/facebook";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -95,6 +96,39 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: deleted });
   } catch (error: any) {
     console.error("Error deleting Facebook page:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    let userId = "default";
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+      if (session?.user?.id) {
+        userId = session.user.id;
+      }
+    } catch {
+      // fallback
+    }
+
+    const body = await request.json();
+    const { pageId, botTone, customInstructions, fallbackMessage, isActive } = body;
+
+    const modifiedCount = await updateFacebookPageSettings({
+      userId,
+      pageId: pageId || "global",
+      botTone,
+      customInstructions,
+      fallbackMessage,
+      isActive,
+    });
+
+    return NextResponse.json({ success: true, modifiedCount });
+  } catch (error: any) {
+    console.error("Error updating Facebook page settings:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

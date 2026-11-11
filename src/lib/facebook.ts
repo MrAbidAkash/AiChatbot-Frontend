@@ -11,7 +11,7 @@ export interface FacebookPageRecord {
   category?: string;
   pictureUrl?: string;
   isActive: boolean;
-  botTone?: "friendly" | "professional" | "casual";
+  botTone?: "friendly" | "professional" | "formal" | "casual";
   fallbackMessage?: string;
   customInstructions?: string;
   createdAt: Date;
@@ -141,6 +141,48 @@ export async function deleteFacebookPage(pageId: string): Promise<boolean> {
   const collection = db.collection<FacebookPageRecord>(COLLECTION_NAME);
   const res = await collection.deleteOne({ pageId });
   return res.deletedCount > 0;
+}
+
+/**
+ * Update dynamic settings (botTone, customInstructions, fallbackMessage, isActive) for a Facebook Page or all pages of a user
+ */
+export async function updateFacebookPageSettings(params: {
+  userId?: string;
+  pageId?: string; // If 'global', undefined, or 'all', updates all pages belonging to userId
+  botTone?: "friendly" | "professional" | "formal" | "casual";
+  customInstructions?: string;
+  fallbackMessage?: string;
+  isActive?: boolean;
+}): Promise<number> {
+  const db = getDb();
+  const collection = db.collection<FacebookPageRecord>(COLLECTION_NAME);
+
+  const filter: any = {};
+  if (params.pageId && params.pageId !== "global" && params.pageId !== "all") {
+    filter.pageId = params.pageId;
+  } else if (params.userId && params.userId !== "all" && params.userId !== "default") {
+    filter.userId = params.userId;
+  }
+
+  const updateFields: Partial<FacebookPageRecord> = {
+    updatedAt: new Date(),
+  };
+
+  if (params.botTone !== undefined) {
+    updateFields.botTone = params.botTone;
+  }
+  if (params.customInstructions !== undefined) {
+    updateFields.customInstructions = params.customInstructions;
+  }
+  if (params.fallbackMessage !== undefined) {
+    updateFields.fallbackMessage = params.fallbackMessage;
+  }
+  if (params.isActive !== undefined) {
+    updateFields.isActive = params.isActive;
+  }
+
+  const result = await collection.updateMany(filter, { $set: updateFields });
+  return result.modifiedCount;
 }
 
 /**

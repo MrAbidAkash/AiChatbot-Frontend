@@ -9,7 +9,7 @@ export interface GenerateReplyOptions {
   customerMessage: string;
   businessKnowledge: string;
   businessName?: string;
-  botTone?: "friendly" | "professional" | "casual";
+  botTone?: "friendly" | "professional" | "formal" | "casual";
   customInstructions?: string;
   fallbackMessage?: string;
   conversationHistory?: Array<{
@@ -19,11 +19,11 @@ export interface GenerateReplyOptions {
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const DEFAULT_MODEL = "gemini-3.5-flash";
+const DEFAULT_MODEL = "gemini-1.5-flash";
 const FALLBACK_MODELS = [
-  "gemini-3.5-flash-lite",
-  "gemini-3.6-flash",
-  "gemini-3-flash-preview",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-pro",
 ];
 
 /**
@@ -49,11 +49,20 @@ export async function generateCustomerReply(
     conversationHistory = [],
   } = options;
 
-  const toneGuidance = {
-    friendly: "Warm, respectful, welcoming, polite, and conversational.",
-    professional: "Polite, articulate, concise, and highly professional.",
-    casual: "Approachable, conversational, cheerful, and energetic.",
-  }[botTone] || "Warm, polite, and professional.";
+  const toneGuidanceMap: Record<string, string> = {
+    friendly:
+      'Warm, welcoming, sweet, and highly polite boutique store tone. In Bengali or Banglish, warmly address the customer as "আপু" or "ভাইয়া" (or "আপু/ভাইয়া") naturally (e.g., "জি আপু/ভাইয়া", "ধন্যবাদ ভাইয়া/আপু", "আপু/ভাইয়া কীভাবে সাহায্য করতে পারি?"). Be extremely hospitable and friendly.',
+    formal:
+      'Highly respectful, polite, and dignified formal tone (শ্রদ্ধাশীল). In Bengali or Banglish, strictly use respectful pronouns ("আপনি", "আপনার") and address the customer as "স্যার" or "ম্যাম" (Sir/Madam). Do NOT use casual terms like "আপু/ভাইয়া". Crisp, polite, and professional.',
+    casual:
+      'Friendly, modern, relaxed, and cheerful peer tone (বন্ধুভাবাপন্ন). Warm, enthusiastic, and approachable like chatting with a helpful companion.',
+    professional:
+      'Articulate, polite, concise, business-focused, and respectful. Clear, objective, and solution-oriented.',
+  };
+
+  const toneGuidance =
+    toneGuidanceMap[botTone] ||
+    "Warm, polite, respectful, and helpful customer service.";
 
   const systemInstruction = `You are a professional customer support and sales representative for "${businessName}" on Facebook Messenger.
 Your role is to assist customers politely, accurately, and naturally based on the provided Business Knowledge and Documents.
@@ -86,7 +95,17 @@ CRITICAL RULES:
    - If the customer asks something that is NOT covered in the documents, do not guess or fabricate information. Politely explain:
    "${fallbackMessage}"
 
-${customInstructions ? `SPECIAL BUSINESS INSTRUCTIONS:\n${customInstructions}\n` : ""}
+5. SPECIAL BUSINESS & SALES INSTRUCTIONS (STRICTEST PRIORITY):
+   - If the business owner has specified a custom instruction below (e.g. how to respond when a customer asks for a discount, or what to do when an item is out of stock, or specific promotion scripts), you MUST strictly follow that exact instruction whenever the customer's query triggers it!
+
+${
+  customInstructions && customInstructions.trim()
+    ? `=======================================
+SPECIAL BUSINESS & SALES INSTRUCTIONS:
+${customInstructions.trim()}
+=======================================`
+    : ""
+}
 
 BUSINESS KNOWLEDGE & DOCUMENTS:
 =======================================
