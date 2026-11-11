@@ -91,14 +91,35 @@ export async function getUserWallet(options: {
 
   // 5. Calculate recharged replies with tier bonuses
   const rechargedReplies = completedPayments.reduce((total, p) => {
+    if (p.grantedReplies !== undefined) {
+      return total + Number(p.grantedReplies);
+    }
     const amt = Number(p.amount) || 0;
     const baseReplies = Math.round(amt / COST_PER_REPLY);
     const bonusMultiplier = amt >= 5000 ? 1.2 : amt >= 1000 ? 1.1 : 1.0;
     return total + Math.round(baseReplies * bonusMultiplier);
   }, 0);
 
+  // 5b. Gather admin gifted complimentary credits
+  const adminCreditFilter: any = {};
+  const creditOr: any[] = [];
+  if (userEmail) creditOr.push({ userEmail });
+  if (userId && userId !== "default" && userId !== "all") {
+    creditOr.push({ userId }, { user: userId });
+  }
+  if (creditOr.length > 0) adminCreditFilter.$or = creditOr;
+
+  const adminCreditDocs = creditOr.length > 0
+    ? await db.collection("admin_credits").find(adminCreditFilter).toArray()
+    : [];
+
+  const totalAdminGiftedCredits = adminCreditDocs.reduce(
+    (sum, c) => sum + (Number(c.credits) || 0),
+    0
+  );
+
   // 6. Calculate total allocation and remaining
-  const totalAllocatedCredits = FREE_TRIAL_REPLIES + rechargedReplies;
+  const totalAllocatedCredits = FREE_TRIAL_REPLIES + rechargedReplies + totalAdminGiftedCredits;
   const remainingReplies = Math.max(0, totalAllocatedCredits - usedCredits);
   const remainingBalance = Number((remainingReplies * COST_PER_REPLY).toFixed(2));
   const isPaidUser = totalRechargedAmount > 0;
@@ -112,7 +133,11 @@ export async function getUserWallet(options: {
     costPerReply: COST_PER_REPLY,
     totalRechargedAmount,
     isPaidUser,
-    planTitle: isPaidUser ? "রিচার্জড পেইড প্যাক" : "ফ্রি ট্রায়াল ব্যালেন্স",
+    planTitle: isPaidUser
+      ? "রিচার্জড পেইড প্যাক"
+      : totalAdminGiftedCredits > 0
+      ? "স্পেশাল গিফট ক্রেডিট"
+      : "ফ্রি ট্রায়াল ব্যালেন্স",
     hasCredits,
     isActive: hasCredits,
   };

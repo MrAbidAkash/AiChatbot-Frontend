@@ -40,6 +40,12 @@ import {
   ArrowUpRight,
   BadgeAlert,
   Bot,
+  Gift,
+  Coins,
+  Wallet,
+  PlusCircle,
+  History,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +73,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "users" | "pages" | "documents" | "conversations" | "payments" | "developer"
+    "overview" | "users" | "credits" | "pages" | "documents" | "conversations" | "payments" | "developer"
   >("overview");
 
   const [loading, setLoading] = useState(true);
@@ -106,6 +112,80 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   const [aiTestPrompt, setAiTestPrompt] = useState("");
   const [aiTestLoading, setAiTestLoading] = useState(false);
   const [aiTestResult, setAiTestResult] = useState<any | null>(null);
+
+  // Credit Management state
+  const [creditsMerchants, setCreditsMerchants] = useState<any[]>([]);
+  const [creditHistory, setCreditHistory] = useState<any[]>([]);
+  const [creditStats, setCreditStats] = useState<any>(null);
+  const [creditLoading, setCreditLoading] = useState(false);
+  const [selectedCreditUser, setSelectedCreditUser] = useState<string>("");
+  const [grantCreditsAmount, setGrantCreditsAmount] = useState<string>("100");
+  const [grantCreditsNote, setGrantCreditsNote] = useState<string>("ফ্রি প্রমোশনাল বোনাস");
+  const [grantingCredit, setGrantingCredit] = useState(false);
+  const [creditSearch, setCreditSearch] = useState("");
+  const [creditFilter, setCreditFilter] = useState<"all" | "zero" | "trial" | "paid">("all");
+
+  // Fetch credits data from API
+  const fetchCreditsData = useCallback(async () => {
+    try {
+      setCreditLoading(true);
+      const res = await fetch("/api/admin/credits");
+      if (res.ok) {
+        const data = await res.json();
+        setCreditsMerchants(data.merchants || []);
+        setCreditHistory(data.history || []);
+        setCreditStats(data.stats || null);
+        if (data.merchants && data.merchants.length > 0) {
+          setSelectedCreditUser((prev) => prev || data.merchants[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load credits data:", err);
+    } finally {
+      setCreditLoading(false);
+    }
+  }, []);
+
+  // Grant credits handler
+  const handleGrantCredit = async (overrideUserId?: string, overrideAmount?: number) => {
+    const targetUserId = overrideUserId || selectedCreditUser;
+    const amount = overrideAmount || parseInt(grantCreditsAmount, 10);
+
+    if (!targetUserId) {
+      toast.error("অনুগ্রহ করে একজন মার্চেন্ট সিলেক্ট করুন");
+      return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("সঠিক ক্রেডিট সংখ্যা দিন (০ এর বেশি)");
+      return;
+    }
+
+    try {
+      setGrantingCredit(true);
+      const res = await fetch("/api/admin/credits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: targetUserId,
+          credits: amount,
+          note: grantCreditsNote,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "ক্রেডিট যোগ করতে সমস্যা হয়েছে");
+
+      toast.success(data.message || `${amount} টি ক্রেডিট সফলভাবে যুক্ত হয়েছে!`);
+      // Refresh credits data & stats
+      fetchCreditsData();
+      fetchStats();
+      fetchTabData("users");
+    } catch (err: any) {
+      toast.error(err.message || "ক্রেডিট যোগ ব্যর্থ হয়েছে");
+    } finally {
+      setGrantingCredit(false);
+    }
+  };
 
   // Fetch core stats
   const fetchStats = useCallback(async (isRefresh = false) => {
@@ -149,14 +229,17 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   useEffect(() => {
     fetchStats();
     fetchTabData("users"); // Always load user directory for merchant filtering
-  }, [fetchStats, fetchTabData]);
+    fetchCreditsData(); // Pre-load credit stats
+  }, [fetchStats, fetchTabData, fetchCreditsData]);
 
   // When active tab or user filter changes, fetch updated dataset
   useEffect(() => {
-    if (activeTab !== "overview" && activeTab !== "developer") {
+    if (activeTab === "credits") {
+      fetchCreditsData();
+    } else if (activeTab !== "overview" && activeTab !== "developer") {
       fetchTabData(activeTab, userFilter);
     }
-  }, [activeTab, userFilter, fetchTabData]);
+  }, [activeTab, userFilter, fetchTabData, fetchCreditsData]);
 
   const handleLogout = async () => {
     try {
