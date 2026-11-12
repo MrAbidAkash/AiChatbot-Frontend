@@ -14,6 +14,9 @@ export interface StockUpdateResult {
   stockColumn: string;
   previousStock: number;
   newStock: number;
+  statusColumn?: string;
+  previousStatus?: string;
+  newStatus?: string;
   message: string;
 }
 
@@ -158,8 +161,10 @@ export function findProductAndStockCell(
   rowIndex: number;
   stockColIndex: number;
   productColIndex: number;
+  statusColIndex: number;
   productName: string;
   currentStock: number;
+  currentStatus: string;
 } | null {
   if (!rows || rows.length < 2) return null;
 
@@ -177,14 +182,17 @@ export function findProductAndStockCell(
   );
   if (productColIndex === -1) productColIndex = 0; // Default to first column
 
-  // 2. Locate stock column
+  // 2. Locate stock column (prioritize exact stock matches over status)
   let stockColIndex = headerRow.findIndex(
     (h) =>
-      h.includes("stock") ||
+      h === "stock" ||
+      h === "qty" ||
+      h === "quantity" ||
+      h === "স্টক" ||
+      (h.includes("stock") && !h.includes("status")) ||
       h.includes("qty") ||
       h.includes("quantity") ||
       h.includes("available") ||
-      h.includes("স্টক") ||
       h.includes("পরিমাণ") ||
       h.includes("সংখ্যা"),
   );
@@ -203,6 +211,35 @@ export function findProductAndStockCell(
   }
 
   if (stockColIndex === -1) return null;
+
+  // 3. Locate status column (e.g. "Status", "অবস্থা", "স্ট্যাটাস", "Availability")
+  let statusColIndex = headerRow.findIndex(
+    (h, idx) =>
+      idx !== stockColIndex &&
+      idx !== productColIndex &&
+      (h.includes("status") ||
+        h.includes("অবস্থা") ||
+        h.includes("স্ট্যাটাস") ||
+        h.includes("availability") ||
+        h.includes("state")),
+  );
+
+  // If not found in header, check column values for stock status keywords
+  if (statusColIndex === -1) {
+    for (let c = 0; c < headerRow.length; c++) {
+      if (c !== productColIndex && c !== stockColIndex) {
+        const hasStatusValue = rows.slice(1, 6).some((r) =>
+          /^(?:in stock|out of stock|stock out|low stock|available|unavailable|স্টক আউট|ইন স্টক)/i.test(
+            String(r[c] || "").trim(),
+          ),
+        );
+        if (hasStatusValue) {
+          statusColIndex = c;
+          break;
+        }
+      }
+    }
+  }
 
   // Extract parenthesized name if present (e.g. "Premium Jamdani Saree" from "প্রিমিয়াম জামদানি শাড়ি (Premium Jamdani Saree)")
   const parenMatch = targetProductName.match(/\(([A-Za-z0-9\s\-_&]{3,50})\)/);
@@ -282,13 +319,17 @@ export function findProductAndStockCell(
 
   const matchedRow = rows[bestMatchRow];
   const currentStock = parseNumericStock(matchedRow[stockColIndex]);
+  const currentStatus =
+    statusColIndex !== -1 ? String(matchedRow[statusColIndex] || "").trim() : "";
 
   return {
     rowIndex: bestMatchRow,
     stockColIndex,
     productColIndex,
+    statusColIndex,
     productName: matchedRow[productColIndex] || targetProductName,
     currentStock,
+    currentStatus,
   };
 }
 
@@ -336,7 +377,7 @@ export async function decrementGoogleSheetStock(
     throw new Error("The Google Sheet appears to be empty.");
   }
 
-  // 3. Find target product and stock cell
+  // 3. Find target product, stock cell, and status cell
   const match = findProductAndStockCell(rows, productName);
   if (!match) {
     throw new Error(`Could not find product matching "${productName}" in Google Sheet.`);
@@ -347,18 +388,79 @@ export async function decrementGoogleSheetStock(
   const colLetter = columnToLetter(match.stockColIndex);
   const cellAddress = `'${sheetName}'!${colLetter}${match.rowIndex + 1}`;
 
-  // 4. Update cell in Google Sheet via Google Sheets API v4
-  const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(cellAddress)}?valueInputOption=USER_ENTERED`;
-  const updateRes = await fetch(updateUrl, {
-    method: "PUT",
+  // Determine new status if sheet has a Status column
+  let newStatus: string | null = null;
+  let statusColLetter: string | null = null;
+  let statusCellAddress: string | null = null;
+
+  if (match.statusColIndex !== -1) {
+    statusColLetter = columnToLetter(match.statusColIndex);
+    statusCellAddress = `'${sheetName}'!${statusColLetter}${match.rowIndex + 1}`;
+
+    // Detect user's status conventions in this sheet
+    let outOfStockLabel = "Out of Stock";
+    let lowStockLabel = "Low Stock";
+    let inStockLabel = "In Stock";
+
+    for (let r = 1; r < rows.length; r++) {
+      const val = String(rows[r][match.statusColIndex] || "").trim();
+      if (/stock\s*out/i.test(val)) {
+        outOfStockLabel = val;
+      } else if (/out\s*of\s*stock/i.test(val)) {
+        outOfStockLabel = val;
+      } else if (/স্টক\s*আউট/i.test(val)) {
+        outOfStockLabel = val;
+      }
+
+      if (/low\s*stock/i.test(val)) {
+        lowStockLabel = val;
+      } else if (/সীমিত\s*স্টক|কম\s*স্টক/i.test(val)) {
+        lowStockLabel = val;
+      }
+
+      if (/in\s*stock/i.test(val)) {
+        inStockLabel = val;
+      } else if (/স্টকে\s*আছে|ইন\s*স্টক/i.test(val)) {
+        inStockLabel = val;
+      }
+    }
+
+    if (newStock === 0) {
+      newStatus = outOfStockLabel;
+    } else if (newStock <= 5) {
+      newStatus = lowStockLabel;
+    } else {
+      newStatus = inStockLabel;
+    }
+  }
+
+  // 4. Update cell(s) in Google Sheet via Google Sheets API v4 batchUpdate
+  const batchData: Array<{ range: string; majorDimension?: string; values: string[][] }> = [
+    {
+      range: cellAddress,
+      majorDimension: "ROWS",
+      values: [[newStock.toString()]],
+    },
+  ];
+
+  if (statusCellAddress && newStatus) {
+    batchData.push({
+      range: statusCellAddress,
+      majorDimension: "ROWS",
+      values: [[newStatus]],
+    });
+  }
+
+  const batchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`;
+  const updateRes = await fetch(batchUrl, {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      range: cellAddress,
-      majorDimension: "ROWS",
-      values: [[newStock.toString()]],
+      valueInputOption: "USER_ENTERED",
+      data: batchData,
     }),
   });
 
@@ -369,7 +471,7 @@ export async function decrementGoogleSheetStock(
       errText.includes("ACCESS_TOKEN_SCOPE_INSUFFICIENT") ||
       errText.includes("insufficient authentication scopes")
     ) {
-      // Update local document stock in MongoDB so the AI chatbot still has the decremented stock
+      // Update local document stock & status in MongoDB so the AI chatbot still has the decremented stock and updated status
       try {
         const db = getDb();
         const doc = await db.collection<BusinessDocument>("business_knowledge").findOne({
@@ -377,14 +479,30 @@ export async function decrementGoogleSheetStock(
         });
         if (doc?._id && doc.content) {
           const escapedName = match.productName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const regex = new RegExp(`(${escapedName}[\\s\\S]*?Stock:\\s*)(\\d+)`, "i");
-          if (regex.test(doc.content)) {
-            const newContent = doc.content.replace(regex, `$1${newStock}`);
+          let newContent = doc.content;
+
+          // Replace stock
+          const stockRegex = new RegExp(`(${escapedName}[\\s\\S]*?Stock:\\s*)(\\d+)`, "i");
+          if (stockRegex.test(newContent)) {
+            newContent = newContent.replace(stockRegex, `$1${newStock}`);
+          }
+
+          // Replace status if status changed
+          if (newStatus) {
+            const statusRegex = new RegExp(`(${escapedName}[\\s\\S]*?Status:\\s*)([^|\\n\\r]+)`, "i");
+            if (statusRegex.test(newContent)) {
+              newContent = newContent.replace(statusRegex, `$1${newStatus}`);
+            }
+          }
+
+          if (newContent !== doc.content) {
             await db.collection("business_knowledge").updateOne(
               { _id: new ObjectId(doc._id.toString()) },
               { $set: { content: newContent, updatedAt: new Date() } }
             );
-            console.log(`[Auto-Stock] Local business knowledge updated for "${match.productName}" stock to ${newStock}`);
+            console.log(
+              `[Auto-Stock] Local business knowledge updated for "${match.productName}" stock to ${newStock}, status to "${newStatus}"`,
+            );
           }
         }
       } catch (localErr) {
@@ -398,7 +516,7 @@ export async function decrementGoogleSheetStock(
     throw new Error(`Google Sheets API update error: ${errText}`);
   }
 
-  // 5. Automatically re-sync the document in MongoDB business_knowledge so AI immediately knows the new stock
+  // 5. Automatically re-sync the document in MongoDB business_knowledge so AI immediately knows the new stock and status
   try {
     const db = getDb();
     const doc = await db.collection<BusinessDocument>("business_knowledge").findOne({
@@ -411,6 +529,9 @@ export async function decrementGoogleSheetStock(
     console.warn("Background re-sync after stock update warning:", syncErr);
   }
 
+  const statusMsg = newStatus
+    ? ` and status to "${newStatus}" (Cell: ${statusColLetter}${match.rowIndex + 1})`
+    : "";
   return {
     success: true,
     spreadsheetId,
@@ -420,7 +541,10 @@ export async function decrementGoogleSheetStock(
     stockColumn: colLetter,
     previousStock,
     newStock,
-    message: `Updated "${match.productName}" stock in Google Sheet from ${previousStock} to ${newStock} (Cell: ${colLetter}${match.rowIndex + 1}).`,
+    statusColumn: statusColLetter || undefined,
+    previousStatus: match.currentStatus || undefined,
+    newStatus: newStatus || undefined,
+    message: `Updated "${match.productName}" in Google Sheet: stock from ${previousStock} to ${newStock} (Cell: ${colLetter}${match.rowIndex + 1})${statusMsg}.`,
   };
 }
 
@@ -778,6 +902,9 @@ export async function handleAutoStockDeductionOnOrder(options: {
                 stockCell: `${result.stockColumn}${result.matchedRow}`,
                 previousStock: result.previousStock,
                 newStock: result.newStock,
+                statusCell: result.statusColumn ? `${result.statusColumn}${result.matchedRow}` : undefined,
+                previousStatus: result.previousStatus,
+                newStatus: result.newStatus,
                 stockDeductionMessage: result.message,
                 updatedAt: new Date(),
               },

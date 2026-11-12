@@ -51,6 +51,9 @@ export interface Order {
   stockDecremented?: boolean;
   stockDeductionMessage?: string | null;
   stockCell?: string | null;
+  statusCell?: string | null;
+  previousStatus?: string | null;
+  newStatus?: string | null;
   spreadsheetId?: string | null;
   sheetName?: string | null;
   notes?: string | null;
@@ -494,7 +497,10 @@ export default function OrdersManager() {
                         {order.stockDecremented ? (
                           <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] gap-1">
                             <FileSpreadsheet className="h-3 w-3" />
-                            <span>গুগল শিট স্টক আপডেট সম্পন্ন ({order.stockCell || "Sheet"})</span>
+                            <span>
+                              গুগল শিট স্টক আপডেট সম্পন্ন ({order.stockCell || "Sheet"}
+                              {order.statusCell && order.newStatus ? ` | ${order.statusCell}: ${order.newStatus}` : ""})
+                            </span>
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[11px] text-muted-foreground gap-1 border-dashed">
