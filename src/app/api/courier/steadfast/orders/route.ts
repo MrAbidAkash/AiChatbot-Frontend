@@ -71,6 +71,8 @@ export async function POST(request: NextRequest) {
       item_description,
       total_lot,
       delivery_type,
+      area,
+      exact_area,
     } = body;
 
     // Validate fields
@@ -97,6 +99,8 @@ export async function POST(request: NextRequest) {
       recipient_name: recipient_name.trim(),
       recipient_phone: recipient_phone.trim(),
       recipient_address: recipient_address.trim(),
+      area: area ? String(area).trim() : undefined,
+      exact_area: exact_area ? String(exact_area).trim() : undefined,
       cod_amount: Number(cod_amount),
       note: note ? String(note).trim() : undefined,
       item_description: item_description ? String(item_description).trim() : undefined,
@@ -121,6 +125,8 @@ export async function POST(request: NextRequest) {
       recipient_name: orderPayload.recipient_name,
       recipient_phone: orderPayload.recipient_phone,
       recipient_address: orderPayload.recipient_address,
+      area: orderPayload.area,
+      exact_area: orderPayload.exact_area,
       cod_amount: orderPayload.cod_amount,
       note: orderPayload.note,
       item_description: orderPayload.item_description,

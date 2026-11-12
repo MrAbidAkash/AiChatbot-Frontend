@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { SteadfastParcel } from "@/lib/steadfast";
+import { detectBdArea, searchBdAreas, BdAreaItem } from "@/lib/bd-locations";
 
 interface ConfigState {
   isConfigured: boolean;
@@ -109,6 +110,29 @@ function SteadfastManagerContent() {
   const [note, setNote] = useState("");
   const [deliveryType, setDeliveryType] = useState("0"); // 0 = Home, 1 = Hub
   const [submittingOrder, setSubmittingOrder] = useState(false);
+
+  // Steadfast Area (thana, district) & Exact area state
+  const [selectedArea, setSelectedArea] = useState<string>("");
+  const [detectedBadge, setDetectedBadge] = useState<string | null>(null);
+  const [exactArea, setExactArea] = useState<string>("");
+  const [areaSearchOpen, setAreaSearchOpen] = useState(false);
+  const [areaSearchQuery, setAreaSearchQuery] = useState("");
+
+  // Auto-detect area (thana, district) when address changes
+  const handleAddressChange = (val: string) => {
+    setRecipientAddress(val);
+    if (!val.trim()) {
+      setDetectedBadge(null);
+      setSelectedArea("");
+      return;
+    }
+
+    const detected = detectBdArea(val);
+    if (detected) {
+      setSelectedArea(detected.label);
+      setDetectedBadge(`Found: ${detected.thana} · ${detected.district}`);
+    }
+  };
 
   // Fetch Steadfast configuration
   const fetchConfig = useCallback(async () => {
@@ -189,7 +213,14 @@ function SteadfastManagerContent() {
     if (queryName || queryPhone || queryAddress || queryCod) {
       if (queryName) setRecipientName(queryName);
       if (queryPhone) setRecipientPhone(queryPhone);
-      if (queryAddress) setRecipientAddress(queryAddress);
+      if (queryAddress) {
+        setRecipientAddress(queryAddress);
+        const detected = detectBdArea(queryAddress);
+        if (detected) {
+          setSelectedArea(detected.label);
+          setDetectedBadge(`Found: ${detected.thana} · ${detected.district}`);
+        }
+      }
       if (queryCod) setCodAmount(queryCod);
       setInvoice(`INV-${Math.floor(100000 + Math.random() * 900000)}`);
       setCreateOpen(true);
@@ -209,6 +240,11 @@ function SteadfastManagerContent() {
     setRecipientName("");
     setRecipientPhone("");
     setRecipientAddress("");
+    setSelectedArea("");
+    setDetectedBadge(null);
+    setExactArea("");
+    setAreaSearchOpen(false);
+    setAreaSearchQuery("");
     setCodAmount("");
     setItemDescription("");
     setTotalLot("1");
@@ -294,6 +330,8 @@ function SteadfastManagerContent() {
           recipient_name: recipientName.trim(),
           recipient_phone: recipientPhone.trim(),
           recipient_address: recipientAddress.trim(),
+          area: selectedArea.trim() || undefined,
+          exact_area: exactArea.trim() || undefined,
           cod_amount: Number(codAmount),
           item_description: itemDescription.trim() || undefined,
           total_lot: Number(totalLot) || 1,
@@ -700,6 +738,12 @@ function SteadfastManagerContent() {
                           <p className="line-clamp-2 text-foreground/90 text-[11px]" title={parcel.recipient_address}>
                             {parcel.recipient_address}
                           </p>
+                          {parcel.area && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded mt-1 font-medium border border-emerald-500/20">
+                              <MapPin className="h-2.5 w-2.5" />
+                              {parcel.area}
+                            </span>
+                          )}
                           {parcel.note && (
                             <p className="text-[10px] text-muted-foreground italic mt-0.5 line-clamp-1">
                               নোট: {parcel.note}
@@ -779,7 +823,7 @@ function SteadfastManagerContent() {
 
       {/* ==================== CREATE PARCEL DIALOG ==================== */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
@@ -862,12 +906,143 @@ function SteadfastManagerContent() {
               </label>
               <Textarea
                 value={recipientAddress}
-                onChange={(e) => setRecipientAddress(e.target.value)}
+                onChange={(e) => handleAddressChange(e.target.value)}
                 placeholder="বাড়ি নং, রোড নং, এলাকা/থানা, জেলা..."
                 required
                 rows={2}
                 className="text-xs resize-none"
               />
+            </div>
+
+            {/* Auto-detected Area Status Badge */}
+            {detectedBadge && (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2.5 py-1.5 rounded-md border border-emerald-500/20">
+                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                <span>✓ {detectedBadge}</span>
+              </div>
+            )}
+
+            {/* Area (thana, district) - Matching Steadfast Portal */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                  <span>Area (thana, district)</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">(স্বয়ংক্রিয় পূরণ / সিলেক্টেবল)</span>
+                </label>
+                {selectedArea && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedArea("");
+                      setDetectedBadge(null);
+                    }}
+                    className="text-[11px] text-muted-foreground hover:text-rose-500 transition-colors"
+                  >
+                    ক্লিয়ার করুন
+                  </button>
+                )}
+              </div>
+
+              <div className="relative">
+                <div
+                  onClick={() => setAreaSearchOpen(!areaSearchOpen)}
+                  className="flex items-center justify-between w-full h-9 px-3 text-xs bg-background border border-input rounded-md cursor-pointer hover:border-primary/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-foreground truncate">
+                    <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className={selectedArea ? "font-medium" : "text-muted-foreground"}>
+                      {selectedArea || "থানা ও জেলা নির্বাচন বা সার্চ করুন..."}
+                    </span>
+                  </div>
+                  {selectedArea ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedArea("");
+                        setDetectedBadge(null);
+                      }}
+                      className="text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted"
+                      title="ক্লিয়ার করুন"
+                    >
+                      ✕
+                    </button>
+                  ) : (
+                    <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </div>
+
+                {/* Dropdown / Combobox */}
+                {areaSearchOpen && (
+                  <div className="absolute z-50 left-0 right-0 top-10 bg-popover text-popover-foreground border border-border rounded-lg shadow-xl p-2 space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="থানা বা জেলা খুঁজুন (যেমন: Jhenaidah Sadar, Dhanmondi, মিরপুর)..."
+                        value={areaSearchQuery}
+                        onChange={(e) => setAreaSearchQuery(e.target.value)}
+                        autoFocus
+                        className="pl-8 h-8 text-xs bg-muted/40"
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto divide-y divide-border/30 text-xs">
+                      {searchBdAreas(areaSearchQuery, 25).map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedArea(item.label);
+                            setDetectedBadge(`Found: ${item.thana} · ${item.district}`);
+                            setAreaSearchOpen(false);
+                            setAreaSearchQuery("");
+                          }}
+                          className={`p-2 hover:bg-muted cursor-pointer rounded flex items-center justify-between transition-colors ${
+                            selectedArea === item.label ? "bg-primary/10 text-primary font-medium" : ""
+                          }`}
+                        >
+                          <div>
+                            <span className="font-medium text-foreground">{item.thana}</span>
+                            <span className="text-muted-foreground ml-1.5">({item.district})</span>
+                            <span className="text-[11px] text-muted-foreground/70 ml-1">· {item.thanaBn}</span>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                            {item.division}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Exact area (optional) - Matching Steadfast Portal */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground">
+                  Exact area (optional)
+                </label>
+                {exactArea && (
+                  <button
+                    type="button"
+                    onClick={() => setExactArea("")}
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    Skip area
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <MapPin className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={exactArea}
+                  onChange={(e) => setExactArea(e.target.value)}
+                  placeholder="Search area in this thana"
+                  className="pl-8 h-9 text-xs"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Picking the exact area sends the parcel to the right hub faster.
+              </p>
             </div>
 
             {/* Delivery Type & Item Lot */}

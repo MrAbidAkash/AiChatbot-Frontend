@@ -20,6 +20,8 @@ export interface SteadfastOrderPayload {
   item_description?: string;
   total_lot?: number;
   delivery_type?: number; // 0 = Home Delivery, 1 = Hub Pick Up
+  area?: string; // e.g. "Jhenaidah Sadar, Jhenaidah"
+  exact_area?: string; // e.g. "Search area in this thana"
 }
 
 export interface SteadfastParcel {
@@ -29,6 +31,8 @@ export interface SteadfastParcel {
   recipient_name: string;
   recipient_phone: string;
   recipient_address: string;
+  area?: string;
+  exact_area?: string;
   cod_amount: number;
   note?: string;
   item_description?: string;
@@ -218,11 +222,31 @@ export async function createSteadfastOrder(
     throw new Error("COD amount must be a positive number or 0");
   }
 
+  // Combine address with exact_area and area (thana, district) if provided and not already included
+  let finalAddress = payload.recipient_address.trim();
+  if (payload.exact_area && payload.exact_area.trim()) {
+    const ea = payload.exact_area.trim();
+    if (!finalAddress.toLowerCase().includes(ea.toLowerCase())) {
+      finalAddress = `${finalAddress}, ${ea}`;
+    }
+  }
+  if (payload.area && payload.area.trim()) {
+    const a = payload.area.trim();
+    const thanaPart = a.split(",")[0].trim().toLowerCase();
+    if (!finalAddress.toLowerCase().includes(thanaPart)) {
+      finalAddress = `${finalAddress}, ${a}`;
+    }
+  }
+  // Steadfast character limit for recipient_address is 250 characters
+  if (finalAddress.length > 250) {
+    finalAddress = finalAddress.slice(0, 250);
+  }
+
   const orderBody: Record<string, any> = {
     invoice: cleanInvoice,
     recipient_name: payload.recipient_name.trim(),
     recipient_phone: cleanPhone,
-    recipient_address: payload.recipient_address.trim(),
+    recipient_address: finalAddress,
     cod_amount: cod,
   };
 
@@ -371,6 +395,8 @@ export async function getUserParcels(
     recipient_name: doc.recipient_name,
     recipient_phone: doc.recipient_phone,
     recipient_address: doc.recipient_address,
+    area: doc.area,
+    exact_area: doc.exact_area,
     cod_amount: doc.cod_amount,
     note: doc.note,
     item_description: doc.item_description,
