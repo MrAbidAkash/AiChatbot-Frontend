@@ -1,8 +1,11 @@
 // src/app/api/documents/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { saveDocument, getDocuments } from "@/lib/knowledge";
+import { getDb } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+
+export const MAX_DOCUMENTS_LIMIT = 5;
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,6 +50,14 @@ export async function POST(request: NextRequest) {
 
     const contentType = request.headers.get("content-type") || "";
 
+    // Count existing documents for this user to enforce 5 files limit
+    const db = getDb();
+    const countQuery: any = {};
+    if (userId && userId !== "all") {
+      countQuery.$or = [{ userId }, { userId: "default" }, { userId: { $exists: false } }];
+    }
+    const currentDocCount = await db.collection("business_knowledge").countDocuments(countQuery);
+
     // 1. Handle JSON input (direct text or FAQ snippet)
     if (contentType.includes("application/json")) {
       const body = await request.json();
@@ -60,6 +71,17 @@ export async function POST(request: NextRequest) {
       }
 
       const docTitle = title && title.trim() ? title.trim() : "Business FAQ / Note";
+      const isPolicyOrReplace = Boolean(replaceExisting || docTitle === "Store Delivery & Policy Rules");
+
+      if (!isPolicyOrReplace && currentDocCount >= MAX_DOCUMENTS_LIMIT) {
+        return NextResponse.json(
+          {
+            error: "সর্বোচ্চ ৫টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল যোগ করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 5 documents limit reached)",
+          },
+          { status: 400 },
+        );
+      }
+
       const finalPageId = pageId && pageId !== "all" && pageId !== "global" ? pageId : undefined;
       const doc = await saveDocument({
         userId,
@@ -83,6 +105,15 @@ export async function POST(request: NextRequest) {
       const pageIdRaw = formData.get("pageId") as string | null;
       const finalPageId = pageIdRaw && pageIdRaw !== "all" && pageIdRaw !== "global" ? pageIdRaw : undefined;
       const replaceExisting = formData.get("replaceExisting") === "true";
+
+      if (!replaceExisting && currentDocCount >= MAX_DOCUMENTS_LIMIT) {
+        return NextResponse.json(
+          {
+            error: "সর্বোচ্চ ৫টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল আপলোড করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 5 documents limit reached)",
+          },
+          { status: 400 },
+        );
+      }
 
       if (!file) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 });

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { getDb } from "@/lib/db";
 import {
   getValidGoogleToken,
   fetchAuthenticatedGoogleContent,
@@ -9,6 +10,8 @@ import {
   parseGoogleUrl,
 } from "@/lib/google-drive";
 import { saveDocument } from "@/lib/knowledge";
+
+export const MAX_DOCUMENTS_LIMIT = 5;
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +33,23 @@ export async function POST(request: NextRequest) {
     if (!fileId && !url) {
       return NextResponse.json(
         { error: "Either 'fileId' or 'url' is required." },
+        { status: 400 },
+      );
+    }
+
+    // Enforce 5 documents / files limit per user
+    const db = getDb();
+    const countQuery: any = {};
+    if (userId && userId !== "all") {
+      countQuery.$or = [{ userId }, { userId: "default" }, { userId: { $exists: false } }];
+    }
+    const currentDocCount = await db.collection("business_knowledge").countDocuments(countQuery);
+
+    if (currentDocCount >= MAX_DOCUMENTS_LIMIT) {
+      return NextResponse.json(
+        {
+          error: "সর্বোচ্চ ৫টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল ইমপোর্ট করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 5 documents limit reached)",
+        },
         { status: 400 },
       );
     }

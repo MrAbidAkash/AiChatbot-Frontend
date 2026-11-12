@@ -121,10 +121,14 @@ interface GoogleDriveFile {
   category: "docs" | "sheets" | "pdf" | "other";
 }
 
+export const MAX_DOCUMENTS_LIMIT = 5;
+
 export default function DocumentManager() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const isLimitReached = documents.length >= MAX_DOCUMENTS_LIMIT;
 
   // Connected Pages & Isolation State
   const [pages, setPages] = useState<ConnectedPage[]>([]);
@@ -293,6 +297,10 @@ export default function DocumentManager() {
 
   // Upload Local File (PDF, XLSX, CSV, TXT, DOCX)
   const handleFileUpload = async (file: File) => {
+    if (isLimitReached) {
+      toast.error(`সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল আপলোড করা সম্ভব। নতুন ফাইল আপলোড করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন।`);
+      return;
+    }
     try {
       setIsUploading(true);
       const formData = new FormData();
@@ -344,6 +352,10 @@ export default function DocumentManager() {
 
   // Add FAQ Snippet
   const handleAddFaq = async () => {
+    if (isLimitReached) {
+      toast.error(`সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল বা নোট যোগ করা সম্ভব। নতুন নোট যোগ করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন।`);
+      return;
+    }
     if (!faqQuestion.trim() || !faqAnswer.trim()) {
       toast.error("অনুগ্রহ করে প্রশ্ন ও উত্তর উভয় ফিল্ড পূরণ করুন");
       return;
@@ -431,6 +443,10 @@ export default function DocumentManager() {
 
   // Import from Google URL (Docs / Sheets / Drive Link)
   const handleImportGoogleUrl = async () => {
+    if (isLimitReached) {
+      toast.error(`সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল বা শিট ইমপোর্ট করা সম্ভব। নতুন ফাইল ইমপোর্ট করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন।`);
+      return;
+    }
     if (!googleUrl.trim()) {
       toast.error("অনুগ্রহ করে একটি বৈধ Google Docs, Sheets বা Drive লিঙ্ক দিন");
       return;
@@ -466,6 +482,10 @@ export default function DocumentManager() {
 
   // Import selected file from connected Google Drive
   const handleImportDriveFile = async (file: GoogleDriveFile) => {
+    if (isLimitReached) {
+      toast.error(`সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল বা শিট ইমপোর্ট করা সম্ভব। নতুন ফাইল ইমপোর্ট করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন।`);
+      return;
+    }
     try {
       setIsImportingGoogle(true);
       const res = await fetch("/api/integrations/google/import", {
@@ -562,6 +582,27 @@ export default function DocumentManager() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Document Limit Indicator Badge */}
+          <div
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors ${
+              isLimitReached
+                ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50"
+                : documents.length >= 4
+                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/50"
+                : "bg-muted text-muted-foreground border-border/80"
+            }`}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>
+              ফাইল লিমিট: <strong>{documents.length}</strong> / {MAX_DOCUMENTS_LIMIT}
+            </span>
+            {isLimitReached && (
+              <Badge variant="destructive" className="h-4 px-1 text-[10px] uppercase font-bold">
+                পূর্ণ
+              </Badge>
+            )}
+          </div>
+
           {/* Google Workspace Import Trigger */}
           <Button
             size="sm"
@@ -671,23 +712,45 @@ export default function DocumentManager() {
         </div>
       )}
 
+      {/* 5 Files Limit Alert Banner */}
+      {isLimitReached && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 flex items-start sm:items-center justify-between gap-3 text-amber-700 dark:text-amber-400">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="text-xs sm:text-sm">
+              <span className="font-semibold">সর্বোচ্চ ৫টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})।</span>{" "}
+              <span className="text-xs text-muted-foreground">নতুন কোনো ফাইল আপলোড করতে নিচের তালিকা থেকে অপ্রয়োজনীয় ফাইল মুছে ফেলুন।</span>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-xs bg-amber-500/20 border-amber-500/30 text-amber-800 dark:text-amber-300 shrink-0">
+            ৫/৫ ফাইল
+          </Badge>
+        </div>
+      )}
+
       {/* Upload Zone & Cloud Integrations Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Drag & Drop Upload Zone (2 cols) */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
-            setDragActive(true);
+            if (!isLimitReached) setDragActive(true);
           }}
           onDragLeave={() => setDragActive(false)}
           onDrop={(e) => {
             e.preventDefault();
             setDragActive(false);
+            if (isLimitReached) {
+              toast.error(`সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল আপলোড করা সম্ভব। নতুন ফাইল আপলোড করতে পূর্বের কোনো ফাইল ডিলিট করুন।`);
+              return;
+            }
             const file = e.dataTransfer.files?.[0];
             if (file) handleFileUpload(file);
           }}
           className={`md:col-span-2 rounded-2xl border-2 border-dashed p-6 text-center transition-all flex flex-col justify-center items-center ${
-            dragActive
+            isLimitReached
+              ? "border-border/60 bg-muted/20 opacity-80"
+              : dragActive
               ? "border-primary bg-primary/5"
               : "border-border/80 bg-card hover:border-primary/50 shadow-2xs"
           }`}
@@ -696,29 +759,56 @@ export default function DocumentManager() {
             <Upload className="h-5 w-5" />
           </div>
           <h3 className="text-xs sm:text-sm font-semibold text-foreground">
-            {selectedPageId !== "all"
+            {isLimitReached
+              ? "ফাইলের সর্বোচ্চ সীমা পূর্ণ হয়েছে (৫/৫ ফাইল ব্যবহৃত)"
+              : selectedPageId !== "all"
               ? `"${selectedPage?.pageName || "নির্বাচিত পেজ"}" এর প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ড্রপ করুন`
               : "প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ফাইল ড্রপ করুন (সকল পেজে কার্যকর)"}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-            PDF, Excel (.xlsx, .csv), Word বা Text ফাইল ড্র্যাগ করে এখানে ছাড়ুন অথবা ব্রাউজ করুন।
+            {isLimitReached
+              ? "নতুন প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট দিতে নিচের তালিকা থেকে পূর্বের কোনো ফাইল ডিলিট করুন।"
+              : "PDF, Excel (.xlsx, .csv), Word বা Text ফাইল ড্র্যাগ করে এখানে ছাড়ুন অথবা ব্রাউজ করুন।"}
           </p>
 
           <div className="mt-3.5 flex flex-wrap justify-center items-center gap-2">
             <Button
               size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="gap-1.5 bg-primary text-primary-foreground text-xs h-7.5 font-medium shadow-2xs"
+              onClick={() => {
+                if (isLimitReached) {
+                  toast.error(`সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল আপলোড করা সম্ভব। নতুন ফাইল আপলোড করতে পূর্বের কোনো ফাইল ডিলিট করুন।`);
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
+              disabled={isUploading || isLimitReached}
+              className={`gap-1.5 text-xs h-7.5 font-medium shadow-2xs ${
+                isLimitReached
+                  ? "bg-muted text-muted-foreground border border-border cursor-not-allowed hover:bg-muted"
+                  : "bg-primary text-primary-foreground"
+              }`}
             >
               <Upload className="h-3 w-3" />
-              <span>{isUploading ? "ইনডেক্সিং হচ্ছে..." : "ব্রাউজ করে ফাইল বাছুন"}</span>
+              <span>
+                {isUploading
+                  ? "ইনডেক্সিং হচ্ছে..."
+                  : isLimitReached
+                  ? "লিমিট পূর্ণ (৫/৫ ফাইল)"
+                  : "ব্রাউজ করে ফাইল বাছুন"}
+              </span>
             </Button>
 
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setShowFaqModal(true)}
+              disabled={isLimitReached}
+              onClick={() => {
+                if (isLimitReached) {
+                  toast.error(`সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল বা নোট যোগ করা সম্ভব। নতুন নোট যোগ করতে পূর্বের ফাইল ডিলিট করুন।`);
+                  return;
+                }
+                setShowFaqModal(true);
+              }}
               className="gap-1.5 text-xs h-7.5"
             >
               <Plus className="h-3 w-3" />
@@ -730,6 +820,8 @@ export default function DocumentManager() {
             <span>PDF, XLSX, CSV, TXT, DOCX</span>
             <span>•</span>
             <span>সর্বোচ্চ 15 MB</span>
+            <span>•</span>
+            <span className="font-semibold text-primary">সর্বোচ্চ ৫টি ফাইল</span>
           </div>
         </div>
 
@@ -1043,6 +1135,15 @@ export default function DocumentManager() {
             </DialogDescription>
           </DialogHeader>
 
+          {isLimitReached && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center gap-2.5 text-amber-700 dark:text-amber-400 text-xs mt-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                সর্বোচ্চ ৫টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})। নতুন ফাইল ইমপোর্ট করতে নিচের তালিকা থেকে পূর্বের কোনো ফাইল মুছে ফেলুন।
+              </span>
+            </div>
+          )}
+
           <Tabs value={googleTab} onValueChange={(v: any) => setGoogleTab(v)} className="w-full mt-2">
             <TabsList className="grid grid-cols-2 w-full h-9 bg-muted/60">
               <TabsTrigger value="url" className="text-xs gap-1.5">
@@ -1122,11 +1223,17 @@ export default function DocumentManager() {
                 <Button
                   size="sm"
                   onClick={handleImportGoogleUrl}
-                  disabled={isImportingGoogle || !googleUrl.trim()}
+                  disabled={isImportingGoogle || !googleUrl.trim() || isLimitReached}
                   className="text-xs bg-primary text-primary-foreground gap-1.5"
                 >
                   <RefreshCw className={`h-3 w-3 ${isImportingGoogle ? "animate-spin" : ""}`} />
-                  <span>{isImportingGoogle ? "ইনডেক্স হচ্ছে..." : "ইমপোর্ট ও ইনডেক্স করুন"}</span>
+                  <span>
+                    {isImportingGoogle
+                      ? "ইনডেক্স হচ্ছে..."
+                      : isLimitReached
+                      ? "লিমিট পূর্ণ (৫/৫ ফাইল)"
+                      : "ইমপোর্ট ও ইনডেক্স করুন"}
+                  </span>
                 </Button>
               </DialogFooter>
             </TabsContent>
@@ -1294,10 +1401,14 @@ export default function DocumentManager() {
                             <Button
                               size="sm"
                               onClick={() => handleImportDriveFile(file)}
-                              disabled={isImportingGoogle}
-                              className="h-7 text-xs px-2.5 shrink-0 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+                              disabled={isImportingGoogle || isLimitReached}
+                              className={`h-7 text-xs px-2.5 shrink-0 ${
+                                isLimitReached
+                                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                                  : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+                              }`}
                             >
-                              ইমপোর্ট
+                              {isLimitReached ? "লিমিট পূর্ণ" : "ইমপোর্ট"}
                             </Button>
                           </div>
                         );
@@ -1320,6 +1431,15 @@ export default function DocumentManager() {
               কাস্টমারদের সচরাচর করা প্রশ্ন ও সেটির নির্দিষ্ট উত্তর লিখে দিন
             </DialogDescription>
           </DialogHeader>
+
+          {isLimitReached && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center gap-2.5 text-amber-700 dark:text-amber-400 text-xs mt-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                সর্বোচ্চ ৫টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})। নতুন নোট যুক্ত করতে পূর্বের কোনো ফাইল মুছে ফেলুন।
+              </span>
+            </div>
+          )}
 
           <div className="space-y-3 py-2 text-xs">
             {pages.length > 0 && (
@@ -1378,10 +1498,14 @@ export default function DocumentManager() {
             <Button
               size="sm"
               onClick={handleAddFaq}
-              disabled={savingFaq}
+              disabled={savingFaq || isLimitReached}
               className="text-xs bg-primary text-primary-foreground"
             >
-              {savingFaq ? "সেভ হচ্ছে..." : "FAQ সেভ করুন"}
+              {savingFaq
+                ? "সেভ হচ্ছে..."
+                : isLimitReached
+                ? "লিমিট পূর্ণ (৫/৫)"
+                : "FAQ সেভ করুন"}
             </Button>
           </DialogFooter>
         </DialogContent>
