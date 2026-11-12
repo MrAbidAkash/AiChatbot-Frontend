@@ -170,3 +170,4 @@ export async function saveCustomerProfile(params: {
     console.error("[Customer Profile] Error saving customer profile:", err);
   }
 }
+
