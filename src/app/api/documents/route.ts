@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
-export const MAX_DOCUMENTS_LIMIT = 5;
+export const MAX_DOCUMENTS_LIMIT = 10;
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     const contentType = request.headers.get("content-type") || "";
 
-    // Count existing documents for this user to enforce 5 files limit
+    // Count existing documents for this user to enforce 10 files limit
     const db = getDb();
     const countQuery: any = {};
     if (userId && userId !== "all") {
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       if (!isPolicyOrReplace && currentDocCount >= MAX_DOCUMENTS_LIMIT) {
         return NextResponse.json(
           {
-            error: "সর্বোচ্চ ৫টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল যোগ করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 5 documents limit reached)",
+            error: "সর্বোচ্চ ১০টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল যোগ করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 10 documents limit reached)",
           },
           { status: 400 },
         );
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       if (!replaceExisting && currentDocCount >= MAX_DOCUMENTS_LIMIT) {
         return NextResponse.json(
           {
-            error: "সর্বোচ্চ ৫টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল আপলোড করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 5 documents limit reached)",
+            error: "সর্বোচ্চ ১০টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল আপলোড করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 10 documents limit reached)",
           },
           { status: 400 },
         );

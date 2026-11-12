@@ -121,7 +121,7 @@ interface GoogleDriveFile {
   category: "docs" | "sheets" | "pdf" | "other";
 }
 
-export const MAX_DOCUMENTS_LIMIT = 5;
+export const MAX_DOCUMENTS_LIMIT = 10;
 
 export default function DocumentManager() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -587,7 +587,7 @@ export default function DocumentManager() {
             className={`px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors ${
               isLimitReached
                 ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50"
-                : documents.length >= 4
+                : documents.length >= 8
                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/50"
                 : "bg-muted text-muted-foreground border-border/80"
             }`}
@@ -712,18 +712,18 @@ export default function DocumentManager() {
         </div>
       )}
 
-      {/* 5 Files Limit Alert Banner */}
+      {/* 10 Files Limit Alert Banner */}
       {isLimitReached && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 flex items-start sm:items-center justify-between gap-3 text-amber-700 dark:text-amber-400">
           <div className="flex items-center gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="text-xs sm:text-sm">
-              <span className="font-semibold">সর্বোচ্চ ৫টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})।</span>{" "}
+              <span className="font-semibold">সর্বোচ্চ ১০টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})।</span>{" "}
               <span className="text-xs text-muted-foreground">নতুন কোনো ফাইল আপলোড করতে নিচের তালিকা থেকে অপ্রয়োজনীয় ফাইল মুছে ফেলুন।</span>
             </div>
           </div>
           <Badge variant="outline" className="text-xs bg-amber-500/20 border-amber-500/30 text-amber-800 dark:text-amber-300 shrink-0">
-            ৫/৫ ফাইল
+            ১০/১০ ফাইল
           </Badge>
         </div>
       )}
@@ -760,7 +760,7 @@ export default function DocumentManager() {
           </div>
           <h3 className="text-xs sm:text-sm font-semibold text-foreground">
             {isLimitReached
-              ? "ফাইলের সর্বোচ্চ সীমা পূর্ণ হয়েছে (৫/৫ ফাইল ব্যবহৃত)"
+              ? "ফাইলের সর্বোচ্চ সীমা পূর্ণ হয়েছে (১০/১০ ফাইল ব্যবহৃত)"
               : selectedPageId !== "all"
               ? `"${selectedPage?.pageName || "নির্বাচিত পেজ"}" এর প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ড্রপ করুন`
               : "প্রোডাক্ট ক্যাটালগ বা প্রাইস শিট ফাইল ড্রপ করুন (সকল পেজে কার্যকর)"}
@@ -793,7 +793,7 @@ export default function DocumentManager() {
                 {isUploading
                   ? "ইনডেক্সিং হচ্ছে..."
                   : isLimitReached
-                  ? "লিমিট পূর্ণ (৫/৫ ফাইল)"
+                  ? "লিমিট পূর্ণ (১০/১০ ফাইল)"
                   : "ব্রাউজ করে ফাইল বাছুন"}
               </span>
             </Button>
@@ -821,7 +821,7 @@ export default function DocumentManager() {
             <span>•</span>
             <span>সর্বোচ্চ 15 MB</span>
             <span>•</span>
-            <span className="font-semibold text-primary">সর্বোচ্চ ৫টি ফাইল</span>
+            <span className="font-semibold text-primary">সর্বোচ্চ ১০টি ফাইল</span>
           </div>
         </div>
 
@@ -1139,7 +1139,7 @@ export default function DocumentManager() {
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center gap-2.5 text-amber-700 dark:text-amber-400 text-xs mt-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>
-                সর্বোচ্চ ৫টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})। নতুন ফাইল ইমপোর্ট করতে নিচের তালিকা থেকে পূর্বের কোনো ফাইল মুছে ফেলুন।
+                সর্বোচ্চ ১০টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})। নতুন ফাইল ইমপোর্ট করতে নিচের তালিকা থেকে পূর্বের কোনো ফাইল মুছে ফেলুন।
               </span>
             </div>
           )}
@@ -1231,7 +1231,7 @@ export default function DocumentManager() {
                     {isImportingGoogle
                       ? "ইনডেক্স হচ্ছে..."
                       : isLimitReached
-                      ? "লিমিট পূর্ণ (৫/৫ ফাইল)"
+                      ? "লিমিট পূর্ণ (১০/১০ ফাইল)"
                       : "ইমপোর্ট ও ইনডেক্স করুন"}
                   </span>
                 </Button>
@@ -1436,7 +1436,7 @@ export default function DocumentManager() {
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center gap-2.5 text-amber-700 dark:text-amber-400 text-xs mt-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>
-                সর্বোচ্চ ৫টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})। নতুন নোট যুক্ত করতে পূর্বের কোনো ফাইল মুছে ফেলুন।
+                সর্বোচ্চ ১০টি ফাইলের লিমিট পূর্ণ হয়েছে ({documents.length}/{MAX_DOCUMENTS_LIMIT})। নতুন নোট যুক্ত করতে পূর্বের কোনো ফাইল মুছে ফেলুন।
               </span>
             </div>
           )}
@@ -1504,7 +1504,7 @@ export default function DocumentManager() {
               {savingFaq
                 ? "সেভ হচ্ছে..."
                 : isLimitReached
-                ? "লিমিট পূর্ণ (৫/৫)"
+                ? "লিমিট পূর্ণ (১০/১০)"
                 : "FAQ সেভ করুন"}
             </Button>
           </DialogFooter>

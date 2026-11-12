@@ -11,7 +11,7 @@ import {
 } from "@/lib/google-drive";
 import { saveDocument } from "@/lib/knowledge";
 
-export const MAX_DOCUMENTS_LIMIT = 5;
+export const MAX_DOCUMENTS_LIMIT = 10;
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Enforce 5 documents / files limit per user
+    // Enforce 10 documents / files limit per user
     const db = getDb();
     const countQuery: any = {};
     if (userId && userId !== "all") {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     if (currentDocCount >= MAX_DOCUMENTS_LIMIT) {
       return NextResponse.json(
         {
-          error: "সর্বোচ্চ ৫টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল ইমপোর্ট করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 5 documents limit reached)",
+          error: "সর্বোচ্চ ১০টি ফাইল বা ডকুমেন্ট আপলোড করা সম্ভব। নতুন ফাইল ইমপোর্ট করতে অনুগ্রহ করে পূর্বের কোনো ফাইল ডিলিট করুন। (Maximum 10 documents limit reached)",
         },
         { status: 400 },
       );
