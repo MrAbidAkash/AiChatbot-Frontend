@@ -27,6 +27,7 @@ import {
   Upload,
   Sliders,
   Truck,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +88,12 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
           href: "/dashboard",
           icon: LayoutDashboard,
           badge: null,
+        },
+        {
+          name: "অর্ডারসমূহ",
+          href: "/orders",
+          icon: ShoppingBag,
+          badge: "Sales",
         },
         {
           name: "কাস্টমার ইনবক্স",
@@ -158,6 +165,7 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
   // Derive current page title for the top utility bar
   const currentPageTitle = (() => {
     if (pathname === "/dashboard") return "ড্যাশবোর্ড (Overview)";
+    if (pathname === "/orders") return "কনফার্মড অর্ডারসমূহ (Orders)";
     if (pathname === "/inbox") return "কাস্টমার ইনবক্স";
     if (pathname === "/connect") return "Facebook Connect";
     if (pathname === "/documents") return "ডকুমেন্টস ও ফাইল আপলোড";

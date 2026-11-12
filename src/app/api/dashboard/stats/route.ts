@@ -39,6 +39,11 @@ export async function GET() {
       messageFilterCustomer.conversationId = { $in: userConvIds };
     }
 
+    const orderFilter: any =
+      userId !== "all"
+        ? { $or: [{ userId }, { userId: "default" }, { userId: { $exists: false } }] }
+        : {};
+
     const [
       totalDocuments,
       totalPages,
@@ -46,6 +51,8 @@ export async function GET() {
       totalCustomerMessages,
       recentConversations,
       wallet,
+      totalOrders,
+      recentOrders,
     ] = await Promise.all([
       db.collection("business_knowledge").countDocuments(userFilter),
       db.collection("facebook_pages").countDocuments(userFilter),
@@ -60,6 +67,13 @@ export async function GET() {
         .limit(5)
         .toArray(),
       getUserWallet({ userId, userEmail }),
+      db.collection("orders").countDocuments(orderFilter),
+      db
+        .collection("orders")
+        .find(orderFilter)
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .toArray(),
     ]);
 
     const totalAiReplies = wallet.usedCredits;
@@ -75,11 +89,16 @@ export async function GET() {
       totalConversations,
       totalMessages,
       totalAiReplies,
+      totalOrders,
       responseRate,
       wallet,
       recentConversations: recentConversations.map((c) => ({
         ...c,
         _id: c._id.toString(),
+      })),
+      recentOrders: recentOrders.map((o) => ({
+        ...o,
+        _id: o._id.toString(),
       })),
     });
   } catch (error: any) {

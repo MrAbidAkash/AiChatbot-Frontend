@@ -363,6 +363,37 @@ export async function decrementGoogleSheetStock(
 
   if (!updateRes.ok) {
     const errText = await updateRes.text();
+    if (
+      updateRes.status === 403 ||
+      errText.includes("ACCESS_TOKEN_SCOPE_INSUFFICIENT") ||
+      errText.includes("insufficient authentication scopes")
+    ) {
+      // Update local document stock in MongoDB so the AI chatbot still has the decremented stock
+      try {
+        const db = getDb();
+        const doc = await db.collection<BusinessDocument>("business_knowledge").findOne({
+          "metadata.googleFileId": spreadsheetId,
+        });
+        if (doc?._id && doc.content) {
+          const escapedName = match.productName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const regex = new RegExp(`(${escapedName}[\\s\\S]*?Stock:\\s*)(\\d+)`, "i");
+          if (regex.test(doc.content)) {
+            const newContent = doc.content.replace(regex, `$1${newStock}`);
+            await db.collection("business_knowledge").updateOne(
+              { _id: new ObjectId(doc._id.toString()) },
+              { $set: { content: newContent, updatedAt: new Date() } }
+            );
+            console.log(`[Auto-Stock] Local business knowledge updated for "${match.productName}" stock to ${newStock}`);
+          }
+        }
+      } catch (localErr) {
+        console.warn("Local business knowledge stock update warning:", localErr);
+      }
+
+      throw new Error(
+        "Google Sheets permission error: Google account was connected with read-only permission. Please reconnect your Google account in Documents to allow automatic Google Sheet edits.",
+      );
+    }
     throw new Error(`Google Sheets API update error: ${errText}`);
   }
 
@@ -636,6 +667,30 @@ export async function handleAutoStockDeductionOnOrder(options: {
     .sort({ updatedAt: -1 })
     .toArray();
 
+  // Prioritize sheets whose title contains stock, inventory, or product keywords
+  sheets.sort((a, b) => {
+    const aTitle = (a.title || "").toLowerCase();
+    const bTitle = (b.title || "").toLowerCase();
+    const aIsStock =
+      aTitle.includes("stock") ||
+      aTitle.includes("inventory") ||
+      aTitle.includes("product") ||
+      aTitle.includes("পণ্য") ||
+      aTitle.includes("স্টক")
+        ? 1
+        : 0;
+    const bIsStock =
+      bTitle.includes("stock") ||
+      bTitle.includes("inventory") ||
+      bTitle.includes("product") ||
+      bTitle.includes("পণ্য") ||
+      bTitle.includes("স্টক")
+        ? 1
+        : 0;
+    if (aIsStock !== bIsStock) return bIsStock - aIsStock;
+    return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+  });
+
   if (sheets.length === 0) {
     console.warn(
       `[Auto-Stock] No connected Google Sheets found for user "${userId}". Order #${orderId?.toString()} preserved in database.`,
@@ -660,6 +715,8 @@ export async function handleAutoStockDeductionOnOrder(options: {
 
   // 4. Attempt stock decrement in Google Sheet
   let lastErrorMessage = "";
+  let permissionErrorMessage = "";
+
   for (const sheet of sheets) {
     const spreadsheetId = sheet.metadata?.googleFileId;
     if (!spreadsheetId) continue;
@@ -700,12 +757,18 @@ export async function handleAutoStockDeductionOnOrder(options: {
 
       return result;
     } catch (err: any) {
-      lastErrorMessage = err.message || String(err);
-      console.warn(`[Auto-Stock] Attempt to update sheet "${sheet.title}" failed:`, lastErrorMessage);
+      const msg = err.message || String(err);
+      if (msg.includes("permission") || msg.includes("scope") || msg.includes("reconnect")) {
+        permissionErrorMessage = msg;
+      }
+      lastErrorMessage = msg;
+      console.warn(`[Auto-Stock] Attempt to update sheet "${sheet.title}" failed:`, msg);
     }
   }
 
-  // If no sheet successfully updated
+  // If no sheet successfully updated, report permission error first if one occurred
+  const finalStockError = permissionErrorMessage || lastErrorMessage;
+
   if (orderId) {
     try {
       await db.collection("orders").updateOne(
@@ -713,7 +776,7 @@ export async function handleAutoStockDeductionOnOrder(options: {
         {
           $set: {
             stockDecremented: false,
-            stockDeductionMessage: `Failed to deduct stock in sheet: ${lastErrorMessage}`,
+            stockDeductionMessage: `Failed to deduct stock in sheet: ${finalStockError}`,
             updatedAt: new Date(),
           },
         },

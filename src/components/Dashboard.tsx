@@ -28,6 +28,11 @@ import {
   Upload,
   AlertTriangle,
   Truck,
+  ShoppingBag,
+  Phone,
+  MapPin,
+  Package,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -99,15 +104,31 @@ interface WalletStats {
   isActive: boolean;
 }
 
+interface RecentOrder {
+  _id: string;
+  customerName: string;
+  customerPhone?: string | null;
+  deliveryAddress?: string | null;
+  productName: string;
+  quantity: number;
+  status: "confirmed" | "shipped" | "delivered" | "cancelled";
+  stockDecremented?: boolean;
+  stockDeductionMessage?: string | null;
+  stockCell?: string | null;
+  createdAt: string;
+}
+
 interface DbStats {
   totalDocuments: number;
   totalPages: number;
   totalConversations: number;
   totalMessages: number;
   totalAiReplies: number;
+  totalOrders?: number;
   responseRate: number;
   wallet?: WalletStats;
   recentConversations: RecentConversation[];
+  recentOrders?: RecentOrder[];
 }
 
 interface ChatMessage {
@@ -126,6 +147,7 @@ export default function Dashboard({ session }: DashboardProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [dismissOnboarding, setDismissOnboarding] = useState(false);
+  const [syncingOrders, setSyncingOrders] = useState(false);
 
   // AI Simulator Modal state
   const [simulatorOpen, setSimulatorOpen] = useState(false);
@@ -180,6 +202,28 @@ export default function Dashboard({ session }: DashboardProps) {
     setCopiedField(fieldName);
     toast.success(`${fieldName} কপি হয়েছে`);
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleSyncOrders = async () => {
+    setSyncingOrders(true);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync_conversations" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "চ্যাট হিস্ট্রি থেকে অর্ডার সিঙ্ক সফল হয়েছে!");
+        await fetchData(true);
+      } else {
+        toast.error(data.error || "সিঙ্ক করতে ব্যর্থ হয়েছে");
+      }
+    } catch (err: any) {
+      toast.error("সিঙ্ক এরর: " + err.message);
+    } finally {
+      setSyncingOrders(false);
+    }
   };
 
   const formatRelativeTime = (dateStr?: string) => {
@@ -402,8 +446,8 @@ export default function Dashboard({ session }: DashboardProps) {
         </div>
       )}
 
-      {/* ==================== 3. 4 CLEAN, CALM KPI CARDS ==================== */}
-      <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      {/* ==================== 3. 5 CLEAN, CALM KPI CARDS ==================== */}
+      <section className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <Card className="border-border/80 bg-card shadow-2xs">
           <CardContent className="p-4 sm:p-5">
             <div className="flex items-center justify-between">
@@ -421,7 +465,7 @@ export default function Dashboard({ session }: DashboardProps) {
                 className="mt-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 hover:underline"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-                <span>AI স্থগিত (ব্যালেন্স শেষ) • রিচার্জ →</span>
+                <span>AI স্থগিত • রিচার্জ →</span>
               </Link>
             ) : (
               <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
@@ -429,6 +473,29 @@ export default function Dashboard({ session }: DashboardProps) {
                 AI সক্রিয় (Active)
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-card shadow-2xs">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">কনফার্মড অর্ডারসমূহ</p>
+              <div className="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <ShoppingBag className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <p className="mt-2 text-2xl font-bold tracking-tight text-foreground font-mono">
+              {(stats?.totalOrders || 0).toLocaleString()}
+            </p>
+            <div className="mt-1 flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">মেসেঞ্জার সেলস</span>
+              <Link
+                href="/orders"
+                className="text-primary hover:underline font-semibold flex items-center gap-0.5"
+              >
+                সব দেখুন →
+              </Link>
+            </div>
           </CardContent>
         </Card>
 
@@ -591,6 +658,145 @@ export default function Dashboard({ session }: DashboardProps) {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ==================== Recent Confirmed Orders ==================== */}
+          <Card className="border-border/80 bg-card shadow-2xs">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-sm sm:text-base font-semibold flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                  </div>
+                  <span>সাম্প্রতিক কনফার্মড অর্ডারসমূহ</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  মেসেঞ্জারে AI অ্যাসিস্ট্যান্ট দ্বারা সংগৃহীত কাস্টমার অর্ডার ও শিট স্টক
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncOrders}
+                  disabled={syncingOrders}
+                  className="gap-1 text-xs h-7 border-border text-muted-foreground hover:text-foreground"
+                >
+                  <Sparkles className={`h-3 w-3 text-primary ${syncingOrders ? "animate-spin" : ""}`} />
+                  <span>{syncingOrders ? "সিঙ্ক..." : "চ্যাট থেকে সিঙ্ক"}</span>
+                </Button>
+                <Link href="/orders">
+                  <Button variant="outline" size="sm" className="gap-1 text-xs h-7 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 font-medium">
+                    <span>সব অর্ডার ({stats?.totalOrders || 0})</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+
+            <CardContent className="pt-1">
+              {stats?.recentOrders && stats.recentOrders.length > 0 ? (
+                <div className="divide-y divide-border/60">
+                  {stats.recentOrders.map((order) => (
+                    <div
+                      key={order._id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 px-2 rounded-lg transition-colors hover:bg-muted/30 -mx-2"
+                    >
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold text-foreground">
+                            {order.customerName}
+                          </span>
+                          <span className="px-1.5 py-0 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            কনফার্মড
+                          </span>
+                          {order.stockDecremented ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
+                              <FileSpreadsheet className="h-2.5 w-2.5" />
+                              <span>শিট স্টক আপডেট ({order.stockCell || "Sheet"})</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <FileSpreadsheet className="h-2.5 w-2.5" />
+                              <span>{order.stockDeductionMessage || "শিট পেন্ডিং"}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs text-foreground font-medium">
+                          <Package className="h-3 w-3 text-primary" />
+                          <span>{order.productName}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground">({order.quantity} টি)</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                          {order.customerPhone && (
+                            <span className="flex items-center gap-1 font-mono text-foreground">
+                              <Phone className="h-2.5 w-2.5 text-emerald-500" />
+                              {order.customerPhone}
+                            </span>
+                          )}
+                          {order.deliveryAddress && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-2.5 w-2.5 text-rose-500" />
+                              {order.deliveryAddress}
+                            </span>
+                          )}
+                          <span className="font-mono">{formatRelativeTime(order.createdAt)}</span>
+                        </div>
+                      </div>
+
+                      {/* Send to Steadfast Courier (Commented out per user request)
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                          href={`/courier?name=${encodeURIComponent(order.customerName)}&phone=${encodeURIComponent(
+                            order.customerPhone || "",
+                          )}&address=${encodeURIComponent(order.deliveryAddress || "")}`}
+                        >
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs gap-1.5 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary font-medium"
+                          >
+                            <Truck className="h-3 w-3" />
+                            <span>কুরিয়ারে পাঠান</span>
+                          </Button>
+                        </Link>
+                      </div>
+                      */}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/80 p-6 text-center bg-muted/20">
+                  <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+                  <h4 className="text-xs font-semibold text-foreground">
+                    এখনো কোনো অর্ডার রেকর্ড হয়নি
+                  </h4>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground max-w-sm mx-auto">
+                    মেসেঞ্জারে কাস্টমার অর্ডার কনফার্ম করলে AI স্বয়ংক্রিয়ভাবে এখানে অর্ডার রেকর্ড করবে এবং গুগল শিট স্টক কমাবে।
+                  </p>
+                  <div className="mt-3 flex items-center justify-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSyncOrders}
+                      disabled={syncingOrders}
+                      className="text-xs h-7 gap-1.5"
+                    >
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      <span>{syncingOrders ? "সিঙ্ক হচ্ছে..." : "আগের চ্যাট থেকে সিঙ্ক করুন"}</span>
+                    </Button>
+                    <Link href="/orders">
+                      <Button size="sm" className="text-xs h-7 gap-1.5 font-medium">
+                        <Plus className="h-3 w-3" />
+                        <span>অর্ডার ম্যানেজার</span>
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               )}
             </CardContent>
