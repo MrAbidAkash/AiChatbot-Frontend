@@ -148,7 +148,7 @@ async function processIncomingMessage(item: ValidEventItem) {
   );
 
   // 10. Retrieve recent conversation history for multi-turn context
-  const history = await getRecentConversationHistory(conversationId, 6);
+  const history = await getRecentConversationHistory(conversationId, 16);
 
   // 11. Generate AI reply with Gemini
   let aiReplyText = "";

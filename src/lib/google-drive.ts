@@ -175,7 +175,18 @@ export async function getValidGoogleToken(userId: string): Promise<string | null
   const db = getDb();
   const collection = db.collection<GoogleIntegration>(COLLECTION_NAME);
 
-  const integration = await collection.findOne({ userId });
+  let integration = await collection.findOne({ userId });
+  if (!integration) {
+    integration = await collection.findOne({
+      $or: [{ userId: "default" }, { userId: { $exists: false } }],
+    });
+  }
+  if (!integration) {
+    const all = await collection.find({}).limit(2).toArray();
+    if (all.length === 1) {
+      integration = all[0];
+    }
+  }
   if (!integration) return null;
 
   const now = new Date();
