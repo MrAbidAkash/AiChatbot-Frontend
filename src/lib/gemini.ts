@@ -1,8 +1,9 @@
 // src/lib/gemini.ts
+import { GEMINI_TOOL_DECLARATIONS, executeAiTool } from "./ai-tools";
 
 export interface GeminiMessage {
-  role: "user" | "model";
-  parts: Array<{ text: string }>;
+  role: "user" | "model" | "function";
+  parts: Array<any>;
 }
 
 export interface GenerateReplyOptions {
@@ -16,6 +17,9 @@ export interface GenerateReplyOptions {
     senderType: "customer" | "ai" | "human";
     text: string;
   }>;
+  userId?: string;
+  pageId?: string;
+  enableTools?: boolean;
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
@@ -33,7 +37,7 @@ const FALLBACK_MODELS = [
  */
 export async function generateCustomerReply(
   options: GenerateReplyOptions,
-): Promise<{ reply: string; modelUsed: string }> {
+): Promise<{ reply: string; modelUsed: string; toolsCalled?: string[] }> {
   const apiKey = process.env.GEMINI_API_KEY || GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -169,7 +173,9 @@ ${businessKnowledge ? businessKnowledge : "No specific business documents upload
     });
   }
 
-  const requestBody = {
+  const toolsEnabled = options.enableTools !== false;
+
+  const requestBody: any = {
     system_instruction: {
       parts: [{ text: systemInstruction }],
     },
@@ -180,6 +186,10 @@ ${businessKnowledge ? businessKnowledge : "No specific business documents upload
       topP: 0.95,
     },
   };
+
+  if (toolsEnabled) {
+    requestBody.tools = [{ function_declarations: GEMINI_TOOL_DECLARATIONS }];
+  }
 
   // Try primary model first, fallback to secondary if needed
   const models = [DEFAULT_MODEL, ...FALLBACK_MODELS];
@@ -205,6 +215,76 @@ ${businessKnowledge ? businessKnowledge : "No specific business documents upload
 
       const data = await response.json();
       const candidate = data.candidates?.[0];
+
+      // Check if Gemini invoked a native tool
+      const functionCallPart = candidate?.content?.parts?.find((p: any) => p.functionCall);
+
+      if (functionCallPart?.functionCall && toolsEnabled) {
+        const { name, args } = functionCallPart.functionCall;
+        console.log(`[Gemini Function Call] Model requested tool "${name}" with args:`, args);
+
+        const toolResult = await executeAiTool(name, args || {}, {
+          userId: options.userId || "default",
+          pageId: options.pageId,
+        });
+
+        // Add model's tool call turn
+        contents.push({
+          role: "model",
+          parts: [{ functionCall: functionCallPart.functionCall }],
+        });
+
+        // Add function response turn
+        contents.push({
+          role: "function",
+          parts: [
+            {
+              functionResponse: {
+                name,
+                response: {
+                  output: toolResult,
+                },
+              },
+            },
+          ],
+        });
+
+        // Generate final natural response grounded in the live tool output
+        try {
+          const secondResponse = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemInstruction }] },
+              contents,
+              tools: [{ function_declarations: GEMINI_TOOL_DECLARATIONS }],
+              generationConfig: {
+                temperature: 0.3,
+                maxOutputTokens: 2048,
+                topP: 0.95,
+              },
+            }),
+          });
+
+          if (secondResponse.ok) {
+            const secondData = await secondResponse.json();
+            const secondCandidate = secondData.candidates?.[0];
+            const finalReply = secondCandidate?.content?.parts?.[0]?.text;
+            if (finalReply && finalReply.trim()) {
+              return {
+                reply: finalReply.trim(),
+                modelUsed: model,
+                toolsCalled: [name],
+              };
+            }
+          } else {
+            console.warn(`[Gemini] Follow-up turn after function call failed (${secondResponse.status}):`, await secondResponse.text());
+          }
+        } catch (secondErr) {
+          console.warn("[Gemini] Error in follow-up response after tool execution:", secondErr);
+        }
+      }
+
       const replyText = candidate?.content?.parts?.[0]?.text;
 
       if (replyText && replyText.trim()) {

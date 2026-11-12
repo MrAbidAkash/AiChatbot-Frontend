@@ -400,6 +400,8 @@ export async function POST(request: NextRequest) {
         businessKnowledge: knowledge,
         businessName: "ChatTime Admin Testing Sandbox",
         botTone: "friendly",
+        pageId,
+        enableTools: true,
       });
 
       return NextResponse.json({

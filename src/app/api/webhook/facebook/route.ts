@@ -163,6 +163,9 @@ async function processIncomingMessage(item: ValidEventItem) {
       customInstructions: page.customInstructions,
       fallbackMessage: page.fallbackMessage,
       conversationHistory: history,
+      userId: page.userId,
+      pageId: page.pageId,
+      enableTools: true,
     });
 
     aiReplyText = aiResponse.reply;

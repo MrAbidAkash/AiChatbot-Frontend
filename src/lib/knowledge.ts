@@ -2,6 +2,11 @@
 import { getDb } from "./db";
 import { ObjectId } from "mongodb";
 import { summarizeBusinessDocument } from "./gemini";
+import {
+  batchEmbedTextsWithGemini,
+  embedTextWithGemini,
+  findTopSemanticChunks,
+} from "./gemini-embeddings";
 
 export interface BusinessDocument {
   _id?: ObjectId | string;
@@ -15,6 +20,11 @@ export interface BusinessDocument {
   summary?: string;
   keyTopics?: string[];
   chunks?: string[];
+  chunkEmbeddings?: Array<{
+    chunkIndex: number;
+    text: string;
+    embedding: number[];
+  }>;
   metadata?: Record<string, any>;
   status: "ready" | "training" | "trained" | "error";
   uploadedAt: Date;
@@ -62,6 +72,21 @@ export async function saveDocument(doc: {
 
   const chunks = chunkText(doc.content);
 
+  // Generate vector embeddings for chunks
+  let chunkEmbeddings: Array<{ chunkIndex: number; text: string; embedding: number[] }> | undefined;
+  try {
+    const rawEmbeddings = await batchEmbedTextsWithGemini(chunks);
+    if (rawEmbeddings && rawEmbeddings.length === chunks.length) {
+      chunkEmbeddings = chunks.map((chunk, idx) => ({
+        chunkIndex: idx,
+        text: chunk,
+        embedding: rawEmbeddings[idx],
+      }));
+    }
+  } catch (embErr) {
+    console.warn("[Knowledge] Vector embeddings generation warning:", embErr);
+  }
+
   // Generate AI summary
   let summary = "";
   let keyTopics: string[] = [];
@@ -103,7 +128,7 @@ export async function saveDocument(doc: {
         await collection.deleteMany({ _id: { $in: extraIds } });
       }
 
-      const updateData = {
+      const updateData: any = {
         fileName: doc.fileName,
         fileType: doc.fileType,
         size: doc.size || `${(doc.content.length / 1024).toFixed(1)} KB`,
@@ -115,6 +140,9 @@ export async function saveDocument(doc: {
         status: "trained" as const,
         updatedAt: new Date(),
       };
+      if (chunkEmbeddings) {
+        updateData.chunkEmbeddings = chunkEmbeddings;
+      }
 
       await collection.updateOne(
         { _id: primaryId },
@@ -140,6 +168,7 @@ export async function saveDocument(doc: {
     summary,
     keyTopics,
     chunks,
+    chunkEmbeddings,
     metadata: doc.metadata,
     status: "trained",
     uploadedAt: new Date(),
@@ -268,7 +297,52 @@ export async function deleteDocument(docId: string): Promise<boolean> {
 }
 
 /**
- * Retrieve relevant business knowledge for a customer's query
+ * Background helper to generate and save vector embeddings for a document if missing
+ */
+export async function generateAndSaveDocEmbeddings(
+  docId: string,
+  content: string,
+  existingChunks?: string[],
+): Promise<boolean> {
+  if (!docId || !content) return false;
+  try {
+    const chunks = existingChunks && existingChunks.length > 0 ? existingChunks : chunkText(content);
+    const rawEmbeddings = await batchEmbedTextsWithGemini(chunks);
+    if (!rawEmbeddings || rawEmbeddings.length !== chunks.length) return false;
+
+    const chunkEmbeddings = chunks.map((chunk, idx) => ({
+      chunkIndex: idx,
+      text: chunk,
+      embedding: rawEmbeddings[idx],
+    }));
+
+    const db = getDb();
+    let filter: any;
+    try {
+      filter = { _id: new ObjectId(docId) };
+    } catch {
+      filter = { _id: docId };
+    }
+
+    await db.collection<BusinessDocument>(COLLECTION_NAME).updateOne(filter, {
+      $set: {
+        chunks,
+        chunkEmbeddings,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log(`[Knowledge] Successfully backfilled ${chunkEmbeddings.length} vector embeddings for doc "${docId}"`);
+    return true;
+  } catch (err) {
+    console.warn(`[Knowledge] Failed to backfill embeddings for doc "${docId}":`, err);
+    return false;
+  }
+}
+
+/**
+ * Retrieve relevant business knowledge for a customer's query using Semantic Vector Search (RAG)
+ * with graceful fallback to keyword scoring / full context.
  */
 export async function getRelevantKnowledge(
   query: string,
@@ -280,9 +354,60 @@ export async function getRelevantKnowledge(
     return "";
   }
 
-  console.log(`[Knowledge] Retrieved ${docs.length} document(s) for query "${query}". Total chars: ${docs.reduce((acc, d) => acc + (d.content?.length || 0), 0)}`);
+  // 1. Collect all chunk embeddings across documents
+  const allEmbeddedChunks: Array<{ text: string; docTitle: string; embedding: number[] }> = [];
 
-  // If the total knowledge across all documents is under ~15,000 words,
+  for (const doc of docs) {
+    if (doc.chunkEmbeddings && doc.chunkEmbeddings.length > 0) {
+      for (const item of doc.chunkEmbeddings) {
+        if (item.embedding && item.embedding.length > 0) {
+          allEmbeddedChunks.push({
+            text: item.text,
+            docTitle: doc.title,
+            embedding: item.embedding,
+          });
+        }
+      }
+    } else {
+      // Lazy backfill: generate embeddings in background for docs that don't have them yet
+      if (doc._id && doc.content) {
+        generateAndSaveDocEmbeddings(doc._id.toString(), doc.content, doc.chunks).catch((err) =>
+          console.warn("[Knowledge] Background embedding backfill warning:", err),
+        );
+      }
+    }
+  }
+
+  // 2. Perform Semantic Vector Search if embeddings exist
+  if (allEmbeddedChunks.length > 0 && query && query.trim().length > 0) {
+    try {
+      const queryEmbedding = await embedTextWithGemini(query);
+      if (queryEmbedding) {
+        const topChunks = findTopSemanticChunks(queryEmbedding, allEmbeddedChunks, {
+          topK: 6,
+          minScore: 0.32,
+        });
+
+        if (topChunks.length > 0) {
+          console.log(
+            `[Knowledge] Semantic Vector Search retrieved ${topChunks.length} chunks (Top score: ${(topChunks[0].score * 100).toFixed(1)}%) for query "${query}"`,
+          );
+          return topChunks
+            .map(
+              (c, idx) =>
+                `[SEMANTIC KNOWLEDGE #${idx + 1} from "${c.docTitle}" (Relevance: ${(c.score * 100).toFixed(0)}%)]\n${c.text}`,
+            )
+            .join("\n\n---\n\n");
+        }
+      }
+    } catch (vectorErr) {
+      console.warn("[Knowledge] Semantic search error, falling back to standard retrieval:", vectorErr);
+    }
+  }
+
+  console.log(`[Knowledge] Standard fallback: ${docs.length} document(s) for query "${query}". Total chars: ${docs.reduce((acc, d) => acc + (d.content?.length || 0), 0)}`);
+
+  // 3. Fallback: If the total knowledge across all documents is under ~15,000 words,
   // we provide full context directly into Gemini Flash for maximum accuracy!
   const totalLength = docs.reduce((acc, d) => acc + (d.content?.length || 0), 0);
 
@@ -295,7 +420,7 @@ export async function getRelevantKnowledge(
       .join("\n---\n\n");
   }
 
-  // For larger sets, perform smart keyword/chunk scoring
+  // For larger sets without embeddings, perform smart keyword/chunk scoring
   const keywords = query
     .toLowerCase()
     .split(/\s+/)

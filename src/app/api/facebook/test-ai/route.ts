@@ -72,6 +72,9 @@ export async function POST(request: NextRequest) {
       customInstructions: instructions,
       fallbackMessage: fallbackMsg,
       conversationHistory,
+      userId,
+      pageId: targetPageId,
+      enableTools: true,
     });
 
     // Auto-deduct stock if order is confirmed
