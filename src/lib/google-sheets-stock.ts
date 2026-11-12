@@ -582,11 +582,11 @@ Respond strictly with valid JSON:
 }
 
 Rules:
-1. Set isOrderConfirmed to true if:
-   - The customer confirmed the purchase (e.g. '3 ta order confirm', 'Saree ta confirm korun', 'confirm', 'অর্ডার কনফার্ম', 'বুক করুন', 'পাঠিয়ে দিন').
-   - OR the AI Bot acknowledged/announced that the order is confirmed (e.g. 'সফলভাবে কনফার্ম করা হয়েছে', 'order is confirmed').
-   - Even if the bot subsequently asked to re-confirm phone/address, if the customer requested confirmation or the bot stated it was confirmed, set isOrderConfirmed: true!
-2. Do NOT set isOrderConfirmed to true if the customer is only asking about price, stock availability, or colors without indicating they want to buy/confirm.
+1. Set isOrderConfirmed to true ONLY IF this specific message turn represents the initial agreement to purchase.
+2. Do NOT set isOrderConfirmed to true if:
+   - The customer is merely confirming or providing an address/phone or answering a follow-up (e.g. 'Go', 'Goo', 'yes', 'ok', 'ঠিক আছে', 'পাঠান', 'ঝিনাইদহ').
+   - OR the AI Bot is merely acknowledging that an order has ALREADY been placed or confirmed ('আপনার অর্ডারটি ইতিমধ্যে নিশ্চিত করা হয়েছে', 'ইতিমধ্যে কনফার্ম', 'already confirmed').
+   - OR the customer is only asking about price, sizes, or stock availability without confirming a purchase.
 3. Quantity: Extract the exact quantity (e.g. '3 ta order confirm' or '৩টি অর্ডার' means quantity = 3). Default to 1 if not specified.
 4. Product Name: If the customer just says '3 ta order confirm' or 'confirm it', extract the product name being discussed from the AI Bot reply or previous history (e.g. 'Premium Jamdani Saree').
 5. Phone & Address: Extract from any previous turn in the chat history if present (e.g. '01886092236', 'Jhenaidah Sadar, Jhenaidah').`;
@@ -686,9 +686,19 @@ Rules:
   }
 
   // 5. Confirmation signal check:
+  // If the AI reply says the order is ALREADY confirmed ("ইতিমধ্যে নিশ্চিত/কনফার্ম"), do NOT treat as a new order!
+  const isAlreadyConfirmedNotice =
+    /(?:ইতিমধ্যে|ইতোমধ্যে|already)\s*(?:নিশ্চিত|কনফার্ম|বুক|placed|confirmed)/i.test(aiReply);
+
+  if (isAlreadyConfirmedNotice && !/(?:আরেকটি|আরেকটা|নতুন|another|new\s*order)/i.test(customerMessage)) {
+    detected.isOrderConfirmed = false;
+    return detected;
+  }
+
   const hasConfirmationSignal =
     /(?:confirm|কনফার্ম|অর্ডার|order|বুক|book|নিতে চাই|কিনতে চাই|পাঠিয়ে দিন|পাঠান|আগের ঠিকানায়|আগেরটাই|same address|হ্যাঁ দিন|হ্যাঁ পাঠান)/i.test(customerMessage) ||
-    /(?:সফলভাবে\s*কনফার্ম|কনফার্ম\s*করা\s*হয়েছে|অর্ডারটি\s*সফলভাবে|order\s*(?:has\s*been\s*)?confirmed)/i.test(aiReply);
+    (/(?:সফলভাবে\s*কনফার্ম|কনফার্ম\s*করা\s*হয়েছে|অর্ডারটি\s*সফলভাবে|order\s*(?:has\s*been\s*)?confirmed)/i.test(aiReply) &&
+      !/(?:ইতিমধ্যে|ইতোমধ্যে|already)/i.test(aiReply));
 
   if (hasConfirmationSignal && detected.productName) {
     detected.isOrderConfirmed = true;
@@ -749,8 +759,94 @@ export async function handleAutoStockDeductionOnOrder(options: {
     `[Auto-Stock] Order confirmed for "${detected.productName}" (Qty: ${finalQuantity}) by customer "${finalCustomerName}" (Phone: ${detected.customerPhone || "N/A"})`,
   );
 
-  // 2. ALWAYS RECORD ORDER IN MONGODB FIRST!
   const db = getDb();
+
+  // 2. DEDUPLICATION & MULTI-TURN CONVERSATION GUARD:
+  // If an order for this customer and product was already recorded in the last 30 minutes,
+  // do NOT create a second order and do NOT decrement stock again!
+  const DEDUPLICATION_WINDOW_MS = 30 * 60 * 1000; // 30 minutes window
+  const recentCutoff = new Date(Date.now() - DEDUPLICATION_WINDOW_MS);
+
+  // Check if customer explicitly requested an additional/new order of the same product
+  const isExplicitNewOrder =
+    /(?:আরেকটি\s*অর্ডার|আরেকটা\s*অর্ডার|নতুন\s*অর্ডার|another\s*order|second\s*order|আরো\s*\d+|আরও\s*\d+)/i.test(
+      customerMessage,
+    );
+
+  if (senderPsid && !isExplicitNewOrder) {
+    const escapedProd = detected.productName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const existingRecentOrder = await db.collection("orders").findOne({
+      senderPsid,
+      createdAt: { $gte: recentCutoff },
+      $or: [
+        { productName: detected.productName },
+        { productName: { $regex: new RegExp(`^${escapedProd}$`, "i") } },
+      ],
+    });
+
+    if (existingRecentOrder) {
+      console.log(
+        `[Auto-Stock] Duplicate order suppressed: Order #${existingRecentOrder._id.toString()} for "${detected.productName}" was already placed by ${senderPsid} at ${existingRecentOrder.createdAt.toISOString()}.`,
+      );
+
+      // If this follow-up message provides missing or confirmed address/phone, update the existing order
+      const updates: any = {};
+      if (
+        detected.deliveryAddress &&
+        (!existingRecentOrder.deliveryAddress ||
+          existingRecentOrder.deliveryAddress !== detected.deliveryAddress)
+      ) {
+        updates.deliveryAddress = detected.deliveryAddress;
+      }
+      if (
+        detected.customerPhone &&
+        (!existingRecentOrder.customerPhone ||
+          existingRecentOrder.customerPhone !== detected.customerPhone)
+      ) {
+        updates.customerPhone = detected.customerPhone;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updates.updatedAt = new Date();
+        await db
+          .collection("orders")
+          .updateOne({ _id: existingRecentOrder._id }, { $set: updates });
+        console.log(
+          `[Auto-Stock] Enriched existing order #${existingRecentOrder._id.toString()} with details:`,
+          updates,
+        );
+
+        saveCustomerProfile({
+          userId,
+          pageId: pageId || "",
+          senderPsid,
+          customerName: finalCustomerName,
+          customerPhone: updates.customerPhone || existingRecentOrder.customerPhone,
+          deliveryAddress: updates.deliveryAddress || existingRecentOrder.deliveryAddress,
+          productName: detected.productName,
+        }).catch((saveErr) =>
+          console.warn("[Auto-Stock] Failed to persist customer profile:", saveErr),
+        );
+      }
+
+      return null;
+    }
+  } else if (detected.customerPhone && !isExplicitNewOrder) {
+    const existingRecentOrderByPhone = await db.collection("orders").findOne({
+      customerPhone: detected.customerPhone,
+      productName: detected.productName,
+      createdAt: { $gte: recentCutoff },
+    });
+
+    if (existingRecentOrderByPhone) {
+      console.log(
+        `[Auto-Stock] Duplicate order suppressed by phone (${detected.customerPhone}) for "${detected.productName}".`,
+      );
+      return null;
+    }
+  }
+
+  // 3. ALWAYS RECORD ORDER IN MONGODB FIRST!
   let orderId: ObjectId | null = null;
   try {
     const insertRes = await db.collection("orders").insertOne({
