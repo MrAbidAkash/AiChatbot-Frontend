@@ -10,6 +10,9 @@ export interface ConversationRecord {
   senderPsid: string;
   customerName: string;
   customerAvatar?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  orderCount?: number;
   lastMessage: string;
   lastMessageAt: Date;
   unread: boolean;

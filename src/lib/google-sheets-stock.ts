@@ -3,6 +3,7 @@ import { getValidGoogleToken, syncGoogleDocument } from "./google-drive";
 import { getDb } from "./db";
 import { BusinessDocument } from "./knowledge";
 import { ObjectId } from "mongodb";
+import { getCustomerProfile, saveCustomerProfile } from "./customers";
 
 export interface StockUpdateResult {
   success: boolean;
@@ -562,7 +563,7 @@ Rules:
 
   // 5. Confirmation signal check:
   const hasConfirmationSignal =
-    /(?:confirm|কনফার্ম|অর্ডার|order|বুক|book|নিতে চাই|কিনতে চাই|পাঠিয়ে দিন|পাঠান)/i.test(customerMessage) ||
+    /(?:confirm|কনফার্ম|অর্ডার|order|বুক|book|নিতে চাই|কিনতে চাই|পাঠিয়ে দিন|পাঠান|আগের ঠিকানায়|আগেরটাই|same address|হ্যাঁ দিন|হ্যাঁ পাঠান)/i.test(customerMessage) ||
     /(?:সফলভাবে\s*কনফার্ম|কনফার্ম\s*করা\s*হয়েছে|অর্ডারটি\s*সফলভাবে|order\s*(?:has\s*been\s*)?confirmed)/i.test(aiReply);
 
   if (hasConfirmationSignal && detected.productName) {
@@ -598,6 +599,25 @@ export async function handleAutoStockDeductionOnOrder(options: {
     return null;
   }
 
+  // If this is a repeat customer and address/phone wasn't re-typed in this turn, fetch their saved address
+  if (senderPsid && (!detected.deliveryAddress || !detected.customerPhone)) {
+    try {
+      const savedProfile = await getCustomerProfile(pageId || "", senderPsid);
+      if (savedProfile) {
+        if (!detected.deliveryAddress && savedProfile.savedAddress) {
+          detected.deliveryAddress = savedProfile.savedAddress;
+          console.log(`[Auto-Stock] Reused saved delivery address for 2nd time purchase: "${savedProfile.savedAddress}"`);
+        }
+        if (!detected.customerPhone && savedProfile.savedPhone) {
+          detected.customerPhone = savedProfile.savedPhone;
+          console.log(`[Auto-Stock] Reused saved customer phone for 2nd time purchase: "${savedProfile.savedPhone}"`);
+        }
+      }
+    } catch (profErr) {
+      console.warn("[Auto-Stock] Error checking saved customer profile:", profErr);
+    }
+  }
+
   const finalCustomerName = customerName || detected.customerName || "Customer";
   const finalQuantity = detected.quantity || 1;
 
@@ -626,6 +646,19 @@ export async function handleAutoStockDeductionOnOrder(options: {
     });
     orderId = insertRes.insertedId;
     console.log(`[Auto-Stock] Successfully recorded Order #${orderId.toString()} in MongoDB orders collection.`);
+
+    // Persist customer profile and delivery address for 2nd time repeat purchases
+    if (senderPsid) {
+      saveCustomerProfile({
+        userId,
+        pageId: pageId || "",
+        senderPsid,
+        customerName: finalCustomerName,
+        customerPhone: detected.customerPhone,
+        deliveryAddress: detected.deliveryAddress,
+        productName: detected.productName,
+      }).catch((saveErr) => console.warn("[Auto-Stock] Failed to persist customer profile:", saveErr));
+    }
   } catch (orderInsertErr) {
     console.error("[Auto-Stock] Failed to record order in MongoDB:", orderInsertErr);
   }

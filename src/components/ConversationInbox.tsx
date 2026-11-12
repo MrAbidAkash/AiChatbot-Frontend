@@ -18,7 +18,6 @@ import {
   FaSync,
 } from "react-icons/fa";
 import Link from "next/link";
-import { Truck } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -29,6 +28,9 @@ interface ConversationItem {
   senderPsid: string;
   customerName: string;
   customerAvatar?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  orderCount?: number;
   lastMessage: string;
   lastMessageAt: string;
   unread: boolean;
@@ -365,25 +367,30 @@ export default function ConversationInbox() {
                     {selectedConv.customerName.slice(0, 2).toUpperCase()}
                   </div>
                   <div>
-                    <h2 className="font-bold text-sm text-foreground">
-                      {selectedConv.customerName}
+                    <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                      <span>{selectedConv.customerName}</span>
+                      {selectedConv.deliveryAddress && (
+                        <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          রিটার্নিং কাস্টমার
+                        </span>
+                      )}
                     </h2>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                      Facebook Messenger • {selectedConv.pageName}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                        {selectedConv.pageName}
+                      </span>
+                      {selectedConv.customerPhone && (
+                        <span className="font-mono text-foreground font-medium">• 📞 {selectedConv.customerPhone}</span>
+                      )}
+                      {selectedConv.deliveryAddress && (
+                        <span>• 📍 {selectedConv.deliveryAddress}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Link
-                    href={`/courier?name=${encodeURIComponent(selectedConv.customerName)}`}
-                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium shadow-2xs"
-                    title="এই কাস্টমারের জন্য Steadfast পার্সেল বুক করুন"
-                  >
-                    <Truck size={12} />
-                    <span>পার্সেল পাঠান</span>
-                  </Link>
                   <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
                     Auto-Reply Active
                   </span>

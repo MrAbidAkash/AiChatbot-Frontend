@@ -16,6 +16,7 @@ import {
 } from "@/lib/conversations";
 import { getUserWallet } from "@/lib/billing";
 import { handleAutoStockDeductionOnOrder } from "@/lib/google-sheets-stock";
+import { getCustomerProfile } from "@/lib/customers";
 
 export const dynamic = "force-dynamic";
 
@@ -147,8 +148,17 @@ async function processIncomingMessage(item: ValidEventItem) {
     `[FB Webhook] Knowledge loaded (${businessKnowledge.length} chars) for page "${page.pageName}". Generating AI reply...`,
   );
 
-  // 10. Retrieve recent conversation history for multi-turn context
-  const history = await getRecentConversationHistory(conversationId, 16);
+  // 10. Retrieve recent conversation history and saved customer profile (for 2nd time repeat purchases)
+  const [history, savedCustomerProfile] = await Promise.all([
+    getRecentConversationHistory(conversationId, 16),
+    getCustomerProfile(page.pageId, senderPsid),
+  ]);
+
+  if (savedCustomerProfile?.savedAddress) {
+    console.log(
+      `[FB Webhook] Returning customer detected (${senderPsid}): Saved Address="${savedCustomerProfile.savedAddress}", Phone="${savedCustomerProfile.savedPhone || "N/A"}"`,
+    );
+  }
 
   // 11. Generate AI reply with Gemini
   let aiReplyText = "";
@@ -166,6 +176,7 @@ async function processIncomingMessage(item: ValidEventItem) {
       userId: page.userId,
       pageId: page.pageId,
       enableTools: true,
+      customerProfile: savedCustomerProfile,
     });
 
     aiReplyText = aiResponse.reply;

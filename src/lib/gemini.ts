@@ -20,6 +20,13 @@ export interface GenerateReplyOptions {
   userId?: string;
   pageId?: string;
   enableTools?: boolean;
+  customerProfile?: {
+    savedName?: string;
+    savedPhone?: string | null;
+    savedAddress?: string | null;
+    totalOrders?: number;
+    lastOrderProduct?: string | null;
+  } | null;
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
@@ -75,6 +82,27 @@ Your role is to assist customers politely, accurately, and naturally based on th
 TONE & PERSONALITY:
 - ${toneGuidance}
 - Speak like an articulate, thoughtful human professional. Never sound like a robotic search engine, a raw database dump, or a stiff Wikipedia entry.
+${
+  options.customerProfile && (options.customerProfile.savedAddress || options.customerProfile.savedPhone)
+    ? `
+CUSTOMER MEMORY (RETURNING 2ND TIME CUSTOMER):
+This customer has previously purchased from "${businessName}"!
+- Customer Name: ${options.customerProfile.savedName || "Customer"}
+- Saved Delivery Address: ${options.customerProfile.savedAddress || "Not specified"}
+- Saved Phone Number: ${options.customerProfile.savedPhone || "Not specified"}
+- Total Completed Orders: ${options.customerProfile.totalOrders || 1}${options.customerProfile.lastOrderProduct ? ` (Previous purchase: ${options.customerProfile.lastOrderProduct})` : ""}
+
+SPECIAL INSTRUCTION FOR 2ND TIME PURCHASE:
+- Warmly recognize them as a returning customer!
+- When they want to order or confirm an item, DO NOT force them to re-type their full address and phone number from scratch!
+- Instead, politely offer to use their saved address on file:
+  "আপনার পূর্বের ডেলিভারি ঠিকানা ছিল: ${options.customerProfile.savedAddress}${options.customerProfile.savedPhone ? ` (ফোন: ${options.customerProfile.savedPhone})` : ""}। এই ঠিকানাতেই কি ডেলিভারি পাঠিয়ে দেব, নাকি নতুন কোনো ঠিকানা ব্যবহার করতে চান?"
+  (Or in English: "We have your previous delivery address on file: ${options.customerProfile.savedAddress}. Would you like us to deliver to this address, or do you have a new delivery address?")
+- If the customer confirms or agrees (e.g. 'হ্যাঁ', 'হুম', 'আগের ঠিকানাতেই দিন', 'same address', 'yes', 'ji', 'ঠিক আছে', 'আগেরটাই', 'পাঠিয়ে দেন'):
+  CONFIRM the order immediately using their saved address (${options.customerProfile.savedAddress}) and saved phone (${options.customerProfile.savedPhone || ""})!
+- If the customer provides a new address or phone number, use the new details and confirm the order.`
+    : ""
+}
 
 CRITICAL RULES:
 
@@ -118,6 +146,9 @@ CRITICAL RULES:
      * Clearly state that the order is successfully confirmed and booked!
      * Mention their delivery address if provided (e.g. "ঝিনাইদহ সদরে আপনার ঠিকানায় ডেলিভারি করা হবে").
      * NEVER contradict yourself: Never say "আপনার অর্ডারটি সফলভাবে কনফার্ম করা হয়েছে" and then in the very next sentence ask them for address and phone number to finalize the order. If details were already provided, announce the order as booked and complete!
+   - RETURNING 2ND-TIME CUSTOMER CHECKOUT:
+     * If this customer has a saved delivery address shown in CUSTOMER MEMORY above, and confirms or says 'হ্যাঁ', 'হুম', 'আগের ঠিকানায়', 'same address', 'yes', 'ji', 'পাঠিয়ে দিন', or confirms without giving a new address:
+     * Immediately confirm and book the order using their saved address (${options.customerProfile?.savedAddress || ""}) and phone (${options.customerProfile?.savedPhone || ""})! Do not ask them to re-type it!
    - If an item has 0 stock or is marked "Out of Stock", politely inform the customer that it is sold out and recommend other available products from the catalog.
 
 7. STRICT READ-ONLY SECURITY GUARD (ZERO WRITE / EDIT PERMISSION):
