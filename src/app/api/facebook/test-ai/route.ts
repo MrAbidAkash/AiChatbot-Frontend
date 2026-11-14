@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       message,
+      imageUrl,
       pageId,
       conversationHistory = [],
       botTone,
@@ -61,12 +62,15 @@ export async function POST(request: NextRequest) {
     });
 
     // Deterministic inventory checks for catalog inquiry, unavailable products, and stock limit constraints
-    const deterministic = await processDeterministicInventoryQuery({
-      customerMessage: message,
-      userId,
-      pageId: targetPageId,
-      conversationHistory,
-    });
+    // (Only if customer did not provide an image)
+    const deterministic = !imageUrl
+      ? await processDeterministicInventoryQuery({
+          customerMessage: message,
+          userId,
+          pageId: targetPageId,
+          conversationHistory,
+        })
+      : { handled: false };
 
     if (deterministic.handled && deterministic.reply) {
       return NextResponse.json({
@@ -90,6 +94,7 @@ export async function POST(request: NextRequest) {
 
     const result = await generateCustomerReply({
       customerMessage: message,
+      imageUrl,
       businessKnowledge,
       businessName,
       botTone: activeTone,

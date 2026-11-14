@@ -39,6 +39,223 @@ export function toBengaliNumber(val: number | string): string {
 }
 
 /**
+ * Parse numeric price from strings like "1,850", "1850.00", "৳ ১,৮৫০", "1850 TK"
+ */
+export function parseNumericPrice(priceStr: string): number {
+  if (!priceStr) return 0;
+  const bengaliMap: Record<string, string> = {
+    "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
+    "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9",
+  };
+  const normalized = String(priceStr).replace(/[০-৯]/g, (d) => bengaliMap[d] || d);
+  const clean = normalized.replace(/[^\d.]/g, "");
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Infer category, season, and tags from product name
+ */
+export function inferProductAttributes(productName: string): {
+  category: "menswear" | "womenswear" | "accessories" | "general";
+  season: "winter" | "summer" | "all-season";
+  isEid: boolean;
+  tags: string[];
+} {
+  const lower = productName.toLowerCase();
+  const isWinter = /hoodie|jacket|sweater|fleece|হুডি|জ্যাকেট|সোয়েটার|উইন্টার/i.test(lower);
+  const isSummer = /t-shirt|tshirt|drop shoulder|half sleeve|টি-শার্ট|টি শার্ট/i.test(lower);
+  const isMenswear = /men|panjabi|kabli|পাঞ্জাবি|কাবলি|ছেলে|gents/i.test(lower);
+  const isWomenswear = /kurti|saree|sari|salwar|kamiz|কুর্তি|শাড়ি|লেডিস|women/i.test(lower);
+  const isAccessory = /wallet|belt|bag|মানিব্যাগ|ওয়ালেট|বেল্ট/i.test(lower);
+  const isEid = /panjabi|kabli|kurti|saree|পাঞ্জাবি|কাবলি|কুর্তি/i.test(lower);
+
+  const tags: string[] = [];
+  if (isWinter) tags.push("winter", "শীত");
+  if (isSummer) tags.push("summer", "গরম");
+  if (isMenswear) tags.push("menswear", "ছেলেদের");
+  if (isWomenswear) tags.push("womenswear", "মেয়েদের");
+  if (isAccessory) tags.push("accessories", "এক্সেসরিজ");
+  if (isEid) tags.push("eid", "ঈদ");
+
+  return {
+    category: isMenswear ? "menswear" : isWomenswear ? "womenswear" : isAccessory ? "accessories" : "general",
+    season: isWinter ? "winter" : isSummer ? "summer" : "all-season",
+    isEid,
+    tags,
+  };
+}
+
+/**
+ * Find smart cross-sell / complementary products for upselling
+ * e.g., Panjabi -> Pajama, Wallet
+ * Kurti -> Wallet, Silk accessories
+ * T-Shirt -> Hoodie, Wallet
+ */
+export function getComplementaryProducts(
+  productName: string,
+  catalog: CatalogProduct[],
+): CatalogProduct[] {
+  const currentAttr = inferProductAttributes(productName);
+  const lowerCurrent = productName.toLowerCase();
+
+  return catalog
+    .filter((p) => p.name.toLowerCase() !== lowerCurrent && p.stock > 0)
+    .sort((a, b) => {
+      const aAttr = inferProductAttributes(a.name);
+      const bAttr = inferProductAttributes(b.name);
+
+      let aScore = 0;
+      let bScore = 0;
+
+      // Panjabi pairs well with Kabli Pajama or Leather Wallet
+      if (lowerCurrent.includes("panjabi") || lowerCurrent.includes("পাঞ্জাবি")) {
+        if (a.name.toLowerCase().includes("pajama") || a.name.toLowerCase().includes("kabli")) aScore += 5;
+        if (a.name.toLowerCase().includes("wallet")) aScore += 4;
+        if (b.name.toLowerCase().includes("pajama") || b.name.toLowerCase().includes("kabli")) bScore += 5;
+        if (b.name.toLowerCase().includes("wallet")) bScore += 4;
+      }
+      // T-shirt pairs well with Hoodie or Wallet
+      else if (lowerCurrent.includes("t-shirt") || lowerCurrent.includes("tshirt")) {
+        if (aAttr.season === "winter" || a.name.toLowerCase().includes("hoodie")) aScore += 5;
+        if (aAttr.category === "accessories") aScore += 4;
+        if (bAttr.season === "winter" || b.name.toLowerCase().includes("hoodie")) bScore += 5;
+        if (bAttr.category === "accessories") bScore += 4;
+      }
+      // General cross-selling: accessories like wallet pair with everything
+      if (aAttr.category === "accessories") aScore += 2;
+      if (bAttr.category === "accessories") bScore += 2;
+
+      return bScore - aScore;
+    })
+    .slice(0, 2);
+}
+
+/**
+ * Extract budget limit in BDT from customer message
+ * e.g. "১০০০ টাকার মধ্যে", "1000 takar moddhe", "under 1500", "budget 800"
+ */
+export function extractBudgetLimit(message: string): number | null {
+  if (!message) return null;
+  const bengaliMap: Record<string, string> = {
+    "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
+    "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9",
+  };
+  const normalized = message.replace(/[০-৯]/g, (d) => bengaliMap[d] || d);
+
+  // Pattern 1: "1000 takar moddhe", "1000 er niche", "1000 টাকার মধ্যে"
+  const pat1 = normalized.match(/(\d+)\s*(?:টাকা|টাকার|tk|taka|bdt)?\s*(?:এর\s*)?(?:মধ্যে|ভিতরে|নিচে|moddhe|vitore|under|below|er\s*niche)/i);
+  if (pat1) {
+    const val = parseInt(pat1[1], 10);
+    if (val >= 100 && val <= 100000) return val;
+  }
+
+  // Pattern 2: "under 1000", "below 1500", "budget 800"
+  const pat2 = normalized.match(/(?:under|below|budget|বাজেট|কমপক্ষে)\s*[:=]?\s*(\d+)/i);
+  if (pat2) {
+    const val = parseInt(pat2[1], 10);
+    if (val >= 100 && val <= 100000) return val;
+  }
+
+  return null;
+}
+
+/**
+ * Detect season, occasion, or gender collection queries
+ */
+export function detectSeasonOrOccasionQuery(message: string): {
+  type: "season" | "occasion" | "gender";
+  key: "winter" | "summer" | "eid" | "menswear" | "womenswear";
+  titleBn: string;
+  titleEn: string;
+} | null {
+  if (!message) return null;
+
+  // Winter query
+  if (/(?:winter|শীত|শীতের|thanda|ঠাণ্ডা|winter\s*collection|হুডি\s*কালেকশন)/i.test(message)) {
+    return {
+      type: "season",
+      key: "winter",
+      titleBn: "শীতের স্পেশাল কালেকশন (Winter Collection)",
+      titleEn: "Winter Collection",
+    };
+  }
+
+  // Summer query
+  if (/(?:summer|গরম|গরমের|summer\s*collection|t-shirt\s*collection)/i.test(message)) {
+    return {
+      type: "season",
+      key: "summer",
+      titleBn: "সামার স্পেশাল কমফোর্ট কালেকশন (Summer Collection)",
+      titleEn: "Summer Comfort Collection",
+    };
+  }
+
+  // Eid / Festive query
+  if (/(?:eid|ঈদ|ঈদের|festive|উৎসব)/i.test(message)) {
+    return {
+      type: "occasion",
+      key: "eid",
+      titleBn: "ঈদ স্পেশাল এক্সক্লুসিভ কালেকশন (Eid Collection)",
+      titleEn: "Eid Special Collection",
+    };
+  }
+
+  // Menswear query
+  if (/(?:ছেলেদের|mens?|gents|purush|পুরুষদের)/i.test(message)) {
+    return {
+      type: "gender",
+      key: "menswear",
+      titleBn: "ছেলেদের ট্রেন্ডি কালেকশন (Men's Collection)",
+      titleEn: "Men's Collection",
+    };
+  }
+
+  // Womenswear query
+  if (/(?:মেয়েদের|মেয়েদের|womens?|ladies|মহিলাদের)/i.test(message)) {
+    return {
+      type: "gender",
+      key: "womenswear",
+      titleBn: "মেয়েদের প্রিমিয়াম কালেকশন (Women's Collection)",
+      titleEn: "Women's Collection",
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Format filtered catalog list with custom heading
+ */
+export function formatFilteredCatalogReply(
+  products: CatalogProduct[],
+  title: string,
+  lang: "bn" | "en" = "bn",
+): string {
+  if (products.length === 0) {
+    return lang === "bn"
+      ? `দুঃখিত, এই ক্যাটাগরিতে এই মুহূর্তে কোনো প্রোডাক্ট স্টকে নেই। তবে আমাদের অন্যান্য চমৎকার কালেকশন দেখতে পারেন!`
+      : `Sorry, no products currently in stock matching this filter. Feel free to explore our other collections!`;
+  }
+
+  const items = products.map((p) => {
+    if (lang === "bn") {
+      const priceBn = toBengaliNumber(p.price);
+      const stockBn = toBengaliNumber(p.stock);
+      return `• ${p.name} (মূল্য: ৳${priceBn}) - স্টক: ${stockBn}টি`;
+    } else {
+      return `• ${p.name} (Price: ৳${p.price}) - Stock: ${p.stock}`;
+    }
+  });
+
+  if (lang === "bn") {
+    return `${title}:\n\n${items.join("\n")}\n\nকোন প্রোডাক্টটি আপনার পছন্দ হয়েছে বা সাইজ/কালার দেখতে চান, তা জানাতে পারেন!`;
+  } else {
+    return `${title}:\n\n${items.join("\n")}\n\nWhich of these would you like to explore or order?`;
+  }
+}
+
+/**
  * Extract structured catalog products from text content (synced Google Sheet, CSV, or formatted document)
  */
 export function extractCatalogFromContent(content: string): CatalogProduct[] {
@@ -482,14 +699,20 @@ export function extractRequestedProductName(message: string): string {
 export interface DeterministicResult {
   handled: boolean;
   reply?: string;
-  reason?: "catalog_listing" | "product_unavailable" | "stock_exceeded" | "out_of_stock";
+  reason?:
+    | "catalog_listing"
+    | "product_unavailable"
+    | "stock_exceeded"
+    | "out_of_stock"
+    | "budget_filter"
+    | "category_filter";
   product?: CatalogProduct;
 }
 
 /**
  * High-level deterministic inventory processor
  * Evaluates incoming customer message against live catalog and returns an immediate, reliable reply
- * for standard catalog inquiries, unavailable products, and stock limit constraints.
+ * for standard catalog inquiries, unavailable products, stock limit constraints, budget filters, and seasonal collections.
  */
 export async function processDeterministicInventoryQuery(options: {
   customerMessage: string;
@@ -522,7 +745,53 @@ export async function processDeterministicInventoryQuery(options: {
 
   const lang = detectCustomerLanguage(customerMessage);
 
-  // 4. Catalog Listing Inquiry ("Ki ki available ache", "Available products", "kiki ache", "সব কালেকশন দেখতে চাই")
+  // 4. Budget Filter Inquiry ("১০০০ টাকার মধ্যে কি কি আছে?", "under 1500", "800 takar moddhe")
+  const budgetLimit = extractBudgetLimit(customerMessage);
+  if (budgetLimit !== null && budgetLimit > 0) {
+    const budgetMatches = catalog
+      .filter((p) => {
+        const numPrice = parseNumericPrice(p.price);
+        return numPrice > 0 && numPrice <= budgetLimit && p.stock > 0;
+      })
+      .sort((a, b) => parseNumericPrice(b.price) - parseNumericPrice(a.price));
+
+    if (budgetMatches.length > 0) {
+      const title =
+        lang === "bn"
+          ? `৳${toBengaliNumber(budgetLimit)} বাজেটের মধ্যে আমাদের চমৎকার কালেকশন`
+          : `Great collections available within ৳${budgetLimit}`;
+      return {
+        handled: true,
+        reply: formatFilteredCatalogReply(budgetMatches, title, lang),
+        reason: "budget_filter",
+      };
+    }
+  }
+
+  // 5. Seasonal / Occasion / Category Filter Inquiry ("Winter collection", "শীতের কালেকশন", "Eid collection", "ছেলেদের জন্য")
+  const seasonOrCat = detectSeasonOrOccasionQuery(customerMessage);
+  if (seasonOrCat !== null) {
+    const catMatches = catalog.filter((p) => {
+      const attr = inferProductAttributes(p.name);
+      if (seasonOrCat.key === "winter") return attr.season === "winter";
+      if (seasonOrCat.key === "summer") return attr.season === "summer";
+      if (seasonOrCat.key === "eid") return attr.isEid;
+      if (seasonOrCat.key === "menswear") return attr.category === "menswear" || attr.category === "accessories";
+      if (seasonOrCat.key === "womenswear") return attr.category === "womenswear";
+      return false;
+    });
+
+    if (catMatches.length > 0) {
+      const title = lang === "bn" ? seasonOrCat.titleBn : seasonOrCat.titleEn;
+      return {
+        handled: true,
+        reply: formatFilteredCatalogReply(catMatches, title, lang),
+        reason: "category_filter",
+      };
+    }
+  }
+
+  // 6. Catalog Listing Inquiry ("Ki ki available ache", "Available products", "kiki ache", "সব কালেকশন দেখতে চাই")
   if (isCatalogInquiry(customerMessage)) {
     return {
       handled: true,
@@ -531,7 +800,7 @@ export async function processDeterministicInventoryQuery(options: {
     };
   }
 
-  // 5. Purchase Intent & Quantity Constraints ("5 hoodie order korte chacchi", "I want to buy 30 wallets", "১০টা পাঞ্জাবি লাগবে")
+  // 7. Purchase Intent & Quantity Constraints ("5 hoodie order korte chacchi", "I want to buy 30 wallets", "১০টা পাঞ্জাবি লাগবে")
   if (isPurchaseIntent(customerMessage)) {
     const matchedProduct = resolveProductInCatalog(catalog, customerMessage);
     if (matchedProduct) {
@@ -552,11 +821,11 @@ export async function processDeterministicInventoryQuery(options: {
           product: matchedProduct,
         };
       }
-      // If qty <= stock, do NOT intercept: allow Gemini to proceed with address/phone confirmation!
+      // If qty <= stock, do NOT intercept: allow Gemini to proceed with address/phone confirmation and upselling!
     }
   }
 
-  // 6. Product Availability Inquiry ("Maxi ache?", "Saree ache?", "Shoes ache?")
+  // 8. Product Availability Inquiry ("Maxi ache?", "Saree ache?", "Shoes ache?")
   if (isProductAvailabilityInquiry(customerMessage)) {
     const matchedProduct = resolveProductInCatalog(catalog, customerMessage);
     if (!matchedProduct) {

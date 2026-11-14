@@ -88,6 +88,71 @@ export const GEMINI_TOOL_DECLARATIONS = [
       required: ["productName", "quantity"],
     },
   },
+  {
+    name: "calculateDeliveryCharge",
+    description:
+      "Calculate shipping delivery charge and estimated delivery days for a customer's address or district in Bangladesh (Inside Dhaka ৳80, Sub-Dhaka ৳100, Outside Dhaka ৳150) and compute total payable Cash on Delivery (COD) amount.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        deliveryAddressOrDistrict: {
+          type: "STRING",
+          description:
+            "Customer delivery address, district, or area (e.g. 'Dhaka Dhanmondi', 'Jhenaidah Sadar', 'Chittagong', 'Gazipur', 'Sylhet').",
+        },
+        orderSubtotal: {
+          type: "NUMBER",
+          description: "Subtotal amount of products ordered in BDT.",
+        },
+      },
+      required: ["deliveryAddressOrDistrict"],
+    },
+  },
+  {
+    name: "recommendProductSize",
+    description:
+      "Recommend the optimal product size (S, M, L, XL, XXL) based on customer height, weight, and garment type (Panjabi, Hoodie, T-Shirt, Kurti).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        height: {
+          type: "STRING",
+          description:
+            "Customer's height in feet/inches or cm (e.g. '5 feet 8 inch', '5\\'8\"', '172 cm').",
+        },
+        weightKg: {
+          type: "NUMBER",
+          description: "Customer body weight in kilograms (e.g. 68, 72, 80).",
+        },
+        garmentType: {
+          type: "STRING",
+          description:
+            "Type of clothing item (e.g. 'panjabi', 'hoodie', 'tshirt', 'kurti').",
+        },
+      },
+      required: ["weightKg"],
+    },
+  },
+  {
+    name: "applyCouponDiscount",
+    description:
+      "Validate and apply promotional discount coupon code (e.g. 'WELCOME10', 'EID50', 'SAVE100', 'FREEDEL') to calculate discounts on customer orders.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        couponCode: {
+          type: "STRING",
+          description:
+            "The promotional code provided by the customer (e.g. 'WELCOME10', 'SAVE100').",
+        },
+        orderSubtotal: {
+          type: "NUMBER",
+          description: "Total order subtotal amount in BDT before discount.",
+        },
+      },
+      required: ["couponCode", "orderSubtotal"],
+    },
+  },
 ];
 
 export interface ToolExecutionContext {
@@ -143,6 +208,25 @@ export async function executeAiTool(
           return { success: false, message: "Product name is required to book an order." };
         }
         return await handleBookStoreOrder(userId, pageId, productName, quantity, phone, address);
+      }
+
+      case "calculateDeliveryCharge": {
+        const address = String(args.deliveryAddressOrDistrict || "").trim();
+        const subtotal = typeof args.orderSubtotal === "number" ? args.orderSubtotal : undefined;
+        return handleCalculateDeliveryCharge(address, subtotal);
+      }
+
+      case "recommendProductSize": {
+        const height = String(args.height || "").trim();
+        const weight = parseFloat(String(args.weightKg || "0"));
+        const garmentType = String(args.garmentType || "").trim();
+        return handleRecommendProductSize(height, weight, garmentType);
+      }
+
+      case "applyCouponDiscount": {
+        const code = String(args.couponCode || "").trim();
+        const subtotal = parseFloat(String(args.orderSubtotal || "0"));
+        return await handleApplyCouponDiscount(userId, code, subtotal);
       }
 
       default:
@@ -516,6 +600,235 @@ async function handleBookStoreOrder(
     customerPhone: phone || undefined,
     deliveryAddress: address || undefined,
     message: `Order verified and approved for booking: ${quantity} x "${stockInfo.productName || productName}".`,
+  };
+}
+
+/**
+ * Tool Handler 5: Calculate Bangladeshi delivery charge based on district / area
+ */
+function handleCalculateDeliveryCharge(
+  address: string,
+  subtotal?: number,
+): Record<string, any> {
+  const clean = address.toLowerCase();
+
+  const isSubDhaka =
+    /(?:savar|সাভার|gazipur|গাজীপুর|keraniganj|কেরানীগঞ্জ|narayanganj|নারায়ণগঞ্জ|tongi|টঙ্গী|dhamrai|ধামরাই)/i.test(
+      clean,
+    );
+
+  const isDhakaCity =
+    !isSubDhaka &&
+    /(?:dhanmondi|ধানমন্ডি|mirpur|মিরপুর|gulshan|গুলশান|banani|বনানী|uttara|উত্তরা|motijheel|মতিঝিল|badda|বাড্ডা|rampura|রামপুরা|mohammadpur|মোহাম্মদপুর|khilgaon|খিলগাঁও|jatrabari|যাত্রাবাড়ী|lalbagh|লালবাগ|shahbagh|শাহবাগ|farmgate|ফার্মগেট|dhaka|ঢাকা|dhaka sadar|ঢাকা সদর)/i.test(
+      clean,
+    );
+
+  let areaType: "dhaka_city" | "sub_dhaka" | "outside_dhaka" = "outside_dhaka";
+  let deliveryCharge = 150;
+  let estimatedDays = "2-3 business days";
+  let areaNameBn = "ঢাকার বাইরে";
+
+  if (isDhakaCity) {
+    areaType = "dhaka_city";
+    deliveryCharge = 80;
+    estimatedDays = "24-48 hours";
+    areaNameBn = "ঢাকার ভিতরে";
+  } else if (isSubDhaka) {
+    areaType = "sub_dhaka";
+    deliveryCharge = 100;
+    estimatedDays = "48 hours";
+    areaNameBn = "ঢাকার উপশহর (সাব-ঢাকা)";
+  }
+
+  const totalPayable = subtotal ? subtotal + deliveryCharge : undefined;
+
+  return {
+    success: true,
+    address,
+    areaType,
+    areaName: areaNameBn,
+    deliveryCharge,
+    estimatedDays,
+    courier: "Steadfast Courier",
+    cashOnDelivery: true,
+    orderSubtotal: subtotal,
+    totalPayable,
+    message: subtotal
+      ? `${areaNameBn} ডেলিভারি চার্জ ৳${deliveryCharge}। প্রোডাক্ট মূল্য ৳${subtotal} + ডেলিভারি চার্জ ৳${deliveryCharge} = সর্বমোট প্রদেয় ৳${totalPayable} (ক্যাশ অন ডেলিভারি)। ডেলিভারি সময়: ${estimatedDays}।`
+      : `${areaNameBn} ডেলিভারি চার্জ ৳${deliveryCharge}। ডেলিভারি সময়: ${estimatedDays} (স্টেডফাস্ট কুরিয়ারে ক্যাশ অন ডেলিভারি)।`,
+  };
+}
+
+/**
+ * Tool Handler 6: Recommend size based on customer height, weight, and garment type
+ */
+function handleRecommendProductSize(
+  heightStr: string,
+  weightKg: number,
+  garmentType: string = "",
+): Record<string, any> {
+  let recommendedSize = "L";
+  let chest = '42"';
+  let length = '42"';
+  let fitNote = "";
+
+  if (weightKg <= 58) {
+    recommendedSize = "S";
+    chest = '38"';
+    length = '40"';
+  } else if (weightKg <= 67) {
+    recommendedSize = "M";
+    chest = '40"';
+    length = '41"';
+  } else if (weightKg <= 77) {
+    recommendedSize = "L";
+    chest = '42"';
+    length = '42"';
+  } else if (weightKg <= 87) {
+    recommendedSize = "XL";
+    chest = '44"';
+    length = '44"';
+  } else {
+    recommendedSize = "XXL";
+    chest = '46"';
+    length = '45"';
+  }
+
+  const garment = garmentType.toLowerCase();
+  if (garment.includes("hoodie") || garment.includes("হুডি")) {
+    fitNote = `হুডির জন্য "${recommendedSize}" সাইজটি একটু কমফোর্টেবল ও ট্রেন্ডি ড্রপ লুক দেবে।`;
+  } else if (garment.includes("panjabi") || garment.includes("পাঞ্জাবি")) {
+    fitNote = `পাঞ্জাবির ক্ষেত্রে "${recommendedSize}" সাইজটি আপনার বডিতে স্ট্যান্ডার্ড স্লিম ফিটে মানাবে (চেস্ট: ${chest}, লেন্থ: ${length})।`;
+  } else if (garment.includes("t-shirt") || garment.includes("tshirt") || garment.includes("টি-শার্ট")) {
+    fitNote = `টি-শার্টের ক্ষেত্রে "${recommendedSize}" সাইজটি পারফেক্ট ক্যাজুয়াল ফিট হবে।`;
+  } else {
+    fitNote = `আপনার মেজারমেন্ট অনুযায়ী "${recommendedSize}" সাইজটি সবচেয়ে মানানসই হবে।`;
+  }
+
+  return {
+    success: true,
+    recommendedSize,
+    chestMeasurement: chest,
+    lengthMeasurement: length,
+    customerWeight: `${weightKg} kg`,
+    customerHeight: heightStr || "Standard",
+    garmentType: garmentType || "General",
+    fitNote,
+    message: `আপনার জন্য রিকমেন্ডেড সাইজ "${recommendedSize}"। ${fitNote}`,
+  };
+}
+
+/**
+ * Tool Handler 7: Apply promotional discount coupons
+ */
+async function handleApplyCouponDiscount(
+  userId: string,
+  couponCode: string,
+  orderSubtotal: number,
+): Promise<Record<string, any>> {
+  const code = couponCode.toUpperCase().trim();
+  const db = getDb();
+
+  // 1. Check custom coupons defined in merchant's MongoDB collection
+  try {
+    const customCoupon = await db.collection("coupons").findOne({
+      code,
+      $or: [{ userId }, { userId: "default" }, { userId: { $exists: false } }],
+      isActive: true,
+    });
+
+    if (customCoupon) {
+      const minOrder = customCoupon.minOrderAmount || 0;
+      if (orderSubtotal < minOrder) {
+        return {
+          success: false,
+          couponCode: code,
+          message: `এই কুপনটি ব্যবহার করতে ন্যূনতম ৳${minOrder} টাকার অর্ডার প্রয়োজন। আপনার বর্তমান অর্ডার ৳${orderSubtotal}।`,
+        };
+      }
+
+      let discountAmount = 0;
+      if (customCoupon.discountType === "percentage") {
+        discountAmount = Math.round((orderSubtotal * customCoupon.discountValue) / 100);
+        if (customCoupon.maxDiscount && discountAmount > customCoupon.maxDiscount) {
+          discountAmount = customCoupon.maxDiscount;
+        }
+      } else {
+        discountAmount = customCoupon.discountValue;
+      }
+
+      const newTotal = Math.max(0, orderSubtotal - discountAmount);
+      return {
+        success: true,
+        couponCode: code,
+        discountAmount,
+        orderSubtotal,
+        newTotal,
+        message: `কুপন "${code}" সফলভাবে অ্যাপ্লাই করা হয়েছে! আপনি ৳${discountAmount} ডিসকাউন্ট পেয়েছেন। ডিসকাউন্টের পর প্রদেয় মূল্য ৳${newTotal}।`,
+      };
+    }
+  } catch (dbErr) {
+    console.warn("[AI Tools] Coupon DB lookup warning:", dbErr);
+  }
+
+  // 2. Built-in standard promotional codes
+  if (code === "WELCOME10") {
+    if (orderSubtotal < 800) {
+      return {
+        success: false,
+        couponCode: code,
+        message: 'কুপন "WELCOME10" ব্যবহার করতে ন্যূনতম ৳৮০০ টাকার অর্ডার প্রয়োজন।',
+      };
+    }
+    const discountAmount = Math.round(orderSubtotal * 0.1);
+    const newTotal = orderSubtotal - discountAmount;
+    return {
+      success: true,
+      couponCode: code,
+      discountAmount,
+      orderSubtotal,
+      newTotal,
+      message: `অভিনন্দন! "WELCOME10" কুপনে ১০% ডিসকাউন্ট হিসেবে ৳${discountAmount} ছাড় পেয়েছেন! নতুন প্রদেয় মূল্য: ৳${newTotal}।`,
+    };
+  }
+
+  if (code === "EID50" || code === "SAVE50") {
+    const discountAmount = 50;
+    const newTotal = Math.max(0, orderSubtotal - discountAmount);
+    return {
+      success: true,
+      couponCode: code,
+      discountAmount,
+      orderSubtotal,
+      newTotal,
+      message: `কুপন "${code}" সফলভাবে গ্রহণ করা হয়েছে! ৳৫০ ফ্ল্যাট ডিসকাউন্টের পর আপনার প্রদেয় মূল্য ৳${newTotal}।`,
+    };
+  }
+
+  if (code === "SAVE100" || code === "SPECIAL100") {
+    if (orderSubtotal < 1200) {
+      return {
+        success: false,
+        couponCode: code,
+        message: 'কুপন "SAVE100" ব্যবহার করতে ন্যূনতম ৳১,২০০ টাকার অর্ডার প্রয়োজন।',
+      };
+    }
+    const discountAmount = 100;
+    const newTotal = Math.max(0, orderSubtotal - discountAmount);
+    return {
+      success: true,
+      couponCode: code,
+      discountAmount,
+      orderSubtotal,
+      newTotal,
+      message: `কুপন "${code}" সফলভাবে গ্রহণ করা হয়েছে! ৳১০০ ডিসকাউন্টের পর আপনার প্রদেয় মূল্য ৳${newTotal}।`,
+    };
+  }
+
+  return {
+    success: false,
+    couponCode: code,
+    message: `দুঃখিত, "${code}" কুপন কোডটি সঠিক নয় অথবা এর মেয়াদ শেষ হয়ে গিয়েছে।`,
   };
 }
 

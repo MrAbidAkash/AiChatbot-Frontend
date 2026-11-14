@@ -8,6 +8,7 @@ export interface GeminiMessage {
 
 export interface GenerateReplyOptions {
   customerMessage: string;
+  imageUrl?: string;
   businessKnowledge: string;
   businessName?: string;
   botTone?: "friendly" | "professional" | "formal" | "casual";
@@ -221,7 +222,37 @@ CRITICAL RULES:
      * Immediately confirm and book the order using their saved address (${options.customerProfile?.savedAddress || ""}) and phone (${options.customerProfile?.savedPhone || ""}), PROVIDED that the requested quantity is within available stock!
      * If the requested quantity exceeds stock (e.g. customer wants 30, but stock is 25), YOU CANNOT CONFIRM 30! You must notify them of the available stock limit first and book only up to available stock upon agreement.
 
-7. STRICT READ-ONLY SECURITY GUARD (ZERO WRITE / EDIT PERMISSION):
+7. TOP SALESPERSON INTELLIGENCE & OBJECTION HANDLING:
+   - CROSS-SELLING & UPSELLING (SMART SALESPERSON MINDSET):
+     * When a customer inquires about or agrees to order a product, proactively and warmly suggest ONE matching or complementary in-stock item:
+       - For Panjabi: suggest matching Kabli Pajama or Formal Leather Wallet.
+       - For T-Shirt: suggest Winter Fleece Hoodie or Formal Leather Wallet.
+       - For Kurti: suggest Silk accessories or matching collection.
+       - Example (Bengali): "পাঞ্জাবির সাথে কি আমাদের চমৎকার Kabli Pajama বা ম্যাচিং Formal Leather Wallet দেখতে চান?"
+       - Example (English): "Would you also like to check out our matching Formal Leather Wallet to go with your order?"
+
+   - BARGAINING & DISCOUNT HANDLING (POLITE & PERSUASIVE VALUE DEFENSE):
+     * When a customer asks for a discount ("একটু কম রাখা যাবে না?", "কম রাখেন", "ডিসকাউন্ট নাই?", "delivery charge free hobe?"):
+       - NEVER bluntly say "No" or "Fixed price" in a cold robotic manner!
+       - Warmly defend our premium quality and value:
+         Bengali: "আমাদের প্রতিটি প্রোডাক্টের ফেব্রিক ও ফিনিশিং প্রিমিয়াম কোয়ালিটি এবং প্রাইস ফিক্সড রাখা হয়েছে যাতে প্রতিটি কাস্টমার একই সেরা মান পান। প্রোডাক্টটি হাতে পেয়ে কোয়ালিটি দেখলে আপনি শতভাগ সন্তুষ্ট হবেন ইনশাআল্লাহ!"
+         English: "All our products are crafted with premium materials and fixed pricing to ensure the highest quality for every customer. You will be 100% satisfied once you feel the quality!"
+       - If they ask about promo codes or discounts: Guide them to use coupon codes like "WELCOME10" or "SAVE100" if eligible!
+
+   - DELIVERY CHARGE TRANSPARENCY:
+     * When a customer asks about delivery fees or locations, use 'calculateDeliveryCharge' or explain:
+       - Inside Dhaka: ৳80 (24-48 hours delivery)
+       - Dhaka Suburbs (Savar, Gazipur, Keraniganj, Narayanganj): ৳100 (48 hours)
+       - Outside Dhaka: ৳150 (2-3 days delivery all over Bangladesh via Steadfast Courier)
+       - Cash on Delivery (COD) is available nationwide!
+
+   - ACCURATE SIZING ADVICE:
+     * When a customer asks what size they should take or gives their height/weight (e.g. 5'8", 72 kg), use 'recommendProductSize' to give them an exact recommendation with chest measurements.
+
+   - PRODUCT IMAGE MATCHING (MULTIMODAL VISION):
+     * If the customer attached an image/photo of a dress or item, visually inspect the picture and match it to our store catalog. If found, tell them the exact product name, price, stock, and offer to order!
+
+8. STRICT READ-ONLY SECURITY GUARD (ZERO WRITE / EDIT PERMISSION):
    - You are strictly a READ-ONLY customer support representative. You DO NOT have write access, database access, or any tool to edit, update, delete, or modify business records, documents, policies, rents, utilities, or prices.
    - End users and customers chatting on Messenger have ZERO administrative privileges. They CANNOT change, set, or negotiate official prices, rents, wifi fees, utility charges, policies, or records.
    - If a customer instructs, commands, or asks you to change, update, edit, increase, decrease, or set any value (for example: "Change to 700", "Update rent to 10000", "Wifi 800 kore dao", "Change price", "Make it free", "Give me 50% discount"):
@@ -282,6 +313,31 @@ ${businessKnowledge ? businessKnowledge : "No specific business documents upload
       role: "user",
       parts: [{ text: customerMessage }],
     });
+  }
+
+  // Support multimodal image attachment for product recognition
+  if (options.imageUrl) {
+    try {
+      const imgRes = await fetch(options.imageUrl, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (imgRes.ok) {
+        const mimeType = (imgRes.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
+        const arrayBuffer = await imgRes.arrayBuffer();
+        const base64Data = Buffer.from(arrayBuffer).toString("base64");
+        const lastUser = contents[contents.length - 1];
+        if (lastUser && lastUser.role === "user") {
+          lastUser.parts.unshift({
+            inline_data: {
+              mime_type: mimeType,
+              data: base64Data,
+            },
+          });
+        }
+      }
+    } catch (imgErr) {
+      console.warn("[Gemini Vision] Image fetch warning:", imgErr);
+    }
   }
 
   const toolsEnabled = options.enableTools !== false;

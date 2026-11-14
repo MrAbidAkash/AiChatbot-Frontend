@@ -68,6 +68,7 @@ interface ValidEventItem {
   recipientPageId: string;
   senderPsid: string;
   customerMessage: string;
+  imageUrl?: string;
   mid?: string;
   inFlightKey: string;
 }
@@ -162,16 +163,19 @@ async function processIncomingMessage(item: ValidEventItem) {
     `[FB Webhook] Knowledge loaded (${businessKnowledge.length} chars) for page "${page.pageName}". Generating AI reply...`,
   );
 
-  // 11. Deterministic Inventory Intercept (Live Catalog, Unavailable Products, Stock Limits)
+  // 11. Deterministic Inventory Intercept (Live Catalog, Unavailable Products, Stock Limits, Budget)
   let aiReplyText = "";
   let modelUsed = "";
 
-  const deterministic = await processDeterministicInventoryQuery({
-    customerMessage,
-    userId: page.userId,
-    pageId: page.pageId,
-    conversationHistory: history,
-  });
+  // Only run deterministic text intercept if customer did NOT send an image (images require Gemini Vision)
+  const deterministic = !item.imageUrl
+    ? await processDeterministicInventoryQuery({
+        customerMessage,
+        userId: page.userId,
+        pageId: page.pageId,
+        conversationHistory: history,
+      })
+    : { handled: false };
 
   if (deterministic.handled && deterministic.reply) {
     aiReplyText = deterministic.reply;
@@ -180,10 +184,11 @@ async function processIncomingMessage(item: ValidEventItem) {
       `[FB Webhook] Deterministic reply triggered (${deterministic.reason}): ${aiReplyText.slice(0, 80)}...`,
     );
   } else {
-    // 12. Generate AI reply with Gemini
+    // 12. Generate AI reply with Gemini (supports Multimodal Vision for images)
     try {
       const aiResponse = await generateCustomerReply({
         customerMessage,
+        imageUrl: item.imageUrl,
         businessKnowledge,
         businessName: page.pageName,
         botTone: page.botTone || "friendly",
@@ -317,10 +322,22 @@ export async function POST(request: NextRequest) {
 
         const senderPsid = event.sender?.id;
         const recipientPageId = event.recipient?.id || pageId;
-        const customerMessage = event.message?.text?.trim();
+        const rawText = event.message?.text?.trim();
         const mid = event.message?.mid;
 
-        // 4. Ensure message has valid sender and non-empty text
+        // Check if customer sent an image attachment
+        const imageAttachment = event.message?.attachments?.find(
+          (a: any) => a.type === "image" && a.payload?.url,
+        );
+        const imageUrl: string | undefined = imageAttachment?.payload?.url;
+
+        // Extract customer text or default to image inquiry if customer sent a photo
+        let customerMessage = rawText;
+        if (!customerMessage && imageUrl) {
+          customerMessage = "এই প্রোডাক্ট বা ড্রেসটি কি আপনাদের স্টকে অ্যাভেইলেবল আছে? এর দাম কত?";
+        }
+
+        // 4. Ensure message has valid sender and non-empty text or image
         if (!senderPsid || !customerMessage) {
           continue;
         }
@@ -350,13 +367,14 @@ export async function POST(request: NextRequest) {
         }
         inFlightRequests.set(inFlightKey, Date.now());
 
-        console.log(`[FB Webhook] Accepted new message from ${senderPsid}: "${customerMessage}" (MID: ${mid || "none"})`);
+        console.log(`[FB Webhook] Accepted new message from ${senderPsid}: "${customerMessage}" (Image: ${imageUrl ? "yes" : "no"}, MID: ${mid || "none"})`);
 
         validEvents.push({
           pageId,
           recipientPageId,
           senderPsid,
           customerMessage,
+          imageUrl,
           mid,
           inFlightKey,
         });
