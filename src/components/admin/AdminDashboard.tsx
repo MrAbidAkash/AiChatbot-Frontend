@@ -2060,7 +2060,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                     </p>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-mono">
-                    Model: gemini-flash-lite-latest
+                    Model: {stats?.devConfig?.geminiModel || "gemini-2.0-flash"}
                   </span>
                 </div>
 
