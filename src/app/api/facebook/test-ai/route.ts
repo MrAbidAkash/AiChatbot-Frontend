@@ -4,6 +4,7 @@ import { generateCustomerReply } from "@/lib/gemini";
 import { getRelevantKnowledge, getDocuments } from "@/lib/knowledge";
 import { getFacebookPageByPageId } from "@/lib/facebook";
 import { handleAutoStockDeductionOnOrder } from "@/lib/google-sheets-stock";
+import { processDeterministicInventoryQuery } from "@/lib/inventory-engine";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -58,6 +59,28 @@ export async function POST(request: NextRequest) {
       userId,
       pageId: targetPageId,
     });
+
+    // Deterministic inventory checks for catalog inquiry, unavailable products, and stock limit constraints
+    const deterministic = await processDeterministicInventoryQuery({
+      customerMessage: message,
+      userId,
+      pageId: targetPageId,
+      conversationHistory,
+    });
+
+    if (deterministic.handled && deterministic.reply) {
+      return NextResponse.json({
+        success: true,
+        reply: deterministic.reply,
+        modelUsed: "inventory-engine-deterministic",
+        pageName: businessName,
+        pageId: targetPageId || null,
+        docCount: docs.length,
+        docTitles: docs.map((d) => d.title),
+        hasKnowledge: true,
+        stockUpdate: null,
+      });
+    }
 
     const businessKnowledge = await getRelevantKnowledge(message, {
       userId,

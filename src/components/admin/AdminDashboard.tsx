@@ -2340,7 +2340,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                         </div>
 
                         <div className="space-y-3 max-h-[350px] overflow-y-auto p-2">
-                          {userModalSelectedConv.messages?.map((msg: any) => (
+                          {(userModalSelectedConv.messages ? [...userModalSelectedConv.messages].reverse() : []).map((msg: any) => (
                             <div
                               key={msg.id}
                               className={`flex flex-col ${msg.senderType === "customer" ? "items-start" : "items-end"}`}
@@ -2599,7 +2599,7 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
           </DialogHeader>
 
           <div className="space-y-3 max-h-[420px] overflow-y-auto py-3 text-xs">
-            {selectedConv?.messages?.map((msg: any) => (
+            {(selectedConv?.messages ? [...selectedConv.messages].reverse() : []).map((msg: any) => (
               <div
                 key={msg.id}
                 className={`flex flex-col ${msg.senderType === "customer" ? "items-start" : "items-end"}`}

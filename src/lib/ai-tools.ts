@@ -57,6 +57,37 @@ export const GEMINI_TOOL_DECLARATIONS = [
       required: ["phoneNumber"],
     },
   },
+  {
+    name: "bookStoreOrder",
+    description:
+      "Book and confirm an order for a customer. Validates that the requested quantity does NOT exceed real-time inventory stock before booking.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        productName: {
+          type: "STRING",
+          description:
+            "Canonical name of the product ordered (e.g. 'Formal Leather Wallet', 'Winter Fleece Hoodie').",
+        },
+        quantity: {
+          type: "INTEGER",
+          description:
+            "Number of units ordered. Must not exceed available inventory stock.",
+        },
+        customerPhone: {
+          type: "STRING",
+          description:
+            "Customer's contact phone number (11 digits, e.g. '01886092236').",
+        },
+        deliveryAddress: {
+          type: "STRING",
+          description:
+            "Full delivery address or area (e.g. 'Jhenaidah Sadar, Jhenaidah').",
+        },
+      },
+      required: ["productName", "quantity"],
+    },
+  },
 ];
 
 export interface ToolExecutionContext {
@@ -100,6 +131,18 @@ export async function executeAiTool(
           return { found: false, message: "Please provide a phone number to check recent orders." };
         }
         return await lookupRecentOrder(userId, phone);
+      }
+
+      case "bookStoreOrder": {
+        const productName = String(args.productName || "").trim();
+        const quantity = parseInt(String(args.quantity || "1"), 10);
+        const phone = String(args.customerPhone || "").trim();
+        const address = String(args.deliveryAddress || "").trim();
+
+        if (!productName) {
+          return { success: false, message: "Product name is required to book an order." };
+        }
+        return await handleBookStoreOrder(userId, pageId, productName, quantity, phone, address);
       }
 
       default:
@@ -437,6 +480,42 @@ async function lookupRecentOrder(
     deliveryAddress: order.deliveryAddress,
     orderDate: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : undefined,
     message: `Found recent order for "${order.productName}" (Qty: ${order.quantity || 1}) placed by ${order.customerName}. Status: ${order.status}.`,
+  };
+}
+
+/**
+ * Tool Handler 4: Book store order with strict server-side stock verification
+ */
+async function handleBookStoreOrder(
+  userId: string,
+  pageId: string | undefined,
+  productName: string,
+  quantity: number,
+  phone?: string,
+  address?: string,
+): Promise<Record<string, any>> {
+  // 1. Verify live stock
+  const stockInfo = await lookupProductStockAndPrice(userId, pageId, productName);
+  if (stockInfo.found && typeof stockInfo.stock === "number") {
+    if (quantity > stockInfo.stock) {
+      return {
+        success: false,
+        reason: "STOCK_EXCEEDED",
+        productName: stockInfo.productName || productName,
+        availableStock: stockInfo.stock,
+        requestedQuantity: quantity,
+        message: `Order booking failed: Requested quantity (${quantity}) exceeds current available stock (${stockInfo.stock}). Tell the customer that only ${stockInfo.stock} piece(s) are left in stock and ask if they would like the available ${stockInfo.stock} piece(s). DO NOT confirm an order for ${quantity}.`,
+      };
+    }
+  }
+
+  return {
+    success: true,
+    productName: stockInfo.productName || productName,
+    quantity,
+    customerPhone: phone || undefined,
+    deliveryAddress: address || undefined,
+    message: `Order verified and approved for booking: ${quantity} x "${stockInfo.productName || productName}".`,
   };
 }
 

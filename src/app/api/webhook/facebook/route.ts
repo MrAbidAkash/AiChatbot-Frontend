@@ -17,6 +17,7 @@ import {
 import { getUserWallet } from "@/lib/billing";
 import { handleAutoStockDeductionOnOrder } from "@/lib/google-sheets-stock";
 import { getCustomerProfile } from "@/lib/customers";
+import { processDeterministicInventoryQuery } from "@/lib/inventory-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -161,36 +162,52 @@ async function processIncomingMessage(item: ValidEventItem) {
     `[FB Webhook] Knowledge loaded (${businessKnowledge.length} chars) for page "${page.pageName}". Generating AI reply...`,
   );
 
-  // 11. Generate AI reply with Gemini
+  // 11. Deterministic Inventory Intercept (Live Catalog, Unavailable Products, Stock Limits)
   let aiReplyText = "";
   let modelUsed = "";
 
-  try {
-    const aiResponse = await generateCustomerReply({
-      customerMessage,
-      businessKnowledge,
-      businessName: page.pageName,
-      botTone: page.botTone || "friendly",
-      customInstructions: page.customInstructions,
-      fallbackMessage: page.fallbackMessage,
-      conversationHistory: history,
-      userId: page.userId,
-      pageId: page.pageId,
-      enableTools: true,
-      customerProfile: savedCustomerProfile,
-    });
+  const deterministic = await processDeterministicInventoryQuery({
+    customerMessage,
+    userId: page.userId,
+    pageId: page.pageId,
+    conversationHistory: history,
+  });
 
-    aiReplyText = aiResponse.reply;
-    modelUsed = aiResponse.modelUsed;
-    console.log(`[FB Webhook] AI reply generated (${aiReplyText.length} chars, model: ${modelUsed})`);
-  } catch (geminiError: any) {
-    console.error("[FB Webhook] Gemini reply error:", geminiError);
-    aiReplyText =
-      page.fallbackMessage ||
-      "Thank you for contacting us! Our support team will get back to you shortly.";
+  if (deterministic.handled && deterministic.reply) {
+    aiReplyText = deterministic.reply;
+    modelUsed = "inventory-engine-deterministic";
+    console.log(
+      `[FB Webhook] Deterministic reply triggered (${deterministic.reason}): ${aiReplyText.slice(0, 80)}...`,
+    );
+  } else {
+    // 12. Generate AI reply with Gemini
+    try {
+      const aiResponse = await generateCustomerReply({
+        customerMessage,
+        businessKnowledge,
+        businessName: page.pageName,
+        botTone: page.botTone || "friendly",
+        customInstructions: page.customInstructions,
+        fallbackMessage: page.fallbackMessage,
+        conversationHistory: history,
+        userId: page.userId,
+        pageId: page.pageId,
+        enableTools: true,
+        customerProfile: savedCustomerProfile,
+      });
+
+      aiReplyText = aiResponse.reply;
+      modelUsed = aiResponse.modelUsed;
+      console.log(`[FB Webhook] AI reply generated (${aiReplyText.length} chars, model: ${modelUsed})`);
+    } catch (geminiError: any) {
+      console.error("[FB Webhook] Gemini reply error:", geminiError);
+      aiReplyText =
+        page.fallbackMessage ||
+        "Thank you for contacting us! Our support team will get back to you shortly.";
+    }
   }
 
-  // 11. Turn off typing indicator
+  // 13. Turn off typing indicator
   await sendTypingIndicator(page.pageAccessToken, senderPsid, false);
 
   // 12. Send reply to customer on Facebook Messenger

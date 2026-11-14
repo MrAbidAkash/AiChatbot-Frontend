@@ -718,24 +718,60 @@ Rules:
       extractAddressFromHistory(customerMessage, conversationHistory) || undefined;
   }
 
-  // 4. Product Name extraction from parentheses in AI reply or history
+  // 4. Product Name extraction from AI reply or conversation history
   if (!detected.productName || detected.productName.length < 3) {
-    const parenMatch = aiReply.match(/\(([A-Za-z0-9\s\-_&]{3,40})\)/);
-    if (parenMatch) {
-      detected.productName = parenMatch[1].trim();
+    // Check if product is mentioned right before quantity in parentheses: e.g. "Winter Fleece Hoodie (১টি)" or "Formal Leather Wallet (25 pcs)"
+    const beforeParenMatch = aiReply.match(/([A-Za-z\u0980-\u09FF\s\-_&]{3,40})\s*\([০-৯0-9\s]+(?:টি|টা|pcs|pieces)?\)/);
+    if (beforeParenMatch && beforeParenMatch[1].trim().length >= 3) {
+      detected.productName = beforeParenMatch[1].trim();
     } else {
+      // Check for parenthesized product name: e.g. "(Premium Jamdani Saree)"
+      const parenMatch = aiReply.match(/\(([A-Za-z\u0980-\u09FF\s\-_&]{3,40})\)/);
+      if (parenMatch && !/^[০-৯0-9\s]+(?:টি|টা|pcs|pieces)?$/i.test(parenMatch[1].trim())) {
+        detected.productName = parenMatch[1].trim();
+      }
+    }
+
+    // Check conversation history if still not found
+    if (!detected.productName || detected.productName.length < 3) {
       for (let i = conversationHistory.length - 1; i >= 0; i--) {
-        const histParen = conversationHistory[i].text.match(/\(([A-Za-z0-9\s\-_&]{3,40})\)/);
-        if (histParen) {
-          detected.productName = histParen[1].trim();
+        const hText = conversationHistory[i].text;
+        const hBeforeParen = hText.match(/([A-Za-z\u0980-\u09FF\s\-_&]{3,40})\s*\([০-৯0-9\s]+(?:টি|টা|pcs|pieces)?\)/);
+        if (hBeforeParen && hBeforeParen[1].trim().length >= 3) {
+          detected.productName = hBeforeParen[1].trim();
+          break;
+        }
+        const hParen = hText.match(/\(([A-Za-z\u0980-\u09FF\s\-_&]{3,40})\)/);
+        if (hParen && !/^[০-৯0-9\s]+(?:টি|টা|pcs|pieces)?$/i.test(hParen[1].trim())) {
+          detected.productName = hParen[1].trim();
           break;
         }
       }
     }
   }
 
-  // 5. Confirmation signal check:
-  // If the AI reply says the order is ALREADY confirmed ("ইতিমধ্যে নিশ্চিত/কনফার্ম"), do NOT treat as a new order!
+  // 5. CRITICAL ORDER CONFIRMATION INTEGRITY GUARD:
+  // An order must NEVER be confirmed in the background if the AI bot did NOT confirm the booking!
+
+  // Guard A: Check if the AI reply is a fallback message, an error, or a support handoff
+  const isFallbackOrHandoff =
+    /(?:don't have that specific information|support team will get back|team member will assist|দলের সদস্য|টিম মেম্বার|সহায়তা করবে|দয়া করে অপেক্ষা করুন)/i.test(aiReply);
+
+  if (isFallbackOrHandoff) {
+    detected.isOrderConfirmed = false;
+    return detected;
+  }
+
+  // Guard B: Check if the AI reply is an inquiry, question, address/phone request, or stock limitation
+  const isQuestionOrStockLimit =
+    /(?:পাঠিয়ে\s*দেব\s*কি|পাঠাব\s*কি|অর্ডার\s*করবেন\s*কি|নিতে\s*চান\s*কি|কিনবেন\s*কি|ঠিকানা\s*দিন|ফোন\s*নম্বর\s*দিন|কতটি\s*নিতে\s*চান|মাত্র\s*\d+টি\s*অবশিষ্ট|স্টক\s*আউট|out of stock|স্টকে নেই)/i.test(aiReply);
+
+  if (isQuestionOrStockLimit) {
+    detected.isOrderConfirmed = false;
+    return detected;
+  }
+
+  // Guard C: The AI reply says the order is ALREADY confirmed ("ইতিমধ্যে নিশ্চিত/কনফার্ম") from earlier
   const isAlreadyConfirmedNotice =
     /(?:ইতিমধ্যে|ইতোমধ্যে|already)\s*(?:নিশ্চিত|কনফার্ম|বুক|placed|confirmed)/i.test(aiReply);
 
@@ -744,13 +780,21 @@ Rules:
     return detected;
   }
 
-  const hasConfirmationSignal =
-    /(?:confirm|কনফার্ম|অর্ডার|order|বুক|book|নিতে চাই|কিনতে চাই|পাঠিয়ে দিন|পাঠান|আগের ঠিকানায়|আগেরটাই|same address|হ্যাঁ দিন|হ্যাঁ পাঠান)/i.test(customerMessage) ||
-    (/(?:সফলভাবে\s*কনফার্ম|কনফার্ম\s*করা\s*হয়েছে|অর্ডারটি\s*সফলভাবে|order\s*(?:has\s*been\s*)?confirmed)/i.test(aiReply) &&
-      !/(?:ইতিমধ্যে|ইতোমধ্যে|already)/i.test(aiReply));
+  // Guard D: An order is confirmed ONLY when the AI Bot explicitly announced the order confirmation!
+  const isBotConfirmed =
+    /(?:সফলভাবে\s*(?:কনফার্ম|নিশ্চিত|বুক)|কনফার্ম\s*করা\s*হয়েছে|নিশ্চিত\s*করা\s*হয়েছে|বুক\s*করা\s*হয়েছে|অর্ডারটি\s*(?:সফলভাবে\s*)?কনফার্ম|order\s*(?:has\s*been\s*)?confirmed|successfully\s*confirmed|order\s*is\s*confirmed|booked\s*successfully)/i.test(aiReply);
 
-  if (hasConfirmationSignal && detected.productName) {
+  // If the bot did not confirm the order, do not treat as a confirmed order!
+  if (!isBotConfirmed) {
+    detected.isOrderConfirmed = false;
+    return detected;
+  }
+
+  // Only confirm if product name is detected
+  if (detected.productName) {
     detected.isOrderConfirmed = true;
+  } else {
+    detected.isOrderConfirmed = false;
   }
 
   return detected;
