@@ -549,9 +549,19 @@ export function isProductAvailabilityInquiry(message: string): boolean {
  */
 export function isPurchaseIntent(message: string): boolean {
   if (!message) return false;
-  return /(?:order|অর্ডার|নিতে চাই|কিনতে চাই|order korte|buy|purchase|lagbe|need|পাঠিয়ে দিন|পাঠান|বুক)/i.test(
-    message.trim(),
-  );
+  const clean = message.trim();
+  // 1. Direct verbs for buying, ordering, confirming, sending, taking
+  const hasActionWord =
+    /(?:order|অর্ডার|confirm|কনফার্ম|বুক|book|নিতে চাই|কিনতে চাই|চাই|chai|lagbe|লাগবে|need|পাঠিয়ে দিন|পাঠিয়ে দেন|পাঠান|দিন|din|den|কোরেন|করেন|koren|korun|নিতে|কিনতে|কিনব|নিব)\b/i.test(
+      clean,
+    );
+  if (hasActionWord) return true;
+
+  // 2. Pattern: Quantity + Product (e.g. "10 ta kurti", "2 ta panjabi", "30 wallets", "10টি কুর্তি")
+  const hasQtyAndProduct = /\b\d+\s*(?:ta|টি|টা|pcs|pieces)?\s*[a-zA-Z\u0980-\u09FF]+/i.test(clean);
+  if (hasQtyAndProduct) return true;
+
+  return false;
 }
 
 /**
@@ -585,14 +595,15 @@ export function formatCatalogListReply(
   }
 
   const items = catalog.map((p) => {
+    const cleanPrice = String(p.price || "N/A").replace(/^[৳TkBDT\s]+/i, "").trim();
     if (language === "bn") {
-      const priceBn = toBengaliNumber(p.price);
+      const priceBn = toBengaliNumber(cleanPrice);
       const stockBn = toBengaliNumber(p.stock);
       const stockStatus = p.stock > 0 ? `স্টক: ${stockBn}টি` : "স্টক আউট";
       return `• ${p.name} (মূল্য: ৳${priceBn}) - ${stockStatus}`;
     } else {
       const stockStatus = p.stock > 0 ? `Stock: ${p.stock}` : "Out of Stock";
-      return `• ${p.name} (Price: ৳${p.price}) - ${stockStatus}`;
+      return `• ${p.name} (Price: ৳${cleanPrice}) - ${stockStatus}`;
     }
   });
 
@@ -613,7 +624,10 @@ export function formatProductUnavailableReply(
 ): string {
   const availableItems = catalog.filter((p) => p.stock > 0).slice(0, 5);
   const itemsText = availableItems
-    .map((p) => (language === "bn" ? `• ${p.name} (৳${toBengaliNumber(p.price)})` : `• ${p.name} (৳${p.price})`))
+    .map((p) => {
+      const cleanPrice = String(p.price || "N/A").replace(/^[৳TkBDT\s]+/i, "").trim();
+      return language === "bn" ? `• ${p.name} (৳${toBengaliNumber(cleanPrice)})` : `• ${p.name} (৳${cleanPrice})`;
+    })
     .join("\n");
 
   if (language === "bn") {
@@ -631,12 +645,13 @@ export function formatStockExceededReply(
   requestedQty: number,
   language: "bn" | "en" = "bn",
 ): string {
+  const cleanPrice = String(product.price || "N/A").replace(/^[৳TkBDT\s]+/i, "").trim();
   if (language === "bn") {
     const stockBn = toBengaliNumber(product.stock);
-    const priceBn = toBengaliNumber(product.price);
+    const priceBn = toBengaliNumber(cleanPrice);
     return `${product.name} আমাদের স্টকে রয়েছে (মূল্য: ৳${priceBn})। তবে আমাদের স্টকে এই মুহূর্তে মাত্র ${stockBn}টি অবশিষ্ট রয়েছে! আপনি কি স্টকে থাকা এই ${stockBn}টি নিতে চান, নাকি কম পরিমাণে নিতে চান?`;
   } else {
-    return `${product.name} is available in our store (Price: ৳${product.price}). However, we currently have only ${product.stock} piece(s) left in stock! Would you like to take the available ${product.stock} piece(s), or a smaller quantity?`;
+    return `${product.name} is available in our store (Price: ৳${cleanPrice}). However, we currently have only ${product.stock} piece(s) left in stock! Would you like to take the available ${product.stock} piece(s), or a smaller quantity?`;
   }
 }
 
@@ -650,7 +665,10 @@ export function formatOutOfStockReply(
 ): string {
   const alternatives = catalog.filter((p) => p.name !== product.name && p.stock > 0).slice(0, 4);
   const altText = alternatives
-    .map((p) => (language === "bn" ? `• ${p.name} (৳${toBengaliNumber(p.price)})` : `• ${p.name} (৳${p.price})`))
+    .map((p) => {
+      const cleanPrice = String(p.price || "N/A").replace(/^[৳TkBDT\s]+/i, "").trim();
+      return language === "bn" ? `• ${p.name} (৳${toBengaliNumber(cleanPrice)})` : `• ${p.name} (৳${cleanPrice})`;
+    })
     .join("\n");
 
   if (language === "bn") {
@@ -847,6 +865,39 @@ export async function processDeterministicInventoryQuery(options: {
         reply: formatOutOfStockReply(matchedProduct, catalog, lang),
         reason: "out_of_stock",
         product: matchedProduct,
+      };
+    }
+  }
+
+  // 9. Standalone Product Name Inquiry (e.g. "Kurti", "Wallet", "Hoodie", "Panjabi", "Saree")
+  // When a customer simply types the name of a product or category:
+  const directProductMatch = resolveProductInCatalog(catalog, customerMessage);
+  if (directProductMatch) {
+    const cleanPrice = String(directProductMatch.price || "N/A").replace(/^[৳TkBDT\s]+/i, "").trim();
+    if (directProductMatch.stock === 0) {
+      return {
+        handled: true,
+        reply: formatOutOfStockReply(directProductMatch, catalog, lang),
+        reason: "out_of_stock",
+        product: directProductMatch,
+      };
+    }
+
+    if (lang === "bn") {
+      const priceBn = toBengaliNumber(cleanPrice);
+      const stockBn = toBengaliNumber(directProductMatch.stock);
+      return {
+        handled: true,
+        reply: `${directProductMatch.name} আমাদের স্টকে অ্যাভেইলেবল রয়েছে! এর মূল্য ৳${priceBn} (বর্তমান স্টক: ${stockBn}টি)।\n\nআপনি কি এটি অর্ডার করতে চান, নাকি সাইজ/কালার সম্পর্কে বিস্তারিত জানতে চান?`,
+        reason: "catalog_listing",
+        product: directProductMatch,
+      };
+    } else {
+      return {
+        handled: true,
+        reply: `${directProductMatch.name} is available in our store! Price: ৳${cleanPrice} (Current Stock: ${directProductMatch.stock} pieces).\n\nWould you like to place an order or know more details?`,
+        reason: "catalog_listing",
+        product: directProductMatch,
       };
     }
   }

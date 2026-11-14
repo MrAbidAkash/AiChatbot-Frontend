@@ -2339,8 +2339,8 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
                           </div>
                         </div>
 
-                        <div className="space-y-3 max-h-[350px] overflow-y-auto p-2">
-                          {(userModalSelectedConv.messages ? [...userModalSelectedConv.messages].reverse() : []).map((msg: any) => (
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto p-2" ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}>
+                          {(userModalSelectedConv.messages || []).map((msg: any) => (
                             <div
                               key={msg.id}
                               className={`flex flex-col ${msg.senderType === "customer" ? "items-start" : "items-end"}`}
@@ -2598,8 +2598,8 @@ export default function AdminDashboard({ adminEmail }: AdminDashboardProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 max-h-[420px] overflow-y-auto py-3 text-xs">
-            {(selectedConv?.messages ? [...selectedConv.messages].reverse() : []).map((msg: any) => (
+          <div className="space-y-3 max-h-[420px] overflow-y-auto py-3 text-xs" ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}>
+            {(selectedConv?.messages || []).map((msg: any) => (
               <div
                 key={msg.id}
                 className={`flex flex-col ${msg.senderType === "customer" ? "items-start" : "items-end"}`}

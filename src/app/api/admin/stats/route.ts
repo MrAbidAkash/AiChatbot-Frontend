@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       hasFacebookSecret: Boolean(process.env.FACEBOOK_CLIENT_SECRET),
       hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
       hasMongoUri: Boolean(process.env.MONGODB_URI),
-      geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+      geminiModel: process.env.GEMINI_MODEL || "gemini-3.5-flash",
       serverTime: new Date().toISOString(),
     };
 

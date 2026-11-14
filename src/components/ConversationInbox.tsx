@@ -1,7 +1,7 @@
 // src/components/ConversationInbox.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   FaSearch,
   FaFilter,
@@ -54,13 +54,25 @@ export default function ConversationInbox() {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [sortOrder, setSortOrder] = useState<"latest_first" | "oldest_first">("latest_first");
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [replyText, setReplyText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  useEffect(() => {
+    scrollToBottom("auto");
+  }, [selectedConvId]);
+
+  useEffect(() => {
+    scrollToBottom("smooth");
+  }, [messages.length]);
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -264,6 +276,7 @@ export default function ConversationInbox() {
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
@@ -396,20 +409,12 @@ export default function ConversationInbox() {
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
-                    onClick={() => setSortOrder((prev) => (prev === "latest_first" ? "oldest_first" : "latest_first"))}
+                    onClick={() => scrollToBottom("smooth")}
                     className="text-xs px-2.5 py-1 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs font-medium"
-                    title={
-                      sortOrder === "latest_first"
-                        ? "Showing latest messages at the top. Click to show oldest first."
-                        : "Showing oldest messages at the top. Click to show latest first."
-                    }
+                    title="Scroll down to the latest messages"
                   >
-                    {sortOrder === "latest_first" ? (
-                      <FaSortAmountDown size={11} className="text-primary" />
-                    ) : (
-                      <FaSortAmountUp size={11} className="text-primary" />
-                    )}
-                    <span>{sortOrder === "latest_first" ? "Latest First" : "Oldest First"}</span>
+                    <FaSortAmountDown size={11} className="text-primary" />
+                    <span>Scroll to Latest</span>
                   </button>
                   <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
                     Auto-Reply Active
@@ -417,9 +422,9 @@ export default function ConversationInbox() {
                 </div>
               </div>
 
-              {/* Messages Body */}
+              {/* Messages Body (Latest message at bottom with auto-scroll) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10">
-                {(sortOrder === "latest_first" ? [...messages].reverse() : messages).map((msg) => (
+                {messages.map((msg) => (
                   <div
                     key={msg._id}
                     className={`flex ${
@@ -493,6 +498,7 @@ export default function ConversationInbox() {
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Manual Reply Footer */}

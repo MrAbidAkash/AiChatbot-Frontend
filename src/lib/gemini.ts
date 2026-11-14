@@ -31,11 +31,11 @@ export interface GenerateReplyOptions {
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 const FALLBACK_MODELS = [
-  "gemini-1.5-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-pro",
+  "gemini-3.6-flash",
+  "gemini-flash-lite-latest",
+  "gemini-3.5-flash-lite",
 ];
 
 /**

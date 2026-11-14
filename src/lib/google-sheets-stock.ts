@@ -640,7 +640,7 @@ Rules:
 4. Product Name: If the customer just says '3 ta order confirm' or 'confirm it', extract the product name being discussed from the AI Bot reply or previous history (e.g. 'Premium Jamdani Saree').
 5. Phone & Address: Extract from any previous turn in the chat history if present (e.g. '01886092236', 'Jhenaidah Sadar, Jhenaidah').`;
 
-    const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"];
+    const models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-lite-latest"];
 
     for (const model of models) {
       try {
