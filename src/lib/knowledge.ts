@@ -7,6 +7,7 @@ import {
   embedTextWithGemini,
   findTopSemanticChunks,
 } from "./gemini-embeddings";
+import { lemmatizeWord, BILINGUAL_SYNONYMS } from "./google-sheets-stock";
 
 export interface BusinessDocument {
   _id?: ObjectId | string;
@@ -344,14 +345,36 @@ export async function generateAndSaveDocEmbeddings(
  * Retrieve relevant business knowledge for a customer's query using Semantic Vector Search (RAG)
  * with graceful fallback to keyword scoring / full context.
  */
+export interface RelevantKnowledgeOptions {
+  userId?: string;
+  pageId?: string;
+  conversationHistory?: Array<{ senderType: string; text: string }>;
+}
+
 export async function getRelevantKnowledge(
   query: string,
-  options: { userId?: string; pageId?: string } = {},
+  options: RelevantKnowledgeOptions = {},
 ): Promise<string> {
   const docs = await getDocuments(options);
   if (!docs || docs.length === 0) {
     console.warn(`[Knowledge] No documents found in database for user/page.`);
     return "";
+  }
+
+  // Augment query if it is short or confirmation-like (e.g. "জি", "yes", "confirm", address, phone)
+  let effectiveQuery = (query || "").trim();
+  if (options.conversationHistory && options.conversationHistory.length > 0) {
+    const isShortOrConfirmation =
+      effectiveQuery.length <= 15 ||
+      /^(?:জি|হ্যাঁ|yes|y|ok|হুম|ঠিক আছে|পাঠান|পাঠিয়ে দিন|confirm|same address|আগেরটাই|01\d{9})/i.test(effectiveQuery);
+
+    if (isShortOrConfirmation) {
+      const recentHistoryContext = options.conversationHistory
+        .slice(-6)
+        .map((h) => h.text)
+        .join(" ");
+      effectiveQuery = `${effectiveQuery} ${recentHistoryContext}`.trim();
+    }
   }
 
   // 1. Collect all chunk embeddings across documents
@@ -379,18 +402,18 @@ export async function getRelevantKnowledge(
   }
 
   // 2. Perform Semantic Vector Search if embeddings exist
-  if (allEmbeddedChunks.length > 0 && query && query.trim().length > 0) {
+  if (allEmbeddedChunks.length > 0 && effectiveQuery.length > 0) {
     try {
-      const queryEmbedding = await embedTextWithGemini(query);
+      const queryEmbedding = await embedTextWithGemini(effectiveQuery);
       if (queryEmbedding) {
         const topChunks = findTopSemanticChunks(queryEmbedding, allEmbeddedChunks, {
-          topK: 6,
-          minScore: 0.32,
+          topK: 8,
+          minScore: 0.28,
         });
 
         if (topChunks.length > 0) {
           console.log(
-            `[Knowledge] Semantic Vector Search retrieved ${topChunks.length} chunks (Top score: ${(topChunks[0].score * 100).toFixed(1)}%) for query "${query}"`,
+            `[Knowledge] Semantic Vector Search retrieved ${topChunks.length} chunks (Top score: ${(topChunks[0].score * 100).toFixed(1)}%) for query "${effectiveQuery.slice(0, 50)}"`,
           );
           return topChunks
             .map(
@@ -420,11 +443,31 @@ export async function getRelevantKnowledge(
       .join("\n---\n\n");
   }
 
-  // For larger sets without embeddings, perform smart keyword/chunk scoring
-  const keywords = query
+  // For larger sets without embeddings, perform smart keyword/chunk scoring with lemmatization and synonyms
+  const rawKeywords = effectiveQuery
     .toLowerCase()
     .split(/\s+/)
     .filter((w) => w.length > 2);
+
+  const expandedKeywords = new Set<string>();
+  for (const kw of rawKeywords) {
+    expandedKeywords.add(kw);
+    const lemmaForms = lemmatizeWord(kw);
+    lemmaForms.forEach((f) => expandedKeywords.add(f));
+
+    for (const form of lemmaForms) {
+      for (const [key, synonyms] of Object.entries(BILINGUAL_SYNONYMS)) {
+        const matches = form.length >= 3
+          ? synonyms.some((s) => s.toLowerCase().includes(form) || form.includes(s.toLowerCase()))
+          : synonyms.some((s) => s.toLowerCase() === form);
+        if (matches) {
+          synonyms.forEach((syn) => expandedKeywords.add(syn.toLowerCase()));
+          expandedKeywords.add(key.toLowerCase());
+        }
+      }
+    }
+  }
+  const keywordList = Array.from(expandedKeywords).filter((w) => w.length >= 2);
 
   const scoredChunks: Array<{ chunk: string; score: number; docTitle: string }> = [];
 
@@ -433,7 +476,7 @@ export async function getRelevantKnowledge(
     for (const chunk of chunks) {
       const lower = chunk.toLowerCase();
       let score = 0;
-      for (const kw of keywords) {
+      for (const kw of keywordList) {
         if (lower.includes(kw)) score += 1;
       }
       scoredChunks.push({

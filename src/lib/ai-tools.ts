@@ -1,7 +1,7 @@
 // src/lib/ai-tools.ts
 import { getDb } from "./db";
 import { getValidGoogleToken } from "./google-drive";
-import { findProductAndStockCell, parseNumericStock } from "./google-sheets-stock";
+import { findProductAndStockCell, parseNumericStock, lemmatizeWord, BILINGUAL_SYNONYMS } from "./google-sheets-stock";
 import { getSteadfastConfig, getSteadfastStatus } from "./steadfast";
 import { BusinessDocument } from "./knowledge";
 
@@ -12,14 +12,14 @@ export const GEMINI_TOOL_DECLARATIONS = [
   {
     name: "checkProductStockAndPrice",
     description:
-      "Look up real-time inventory stock availability, quantity, and price for a product or item in the merchant's store.",
+      "Look up real-time inventory stock availability, quantity, and price for a product or item in the merchant's store. Call this whenever a customer asks about a product, wants to buy an item, or specifies an order quantity, to verify available stock before offering or confirming an order. Handles singular and plural words (e.g., 'Formal Leather Wallet', 'wallet', 'wallets', 'panjabi', 'kurti').",
     parameters: {
       type: "OBJECT",
       properties: {
         productName: {
           type: "STRING",
           description:
-            "The specific product or dress name/keyword to search for (e.g., 'Red Silk Dress', 'Cotton Panjabi', 'T-Shirt', 'Floral Kurti').",
+            "The specific product name, keyword, or item to search for (e.g., 'Formal Leather Wallet', 'wallet', 'wallets', 'Cotton Panjabi', 'Kurti'). Handles singular and plural words.",
         },
       },
       required: ["productName"],
@@ -123,19 +123,47 @@ async function lookupProductStockAndPrice(
 ): Promise<Record<string, any>> {
   const db = getDb();
 
+  // Clean productName from quantities, purchasing verbs, or filler words (e.g. "30 wallets" -> "wallets")
+  const cleanProductName = productName
+    .replace(/\b(?:\d+|ta|টা|টি|pcs|pieces|i|want|to|buy|need|order|kinte|chai|lagbe)\b/gi, "")
+    .replace(/[^\w\u0980-\u09FF\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || productName.trim();
+
   // 1. Try finding a connected Google Sheet first
-  const query: any = {
-    userId,
-    fileType: "sheet",
-    "metadata.googleFileId": { $exists: true, $ne: "" },
-  };
-  if (pageId && pageId !== "all") {
-    query.$or = [{ pageId }, { pageId: null }, { pageId: { $exists: false } }];
+  const sheetConditions: any[] = [
+    {
+      $or: [
+        { fileType: "sheet" },
+        { fileType: "csv" },
+        { "metadata.source": "google_sheets" },
+      ],
+    },
+    { "metadata.googleFileId": { $exists: true, $ne: "" } },
+  ];
+
+  if (userId && userId !== "all") {
+    sheetConditions.push({
+      $or: [
+        { userId },
+        { userId: "default" },
+        { userId: { $exists: false } },
+        { userId: null },
+      ],
+    });
   }
+
+  if (pageId && pageId !== "all") {
+    sheetConditions.push({
+      $or: [{ pageId }, { pageId: null }, { pageId: { $exists: false } }],
+    });
+  }
+
+  const sheetQuery = sheetConditions.length > 1 ? { $and: sheetConditions } : sheetConditions[0];
 
   const sheets = await db
     .collection<BusinessDocument>("business_knowledge")
-    .find(query)
+    .find(sheetQuery)
     .sort({ updatedAt: -1 })
     .toArray();
 
@@ -145,7 +173,8 @@ async function lookupProductStockAndPrice(
       if (!spreadsheetId) continue;
 
       try {
-        const token = await getValidGoogleToken(userId);
+        const sheetUserId = sheet.userId || userId;
+        const token = await getValidGoogleToken(sheetUserId);
         if (!token) continue;
 
         // Fetch sheet metadata
@@ -168,7 +197,7 @@ async function lookupProductStockAndPrice(
 
         if (rows.length < 2) continue;
 
-        const match = findProductAndStockCell(rows, productName);
+        const match = findProductAndStockCell(rows, cleanProductName) || findProductAndStockCell(rows, productName);
         if (match) {
           // Detect price column if available
           const headerRow = rows[0].map((h) => String(h || "").toLowerCase().trim());
@@ -206,30 +235,83 @@ async function lookupProductStockAndPrice(
     }
   }
 
-  // 2. Fallback: Search knowledge documents for product name mentions
-  const docQuery: any = {
-    userId,
-    $text: { $search: productName },
-  };
+  // 2. Fallback: Parse local business knowledge documents (which caches synced Google Sheet/CSV data)
+  const docConditions: any[] = [];
+  if (userId && userId !== "all") {
+    docConditions.push({
+      $or: [{ userId }, { userId: "default" }, { userId: { $exists: false } }, { userId: null }],
+    });
+  }
+  if (pageId && pageId !== "all") {
+    docConditions.push({
+      $or: [{ pageId }, { pageId: null }, { pageId: { $exists: false } }],
+    });
+  }
+  const docQuery = docConditions.length > 1 ? { $and: docConditions } : docConditions[0] || {};
 
   try {
-    const textMatches = await db
+    const allDocs = await db
       .collection<BusinessDocument>("business_knowledge")
       .find(docQuery)
-      .limit(2)
+      .sort({ updatedAt: -1 })
       .toArray();
 
-    if (textMatches.length > 0) {
-      return {
-        found: true,
-        productName,
-        details: textMatches.map((d) => d.summary || d.content.slice(0, 300)).join("\n"),
-        source: "documents",
-        message: `Found information in store documents matching "${productName}".`,
-      };
+    // Prepare keywords with morphological stemming and bilingual synonyms
+    const searchTarget = cleanProductName.toLowerCase();
+    const targetWords = searchTarget.split(/\s+/).filter((w) => w.length > 2 && !/^\d+$/.test(w));
+    const expandedKeywords = new Set<string>(targetWords);
+    for (const w of targetWords) {
+      lemmatizeWord(w).forEach((f) => expandedKeywords.add(f));
+      for (const [key, synonyms] of Object.entries(BILINGUAL_SYNONYMS)) {
+        const matches = w.length >= 3
+          ? synonyms.some((s) => s.toLowerCase().includes(w) || w.includes(s.toLowerCase()))
+          : synonyms.some((s) => s.toLowerCase() === w);
+        if (matches) {
+          synonyms.forEach((syn) => expandedKeywords.add(syn.toLowerCase()));
+          expandedKeywords.add(key.toLowerCase());
+        }
+      }
     }
-  } catch {
-    // Ignore text search index error if not configured
+    const keywordList = Array.from(expandedKeywords).filter((kw) => kw.length >= 2);
+
+    for (const doc of allDocs) {
+      if (!doc.content) continue;
+      const lines = doc.content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+      for (const line of lines) {
+        const lowerLine = line.toLowerCase();
+        const hasKeywordMatch = keywordList.some((kw) => lowerLine.includes(kw));
+
+        if (hasKeywordMatch) {
+          // Parse stock count from line: "Stock: 25", "Qty: 10", "স্টক: ২৫"
+          const stockMatch = line.match(/(?:stock|qty|quantity|স্টক|পরিমাণ)[\s:=|]+(\d+)/i);
+          const priceMatch = line.match(/(?:price|rate|দাম|মূল্য|৳|tk|bdt)[\s:=|]*([0-9,]+)/i);
+          const prodNameMatch = line.match(/(?:product(?:\s*name)?|item|পণ্য)[\s:=|]+([^|\n\r]+)/i);
+
+          const matchedProductName = prodNameMatch ? prodNameMatch[1].trim() : productName;
+
+          if (stockMatch) {
+            const stockQty = parseInt(stockMatch[1], 10);
+            const priceVal = priceMatch ? priceMatch[1].trim() : null;
+
+            return {
+              found: true,
+              productName: matchedProductName,
+              stockQuantity: stockQty,
+              inStock: stockQty > 0,
+              price: priceVal || "Contact store for current price",
+              source: "store_inventory_document",
+              message:
+                stockQty > 0
+                  ? `Product "${matchedProductName}" is in stock with ${stockQty} item(s) available.${priceVal ? ` Price: ৳${priceVal}.` : ""}`
+                  : `Product "${matchedProductName}" is currently out of stock (0 available).`,
+            };
+          }
+        }
+      }
+    }
+  } catch (docErr) {
+    console.warn("[AI Tools] Document parsing fallback warning:", docErr);
   }
 
   return {

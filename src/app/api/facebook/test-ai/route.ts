@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     const businessKnowledge = await getRelevantKnowledge(message, {
       userId,
       pageId: targetPageId,
+      conversationHistory,
     });
 
     const result = await generateCustomerReply({

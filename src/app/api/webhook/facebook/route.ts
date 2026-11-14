@@ -138,17 +138,7 @@ async function processIncomingMessage(item: ValidEventItem) {
   // 8. Show typing indicator in Messenger
   await sendTypingIndicator(page.pageAccessToken, senderPsid, true);
 
-  // 9. Retrieve isolated knowledge documents for this specific page
-  const businessKnowledge = await getRelevantKnowledge(customerMessage, {
-    userId: page.userId,
-    pageId: page.pageId,
-  });
-
-  console.log(
-    `[FB Webhook] Knowledge loaded (${businessKnowledge.length} chars) for page "${page.pageName}". Generating AI reply...`,
-  );
-
-  // 10. Retrieve recent conversation history and saved customer profile (for 2nd time repeat purchases)
+  // 9. Retrieve recent conversation history and saved customer profile (for 2nd time repeat purchases)
   const [history, savedCustomerProfile] = await Promise.all([
     getRecentConversationHistory(conversationId, 16),
     getCustomerProfile(page.pageId, senderPsid),
@@ -159,6 +149,17 @@ async function processIncomingMessage(item: ValidEventItem) {
       `[FB Webhook] Returning customer detected (${senderPsid}): Saved Address="${savedCustomerProfile.savedAddress}", Phone="${savedCustomerProfile.savedPhone || "N/A"}"`,
     );
   }
+
+  // 10. Retrieve isolated knowledge documents for this specific page (grounded with conversational context)
+  const businessKnowledge = await getRelevantKnowledge(customerMessage, {
+    userId: page.userId,
+    pageId: page.pageId,
+    conversationHistory: history,
+  });
+
+  console.log(
+    `[FB Webhook] Knowledge loaded (${businessKnowledge.length} chars) for page "${page.pageName}". Generating AI reply...`,
+  );
 
   // 11. Generate AI reply with Gemini
   let aiReplyText = "";

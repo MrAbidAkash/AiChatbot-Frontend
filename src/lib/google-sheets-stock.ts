@@ -136,20 +136,62 @@ export function extractAddressFromHistory(
   return null;
 }
 
-const BILINGUAL_SYNONYMS: Record<string, string[]> = {
-  saree: ["শাড়ি", "শাড়ী", "সাড়ি", "সাড়ী", "saree", "sari", "sharee"],
-  jamdani: ["জামদানি", "জামদানী", "jamdani"],
-  kurti: ["কুর্তি", "কুরতি", "kurti", "kurta"],
-  panjabi: ["পাঞ্জাবি", "পাঞ্জাবী", "panjabi", "punjabi"],
-  dress: ["ড্রেস", "ম্যাক্সি", "maxi", "dress"],
+export const BILINGUAL_SYNONYMS: Record<string, string[]> = {
+  saree: ["শাড়ি", "শাড়ী", "সাড়ি", "সাড়ী", "saree", "sari", "sharee", "sarees", "saris"],
+  jamdani: ["জামদানি", "জামদানী", "jamdani", "jamdanis"],
+  kurti: ["কুর্তি", "কুরতি", "kurti", "kurta", "kurtis", "kurtas"],
+  panjabi: ["পাঞ্জাবি", "পাঞ্জাবী", "panjabi", "punjabi", "panjabis", "punjabis"],
+  dress: ["ড্রেস", "ম্যাক্সি", "maxi", "dress", "dresses", "gown", "gowns"],
   cotton: ["কটন", "সুতি", "cotton"],
   silk: ["সিল্ক", "রেশম", "silk"],
-  tshirt: ["টিশার্ট", "টি-শার্ট", "tshirt", "t-shirt"],
-  hoodie: ["হুডি", "hoodie"],
-  wallet: ["ওয়ালেট", "ওয়ালেট", "মানিব্যাগ", "wallet"],
-  kabli: ["কাবলি", "kabli"],
-  pajama: ["পায়জামা", "পায়জামা", "পাজামা", "pajama", "pyjama"],
+  tshirt: ["টিশার্ট", "টি-শার্ট", "tshirt", "t-shirt", "tshirts", "t-shirts", "tees", "tee"],
+  hoodie: ["হুডি", "hoodie", "hoodies"],
+  wallet: ["ওয়ালেট", "ওয়ালেট", "মানিব্যাগ", "মানি ব্যাগ", "wallet", "wallets", "লেদার ওয়ালেট", "লেদার ওয়ালেট"],
+  kabli: ["কাবলি", "kabli", "kablis"],
+  pajama: ["পায়জামা", "পায়জামা", "পাজামা", "pajama", "pyjama", "pajamas", "pyjamas"],
+  shoe: ["জুতা", "জুতো", "shoe", "shoes", "sneaker", "sneakers"],
+  watch: ["ঘড়ি", "ঘড়ি", "watch", "watches"],
+  bag: ["ব্যাগ", "bag", "bags", "handbag", "handbags"],
+  shirt: ["শার্ট", "shirt", "shirts"],
+  pant: ["প্যান্ট", "pant", "pants", "trouser", "trousers"],
 };
+
+/**
+ * Generate singular and plural morphological variations for a word
+ */
+export function lemmatizeWord(word: string): string[] {
+  if (!word || word.length < 2) return [word];
+  const clean = word.toLowerCase().trim();
+  const forms = new Set<string>([clean]);
+
+  // English plural -> singular rules
+  if (clean.endsWith("ies") && clean.length > 4) {
+    forms.add(clean.slice(0, -3) + "y"); // batteries -> battery
+  } else if (clean.endsWith("es") && clean.length > 3) {
+    forms.add(clean.slice(0, -2)); // watches -> watch
+    forms.add(clean.slice(0, -1)); // sarees -> saree
+  } else if (clean.endsWith("s") && !clean.endsWith("ss") && clean.length > 2) {
+    forms.add(clean.slice(0, -1)); // wallets -> wallet, kurtis -> kurti
+  }
+
+  // English singular -> plural rules
+  if (!clean.endsWith("s")) {
+    forms.add(clean + "s");
+    forms.add(clean + "es");
+  }
+
+  return Array.from(forms);
+}
+
+const PURCHASE_STOP_WORDS = new Set([
+  "ta", "টা", "টি", "pcs", "piece", "pieces", "order", "confirm", "confirmed",
+  "অর্ডার", "কনফার্ম", "size", "সাইজ", "item", "items", "ti", "the", "a", "an",
+  "৩টি", "3টি", "3টা", "3ta", "১টি", "২টি", "৪টি", "৫টি", "1", "2", "3", "4", "5",
+  "i", "want", "to", "buy", "need", "purchase", "get", "give", "send", "take",
+  "kinte", "chai", "lagbe", "nite", "deben", "pathan", "pathiye", "din", "booking", "book",
+  "korte", "hobe", "please", "can", "amake", "ami", "পিস", "কিনতে", "চাই", "নেব", "নেবো",
+  "দিন", "পাঠান", "পাঠিয়ে", "লাগবে", "হবে", "প্লিজ", "বুক", "বুকিং"
+]);
 
 /**
  * Find product row and stock column index in Google Sheet values grid
@@ -246,28 +288,35 @@ export function findProductAndStockCell(
   const preferredName = parenMatch ? parenMatch[1].trim() : targetProductName;
 
   const cleanTarget = targetProductName.toLowerCase().replace(/[^\w\u0980-\u09FF]/g, " ").trim();
+  const noHyphenTarget = targetProductName.toLowerCase().replace(/-/g, "").replace(/[^\w\u0980-\u09FF]/g, " ").trim();
   const cleanPreferred = preferredName.toLowerCase().replace(/[^\w\u0980-\u09FF]/g, " ").trim();
 
-  const STOP_WORDS = new Set([
-    "ta", "টা", "টি", "pcs", "piece", "pieces", "order", "confirm", "confirmed",
-    "অর্ডার", "কনফার্ম", "size", "সাইজ", "item", "items", "ti", "the", "a", "an",
-    "৩টি", "3টি", "3টা", "3ta", "১টি", "২টি", "৪টি", "৫টি", "1", "2", "3", "4", "5"
+  const allRawWords = new Set([
+    ...cleanTarget.split(/\s+/),
+    ...noHyphenTarget.split(/\s+/),
   ]);
-
-  const targetWords = cleanTarget.split(/\s+/).filter((w) => Boolean(w) && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
+  const targetWords = Array.from(allRawWords).filter((w) => Boolean(w) && !PURCHASE_STOP_WORDS.has(w) && !/^\d+$/.test(w));
   const effectiveWords = targetWords.length > 0 ? targetWords : cleanTarget.split(/\s+/).filter(Boolean);
 
-  // Expand target words with bilingual synonyms
+  // Expand target words with morphological lemmatization and bilingual synonyms
   const expandedSet = new Set<string>(effectiveWords);
   for (const word of effectiveWords) {
-    for (const [key, synonyms] of Object.entries(BILINGUAL_SYNONYMS)) {
-      if (synonyms.some((s) => s.includes(word) || word.includes(s))) {
-        synonyms.forEach((syn) => expandedSet.add(syn.toLowerCase()));
-        expandedSet.add(key.toLowerCase());
+    const lemmaForms = lemmatizeWord(word);
+    lemmaForms.forEach((f) => expandedSet.add(f));
+
+    for (const form of lemmaForms) {
+      for (const [key, synonyms] of Object.entries(BILINGUAL_SYNONYMS)) {
+        const matches = form.length >= 3
+          ? synonyms.some((s) => s.toLowerCase().includes(form) || form.includes(s.toLowerCase()))
+          : synonyms.some((s) => s.toLowerCase() === form);
+        if (matches) {
+          synonyms.forEach((syn) => expandedSet.add(syn.toLowerCase()));
+          expandedSet.add(key.toLowerCase());
+        }
       }
     }
   }
-  const expandedTargetWords = Array.from(expandedSet);
+  const expandedTargetWords = Array.from(expandedSet).filter((w) => w.length >= 2);
 
   let bestMatchRow = -1;
   let bestScore = 0;
@@ -1001,7 +1050,11 @@ export async function handleAutoStockDeductionOnOrder(options: {
                 statusCell: result.statusColumn ? `${result.statusColumn}${result.matchedRow}` : undefined,
                 previousStatus: result.previousStatus,
                 newStatus: result.newStatus,
-                stockDeductionMessage: result.message,
+                stockDeductionMessage: result.previousStock < finalQuantity
+                  ? `⚠️ Stock Deficit Alert: Customer ordered ${finalQuantity} items, but only ${result.previousStock} were in stock! Stock reduced to 0. Shortage: ${finalQuantity - result.previousStock} items.`
+                  : result.message,
+                stockDeficit: result.previousStock < finalQuantity,
+                shortageQuantity: result.previousStock < finalQuantity ? finalQuantity - result.previousStock : 0,
                 updatedAt: new Date(),
               },
             },
