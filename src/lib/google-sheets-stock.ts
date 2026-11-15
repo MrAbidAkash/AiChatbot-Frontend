@@ -137,23 +137,26 @@ export function extractAddressFromHistory(
 }
 
 export const BILINGUAL_SYNONYMS: Record<string, string[]> = {
-  saree: ["শাড়ি", "শাড়ী", "সাড়ি", "সাড়ী", "saree", "sari", "sharee", "sarees", "saris"],
+  saree: ["শাড়ি", "শাড়ী", "সাড়ি", "সাড়ী", "saree", "sari", "sharee", "shari", "sarees", "saris"],
   jamdani: ["জামদানি", "জামদানী", "jamdani", "jamdanis"],
-  kurti: ["কুর্তি", "কুরতি", "kurti", "kurta", "kurtis", "kurtas"],
-  panjabi: ["পাঞ্জাবি", "পাঞ্জাবী", "panjabi", "punjabi", "panjabis", "punjabis"],
-  dress: ["ড্রেস", "ম্যাক্সি", "maxi", "dress", "dresses", "gown", "gowns"],
+  kurti: ["কুর্তি", "কুরতি", "kurti", "kurta", "kurtis", "kurtas", "kurtie", "kurtii"],
+  panjabi: ["পাঞ্জাবি", "পাঞ্জাবী", "পানজাবি", "পান্জাবি", "panjabi", "punjabi", "panjabis", "punjabis", "panzabi"],
+  dress: ["ড্রেস", "ম্যাক্সি", "maxi", "dress", "dresses", "gown", "gowns", "ম্যাক্সি ড্রেস", "maxi dress"],
   cotton: ["কটন", "সুতি", "cotton"],
   silk: ["সিল্ক", "রেশম", "silk"],
-  tshirt: ["টিশার্ট", "টি-শার্ট", "tshirt", "t-shirt", "tshirts", "t-shirts", "tees", "tee"],
-  hoodie: ["হুডি", "hoodie", "hoodies"],
-  wallet: ["ওয়ালেট", "ওয়ালেট", "মানিব্যাগ", "মানি ব্যাগ", "wallet", "wallets", "লেদার ওয়ালেট", "লেদার ওয়ালেট"],
-  kabli: ["কাবলি", "kabli", "kablis"],
-  pajama: ["পায়জামা", "পায়জামা", "পাজামা", "pajama", "pyjama", "pajamas", "pyjamas"],
-  shoe: ["জুতা", "জুতো", "shoe", "shoes", "sneaker", "sneakers"],
+  tshirt: ["টিশার্ট", "টি-শার্ট", "টি শার্ট", "tshirt", "t-shirt", "tshirts", "t-shirts", "tees", "tee", "oversized", "drop shoulder"],
+  hoodie: ["হুডি", "হুডী", "hoodie", "hoodies", "hoodi", "hudy"],
+  wallet: ["ওয়ালেট", "ওয়ালেট", "মানিব্যাগ", "মানি ব্যাগ", "wallet", "wallets", "লেদার ওয়ালেট", "লেদার ওয়ালেট", "লেদার মানিব্যাগ"],
+  kabli: ["কাবলি", "কাবলী", "kabli", "kablis", "কাবলি সেট", "kabli set", "kabli set with pajama"],
+  pajama: ["পায়জামা", "পায়জামা", "পাজামা", "পাইজামা", "পাইঝামা", "পায়জামা সেট", "পায়জামা সেট", "pajama", "paijama", "payjama", "pyjama", "paizama", "pajamas", "pyjamas", "paijamas", "payjamas", "kabli set with pajama"],
+  shoe: ["জুতা", "জুতো", "জুতা-স্যান্ডেল", "shoe", "shoes", "sneaker", "sneakers", "লোফার", "loafer"],
   watch: ["ঘড়ি", "ঘড়ি", "watch", "watches"],
   bag: ["ব্যাগ", "bag", "bags", "handbag", "handbags"],
   shirt: ["শার্ট", "shirt", "shirts"],
-  pant: ["প্যান্ট", "pant", "pants", "trouser", "trousers"],
+  pant: ["প্যান্ট", "পেন্ট", "pant", "pants", "trouser", "trousers", "জিন্স", "jeans"],
+  belt: ["বেল্ট", "লেদার বেল্ট", "belt", "belts", "leather belt", "formal belt"],
+  jacket: ["জ্যাকেট", "jacket", "jackets", "ডেনিম জ্যাকেট", "denim jacket"],
+  polo: ["পোলো", "polo", "polo shirt"],
 };
 
 /**
@@ -168,8 +171,10 @@ export function lemmatizeWord(word: string): string[] {
   if (clean.endsWith("ies") && clean.length > 4) {
     forms.add(clean.slice(0, -3) + "y"); // batteries -> battery
   } else if (clean.endsWith("es") && clean.length > 3) {
-    forms.add(clean.slice(0, -2)); // watches -> watch
-    forms.add(clean.slice(0, -1)); // sarees -> saree
+    if (/(?:ch|sh|x|z|ss|o)es$/.test(clean)) {
+      forms.add(clean.slice(0, -2)); // watches -> watch, boxes -> box
+    }
+    forms.add(clean.slice(0, -1)); // sarees -> saree, shoes -> shoe
   } else if (clean.endsWith("s") && !clean.endsWith("ss") && clean.length > 2) {
     forms.add(clean.slice(0, -1)); // wallets -> wallet, kurtis -> kurti
   }
@@ -190,7 +195,9 @@ const PURCHASE_STOP_WORDS = new Set([
   "i", "want", "to", "buy", "need", "purchase", "get", "give", "send", "take",
   "kinte", "chai", "lagbe", "nite", "deben", "pathan", "pathiye", "din", "booking", "book",
   "korte", "hobe", "please", "can", "amake", "ami", "পিস", "কিনতে", "চাই", "নেব", "নেবো",
-  "দিন", "পাঠান", "পাঠিয়ে", "লাগবে", "হবে", "প্লিজ", "বুক", "বুকিং"
+  "দিন", "পাঠান", "পাঠিয়ে", "লাগবে", "হবে", "প্লিজ", "বুক", "বুকিং",
+  "ache", "ase", "ace", "আছে", "আসে", "koto", "dam", "দাম", "কত", "মূল্য", "price", "rate",
+  "pawa", "jabe", "পাওয়া", "যাবে", "koren", "korun", "দেন", "করেন", "করবেন", "কি", "কী"
 ]);
 
 /**

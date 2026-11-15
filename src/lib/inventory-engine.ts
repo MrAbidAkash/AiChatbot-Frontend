@@ -463,7 +463,122 @@ export async function getStoreCatalog(options: {
 }
 
 /**
- * Resolve a product in catalog using plural/singular morphological lemmatization and synonyms
+ * Common Bengali, Banglish, and English stopwords used in e-commerce inquiries and orders
+ */
+export const INVENTORY_STOPWORDS = new Set([
+  // Bengali stop / filler / action words
+  "আছে", "আসে", "আচে", "হবে", "পাব", "পাওয়া", "যাবে", "পাওয়া", "কত", "দাম", "দামটি", "মূল্য", "টাকা",
+  "কি", "কী", "কোন", "কোনো", "কোথাও", "টা", "টি", "টিপিস", "পিস", "গুলো", "গুলা", "চাই", "চান",
+  "লাগবে", "দরকার", "নিতে", "নেব", "নেবো", "কিনতে", "কিনব", "অর্ডার", "বুক", "বুকিং", "কনফার্ম", "দিন", "দেন",
+  "কোরেন", "করেন", "করবেন", "পাঠান", "পাঠিয়ে", "আপনার", "আপনাদের", "স্টোরে", "দোকানে", "কাছে",
+  "ভাই", "আপু", "স্যার", "প্লিজ", "একটু", "বলো", "বলুন", "দেখান", "রয়েছে", "দেবেন", "দিবেন", "না",
+  // Banglish stop / filler / action words
+  "ache", "ase", "ace", "hobe", "pawa", "jabe", "pabo", "koto", "dam",
+  "mullo", "taka", "tk", "bdt", "ki", "kiki", "kon", "kono", "ta", "ti", "pcs",
+  "piece", "pieces", "gulo", "gula", "chai", "chacchi", "cai", "lagbe", "dorkar", "nite",
+  "nibo", "kinte", "kinbo", "order", "book", "confirm", "din", "den", "koren", "korun",
+  "pathan", "pathiye", "apnader", "store", "kache", "bhai", "apu", "sir", "please", "plz",
+  "ektu", "bolo", "bolun", "dekhan", "available", "avail", "stock", "kore", "koro", "korba",
+  // English common words
+  "i", "want", "to", "buy", "need", "have", "has", "is", "are", "any", "do", "you",
+  "the", "a", "an", "in", "for", "of", "and", "or", "can", "get", "give", "me"
+]);
+
+/**
+ * Tokenize and strip punctuation, numbers, and stopwords from text
+ */
+export function extractCleanTokens(message: string): string[] {
+  if (!message) return [];
+  const cleaned = message
+    .toLowerCase()
+    .replace(/[^\w\u0980-\u09FF\s]/g, " ")
+    .trim();
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  return words.filter((w) => {
+    if (/^\d+$/.test(w)) return false; // purely numbers
+    if (INVENTORY_STOPWORDS.has(w)) return false;
+    return w.length >= 2;
+  });
+}
+
+/**
+ * Common Banglish phonetic and morphological normalizations
+ */
+export function normalizePhoneticBanglish(word: string): string[] {
+  const forms = new Set<string>([word]);
+  const lower = word.toLowerCase();
+
+  // Banglish vowel substitutions: paijama <-> pajama <-> payjama
+  if (lower.includes("ai")) {
+    forms.add(lower.replace(/ai/g, "a"));
+    forms.add(lower.replace(/ai/g, "ay"));
+  }
+  if (lower.includes("ay")) {
+    forms.add(lower.replace(/ay/g, "a"));
+    forms.add(lower.replace(/ay/g, "ai"));
+  }
+  if (lower.includes("ee")) {
+    forms.add(lower.replace(/ee/g, "i"));
+  }
+  if (lower.includes("oo")) {
+    forms.add(lower.replace(/oo/g, "u"));
+  }
+  if (lower.includes("sh")) {
+    forms.add(lower.replace(/sh/g, "s"));
+  }
+  if (lower.startsWith("s") && !lower.startsWith("sh")) {
+    forms.add("sh" + lower.slice(1));
+  }
+  if (lower.includes("z")) {
+    forms.add(lower.replace(/z/g, "j"));
+  }
+
+  // Banglish suffix stripping
+  if (lower.endsWith("ta") && lower.length > 4) forms.add(lower.slice(0, -2));
+  if (lower.endsWith("ti") && lower.length > 4) forms.add(lower.slice(0, -2));
+  if (lower.endsWith("gulo") && lower.length > 6) forms.add(lower.slice(0, -4));
+  if (lower.endsWith("gula") && lower.length > 6) forms.add(lower.slice(0, -4));
+  if (lower.endsWith("s") && lower.length > 3) forms.add(lower.slice(0, -1));
+
+  // Bengali suffix stripping
+  if (lower.endsWith("টা") && lower.length > 3) forms.add(lower.slice(0, -2));
+  if (lower.endsWith("টি") && lower.length > 3) forms.add(lower.slice(0, -2));
+  if (lower.endsWith("গুলো") && lower.length > 5) forms.add(lower.slice(0, -5));
+  if (lower.endsWith("গুলা") && lower.length > 5) forms.add(lower.slice(0, -5));
+  if (lower.endsWith("র") && lower.length > 3) forms.add(lower.slice(0, -1));
+
+  return Array.from(forms);
+}
+
+/**
+ * Fast Levenshtein distance for fuzzy matching
+ */
+export function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  const al = a.length;
+  const bl = b.length;
+  const dp: number[] = Array.from({ length: bl + 1 }, (_, i) => i);
+
+  for (let i = 1; i <= al; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    const ac = a.charCodeAt(i - 1);
+    for (let j = 1; j <= bl; j++) {
+      const temp = dp[j];
+      const cost = ac === b.charCodeAt(j - 1) ? 0 : 1;
+      dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + cost);
+      prev = temp;
+    }
+  }
+  return dp[bl];
+}
+
+/**
+ * Resolve a product in catalog using tokenization, lemmatization, phonetic variations, fuzzy matching, and bilingual synonyms
  */
 export function resolveProductInCatalog(
   catalog: CatalogProduct[],
@@ -471,47 +586,79 @@ export function resolveProductInCatalog(
 ): CatalogProduct | null {
   if (!catalog || catalog.length === 0 || !userQuery) return null;
 
-  // Clean the query: remove quantities, numbers, and purchasing verbs
-  const clean = userQuery
-    .replace(/\b(?:\d+|ta|টা|টি|pcs|pieces|items?|i|want|to|buy|need|order|kinte|chai|chacchi|lagbe|ache|koto|dam|price|pawa|jabe)\b/gi, " ")
-    .replace(/[^\w\u0980-\u09FF\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const cleanTokens = extractCleanTokens(userQuery);
+  if (cleanTokens.length === 0) return null;
 
-  const words = clean.split(/\s+/).filter((w) => w.length >= 2);
-  if (words.length === 0) return null;
+  const cleanQueryStr = cleanTokens.join(" ");
 
-  const expanded = new Set<string>();
-  for (const w of words) {
-    const lower = w.toLowerCase();
-    expanded.add(lower);
-    lemmatizeWord(lower).forEach((f) => expanded.add(f.toLowerCase()));
+  // 1. Direct exact or substring match with full cleaned query
+  for (const item of catalog) {
+    const itemName = item.name.toLowerCase();
+    if (itemName === cleanQueryStr || itemName.includes(cleanQueryStr)) {
+      return item;
+    }
+  }
 
+  // 2. Expand tokens with phonetic variations, lemmatization, and bilingual synonyms
+  const expandedWords = new Set<string>();
+  for (const token of cleanTokens) {
+    expandedWords.add(token);
+    lemmatizeWord(token).forEach((f) => expandedWords.add(f.toLowerCase()));
+    normalizePhoneticBanglish(token).forEach((f) => expandedWords.add(f.toLowerCase()));
+
+    // Bilingual Synonyms check
     for (const [key, syns] of Object.entries(BILINGUAL_SYNONYMS)) {
-      if (lower.length >= 3 && syns.some((s) => s.toLowerCase().includes(lower) || lower.includes(s.toLowerCase()))) {
-        syns.forEach((s) => expanded.add(s.toLowerCase()));
-        expanded.add(key.toLowerCase());
+      const match = syns.some((s) => {
+        const sLower = s.toLowerCase();
+        return (
+          sLower === token ||
+          (token.length >= 3 && sLower.includes(token)) ||
+          (sLower.length >= 3 && token.includes(sLower))
+        );
+      });
+      if (match || key.toLowerCase() === token) {
+        syns.forEach((s) => expandedWords.add(s.toLowerCase()));
+        expandedWords.add(key.toLowerCase());
       }
     }
   }
 
-  const expWords = Array.from(expanded).filter((w) => w.length >= 2);
+  const queryTokens = Array.from(expandedWords).filter((w) => w.length >= 2);
 
   let bestMatch: CatalogProduct | null = null;
   let bestScore = 0;
 
   for (const item of catalog) {
     const itemName = item.name.toLowerCase();
+    const itemWords = itemName
+      .replace(/[^\w\u0980-\u09FF\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
     let score = 0;
 
-    // Direct exact or substring match
-    if (itemName === clean.toLowerCase()) {
-      return item;
-    }
-
-    for (const ew of expWords) {
-      if (itemName.includes(ew)) {
-        score += ew.length * 2;
+    for (const qw of queryTokens) {
+      // Direct word match
+      if (itemWords.includes(qw)) {
+        score += 15;
+      } else if (qw.length >= 4 && itemName.includes(qw)) {
+        const wordBoundaryRegex = new RegExp(`(^|\\s)${qw}`, "i");
+        if (wordBoundaryRegex.test(itemName) || qw.length >= 5) {
+          score += 8;
+        }
+      } else {
+        // Fuzzy distance match against item tokens
+        for (const iw of itemWords) {
+          if (qw.length >= 4 && iw.length >= 4) {
+            const dist = levenshteinDistance(qw, iw);
+            if (dist <= 1) {
+              score += 10;
+              break;
+            } else if (dist === 2 && qw.length >= 5 && iw.length >= 5) {
+              score += 6;
+              break;
+            }
+          }
+        }
       }
     }
 
@@ -521,7 +668,7 @@ export function resolveProductInCatalog(
     }
   }
 
-  return bestScore >= 4 ? bestMatch : null;
+  return bestScore >= 6 ? bestMatch : null;
 }
 
 /**
@@ -622,7 +769,12 @@ export function formatProductUnavailableReply(
   catalog: CatalogProduct[],
   language: "bn" | "en" = "bn",
 ): string {
-  const availableItems = catalog.filter((p) => p.stock > 0).slice(0, 5);
+  const cleanItem = requestedItem.trim();
+  // Filter available items and ensure none match the requested item
+  const availableItems = catalog
+    .filter((p) => p.stock > 0 && !p.name.toLowerCase().includes(cleanItem.toLowerCase()))
+    .slice(0, 5);
+
   const itemsText = availableItems
     .map((p) => {
       const cleanPrice = String(p.price || "N/A").replace(/^[৳TkBDT\s]+/i, "").trim();
@@ -631,9 +783,9 @@ export function formatProductUnavailableReply(
     .join("\n");
 
   if (language === "bn") {
-    return `দুঃখিত, আমাদের কালেকশনে এই মুহূর্তে "${requestedItem}" অ্যাভেইলেবল নেই।\n\nতবে আমাদের স্টকে বেশ কিছু চমৎকার প্রোডাক্ট রয়েছে:\n${itemsText}\n\nএগুলোর মধ্য থেকে কোনোটি কি আপনার পছন্দ হয়েছে বা দেখতে চান?`;
+    return `দুঃখিত, আমাদের কালেকশনে এই মুহূর্তে "${cleanItem}" অ্যাভেইলেবল নেই।\n\nতবে আমাদের স্টকে বেশ কিছু চমৎকার প্রোডাক্ট রয়েছে:\n${itemsText}\n\nএগুলোর মধ্য থেকে কোনোটি কি আপনার পছন্দ হয়েছে বা দেখতে চান?`;
   } else {
-    return `Sorry, we currently do not carry "${requestedItem}" in our store.\n\nHowever, we have these great collections available in stock:\n${itemsText}\n\nWould you like to check out any of these?`;
+    return `Sorry, we currently do not carry "${cleanItem}" in our store.\n\nHowever, we have these great collections available in stock:\n${itemsText}\n\nWould you like to check out any of these?`;
   }
 }
 
@@ -705,13 +857,8 @@ export function isProductSpecificationInquiry(message: string): boolean {
  */
 export function extractRequestedProductName(message: string): string {
   if (!message) return "";
-  const clean = message
-    .replace(/\b(?:\d+|ta|টা|টি|pcs|pieces|items?|i|want|to|buy|need|order|kinte|chai|chacchi|lagbe|ache|koto|dam|price|pawa|jabe|available|apnader|store|kache|ki|কী|কি\?|কী\?|hobe|হবে|হবে\?|পাব|পাওয়া|যাবে|আছে|আছে\?|কত|দাম)\b/gi, " ")
-    .replace(/[^\w\u0980-\u09FF\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return clean;
+  const tokens = extractCleanTokens(message);
+  return tokens.join(" ").trim();
 }
 
 export interface DeterministicResult {
@@ -843,7 +990,7 @@ export async function processDeterministicInventoryQuery(options: {
     }
   }
 
-  // 8. Product Availability Inquiry ("Maxi ache?", "Saree ache?", "Shoes ache?")
+  // 8. Product Availability Inquiry ("Maxi ache?", "Saree ache?", "Shoes ache?", "Paijama আছে?")
   if (isProductAvailabilityInquiry(customerMessage)) {
     const matchedProduct = resolveProductInCatalog(catalog, customerMessage);
     if (!matchedProduct) {
@@ -866,10 +1013,41 @@ export async function processDeterministicInventoryQuery(options: {
         reason: "out_of_stock",
         product: matchedProduct,
       };
+    } else {
+      // Product is IN STOCK!
+      const cleanPrice = String(matchedProduct.price || "N/A").replace(/^[৳TkBDT\s]+/i, "").trim();
+      const isSetProduct = /(?:set|সেট|with|\+)/i.test(matchedProduct.name);
+      const cleanTokens = extractCleanTokens(customerMessage);
+      const isComponentInquiry =
+        isSetProduct && !cleanTokens.some((t) => matchedProduct.name.toLowerCase().startsWith(t));
+
+      if (lang === "bn") {
+        const priceBn = toBengaliNumber(cleanPrice);
+        const stockBn = toBengaliNumber(matchedProduct.stock);
+        const reply = isComponentInquiry
+          ? `জি! আমাদের স্টকে ${matchedProduct.name} অ্যাভেইলেবল রয়েছে (মূল্য: ৳${priceBn}, বর্তমান স্টক: ${stockBn}টি)। এটি কাবলি এবং পায়জামার একটি চমৎকার কমপ্লিট সেট।\n\nআপনি কি এটি দেখতে চান বা অর্ডার করতে চান?`
+          : `জি! আমাদের স্টকে ${matchedProduct.name} অ্যাভেইলেবল রয়েছে। এর মূল্য মাত্র ৳${priceBn} (বর্তমান স্টক: ${stockBn}টি)।\n\nআপনি কি এটি অর্ডার করতে চান, নাকি সাইজ/কালার দেখতে চান?`;
+        return {
+          handled: true,
+          reply,
+          reason: "catalog_listing",
+          product: matchedProduct,
+        };
+      } else {
+        const reply = isComponentInquiry
+          ? `Yes! We have ${matchedProduct.name} available in stock (Price: ৳${cleanPrice}, Current Stock: ${matchedProduct.stock} pieces). It comes as a complete set.\n\nWould you like to explore details or place an order?`
+          : `Yes! ${matchedProduct.name} is available in our store! Price: ৳${cleanPrice} (Current Stock: ${matchedProduct.stock} pieces).\n\nWould you like to place an order or see available sizes/colors?`;
+        return {
+          handled: true,
+          reply,
+          reason: "catalog_listing",
+          product: matchedProduct,
+        };
+      }
     }
   }
 
-  // 9. Standalone Product Name Inquiry (e.g. "Kurti", "Wallet", "Hoodie", "Panjabi", "Saree")
+  // 9. Standalone Product Name Inquiry (e.g. "Kurti", "Wallet", "Hoodie", "Panjabi", "Saree", "Paijama")
   // When a customer simply types the name of a product or category:
   const directProductMatch = resolveProductInCatalog(catalog, customerMessage);
   if (directProductMatch) {
@@ -883,19 +1061,30 @@ export async function processDeterministicInventoryQuery(options: {
       };
     }
 
+    const isSetProduct = /(?:set|সেট|with|\+)/i.test(directProductMatch.name);
+    const cleanTokens = extractCleanTokens(customerMessage);
+    const isComponentInquiry =
+      isSetProduct && !cleanTokens.some((t) => directProductMatch.name.toLowerCase().startsWith(t));
+
     if (lang === "bn") {
       const priceBn = toBengaliNumber(cleanPrice);
       const stockBn = toBengaliNumber(directProductMatch.stock);
+      const reply = isComponentInquiry
+        ? `আমাদের স্টকে ${directProductMatch.name} রয়েছে! এর মূল্য ৳${priceBn} (বর্তমান স্টক: ${stockBn}টি)। এটি কাবলি এবং পায়জামার একটি প্রিমিয়াম সেট কালেকশন।\n\nআপনি কি এটি অর্ডার করতে চান, নাকি বিস্তারিত দেখতে চান?`
+        : `${directProductMatch.name} আমাদের স্টকে অ্যাভেইলেবল রয়েছে! এর মূল্য ৳${priceBn} (বর্তমান স্টক: ${stockBn}টি)।\n\nআপনি কি এটি অর্ডার করতে চান, নাকি সাইজ/কালার সম্পর্কে বিস্তারিত জানতে চান?`;
       return {
         handled: true,
-        reply: `${directProductMatch.name} আমাদের স্টকে অ্যাভেইলেবল রয়েছে! এর মূল্য ৳${priceBn} (বর্তমান স্টক: ${stockBn}টি)।\n\nআপনি কি এটি অর্ডার করতে চান, নাকি সাইজ/কালার সম্পর্কে বিস্তারিত জানতে চান?`,
+        reply,
         reason: "catalog_listing",
         product: directProductMatch,
       };
     } else {
+      const reply = isComponentInquiry
+        ? `We have ${directProductMatch.name} available in stock! Price: ৳${cleanPrice} (Current Stock: ${directProductMatch.stock} pieces). It comes as a complete set.\n\nWould you like to place an order or see more details?`
+        : `${directProductMatch.name} is available in our store! Price: ৳${cleanPrice} (Current Stock: ${directProductMatch.stock} pieces).\n\nWould you like to place an order or know more details?`;
       return {
         handled: true,
-        reply: `${directProductMatch.name} is available in our store! Price: ৳${cleanPrice} (Current Stock: ${directProductMatch.stock} pieces).\n\nWould you like to place an order or know more details?`,
+        reply,
         reason: "catalog_listing",
         product: directProductMatch,
       };

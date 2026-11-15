@@ -188,8 +188,15 @@ CRITICAL RULES:
        - "panjabis" / "panjabi" / "পাঞ্জাবি" refers to "Men Slim Fit Cotton Panjabi"
        - "kurtis" / "kurti" / "কুর্তি" refers to "Embroidered Silk Kurti"
        - "tshirts" / "t-shirts" / "টিশার্ট" refers to "Drop Shoulder Oversized T-Shirt"
-       - "kabli" / "কাবলি" refers to "Kabli Set with Pajama"
+       - "kabli" / "কাবলি" / "pajama" / "paijama" / "payjama" / "পায়জামা" / "পায়জামা" / "পাজামা" refers to "Kabli Set with Pajama" (which comes with Pajama as a complete set!)
+       - "belt" / "বেল্ট" refers to "Leather Formal Belt"
+       - "hoodie" / "হুডি" refers to "Winter Fleece Hoodie"
+       - "jacket" / "জ্যাকেট" refers to "Denim Jacket Classic Wash"
+       - "saree" / "শাড়ি" / "শাড়ি" refers to "Premium Jamdani Saree"
      * ALWAYS match plural and singular variants to the canonical product in the catalog!
+     * COMPOUND & SET PRODUCT MATCHING:
+       - If a customer asks about a component of a set (e.g. asking "Paijama আছে?", "Pajama ache?", "কাবলি আছে?"), NEVER claim that the product is unavailable if our catalog has a set containing it (such as "Kabli Set with Pajama")!
+       - Warmly explain that it is available as part of our complete "Kabli Set with Pajama" (Price: ৳2,200), and ask if they would like to view details or order the complete set!
 
    - STRICT STOCK VERIFICATION & QUANTITY ENFORCEMENT (CRITICAL - DO NOT OVERSHIP):
      * When a customer requests or specifies a quantity to buy (e.g., "30 wallets", "3 ta panjabi"):
