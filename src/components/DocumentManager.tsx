@@ -1359,8 +1359,26 @@ export default function DocumentManager() {
                         <Skeleton className="h-8 w-full" />
                       </div>
                     ) : googleFiles.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-muted-foreground">
-                        কোনো ফাইল পাওয়া যায়নি। অন্য কিওয়ার্ড দিয়ে খুঁজুন।
+                      <div className="p-6 text-center space-y-2.5">
+                        <div className="mx-auto h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+                          <GoogleDriveIcon className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs font-semibold text-foreground">
+                          ড্রাইভ ব্রাউজারে কোনো ফাইল পাওয়া যায়নি
+                        </p>
+                        <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                          Google-এর সিকিউরিটি পলিসি (drive.file) অনুযায়ী পূর্বে তৈরি যেকোনো Google Sheet বা Doc সরাসরি কানেক্ট করতে লিঙ্ক দিয়ে ইমপোর্ট করুন।
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setGoogleTab("url")}
+                          className="text-xs h-7 gap-1.5 border-primary/40 text-primary hover:bg-primary/10 mt-1"
+                        >
+                          <Link2 className="h-3 w-3" />
+                          <span>🔗 লিঙ্ক দিয়ে সরাসরি শিট ইমপোর্ট করুন</span>
+                        </Button>
                       </div>
                     ) : (
                       googleFiles.map((file) => {

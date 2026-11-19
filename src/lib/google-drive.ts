@@ -596,18 +596,98 @@ export async function fetchAuthenticatedGoogleContent(
   webViewLink?: string;
 }> {
   // 1. Get file metadata
+  let name = "";
+  let mimeType = "";
+  let webViewLink: string | undefined = undefined;
+
   const metaUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size,webViewLink`;
   const metaRes = await fetch(metaUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  if (!metaRes.ok) {
+  if (metaRes.ok) {
+    const meta = await metaRes.json();
+    name = meta.name || "";
+    mimeType = meta.mimeType || "";
+    webViewLink = meta.webViewLink;
+  } else {
+    // If Drive API cannot view file (common under drive.file scope for existing user files),
+    // try direct Google Sheets API v4 (authorized via https://www.googleapis.com/auth/spreadsheets)
+    try {
+      const sheetMetaRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?fields=properties.title,sheets.properties.title`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (sheetMetaRes.ok) {
+        const sheetMeta = await sheetMetaRes.json();
+        const sheetTitle = sheetMeta.properties?.title || "Google Sheet";
+        const sheetName = sheetMeta.sheets?.[0]?.properties?.title || "Sheet1";
+        const valuesRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/'${encodeURIComponent(sheetName)}'!A1:Z500`,
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        if (valuesRes.ok) {
+          const valuesData = await valuesRes.json();
+          const rows: string[][] = valuesData.values || [];
+          if (rows.length > 0) {
+            const csvRows = rows.map((r) =>
+              r.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","),
+            );
+            const csvText = csvRows.join("\n");
+            const structured = formatCsvForAI(csvText, sheetTitle);
+            return {
+              title: sheetTitle,
+              fileName: `${sheetTitle}.csv`,
+              content: structured,
+              fileType: "sheet",
+              size: `${(csvText.length / 1024).toFixed(1)} KB`,
+              webViewLink: `https://docs.google.com/spreadsheets/d/${fileId}/edit`,
+            };
+          }
+        }
+      }
+    } catch (sheetErr) {
+      console.warn("Direct Google Sheets API fallback failed:", sheetErr);
+    }
+
+    // Try direct Google Docs API v1 (authorized via https://www.googleapis.com/auth/documents.readonly)
+    try {
+      const docRes = await fetch(`https://docs.googleapis.com/v1/documents/${fileId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (docRes.ok) {
+        const docData = await docRes.json();
+        const docTitle = docData.title || "Google Document";
+        let docText = "";
+        if (docData.body?.content) {
+          for (const elem of docData.body.content) {
+            if (elem.paragraph?.elements) {
+              for (const pe of elem.paragraph.elements) {
+                if (pe.textRun?.content) {
+                  docText += pe.textRun.content;
+                }
+              }
+            }
+          }
+        }
+        if (docText.trim()) {
+          return {
+            title: docTitle,
+            fileName: `${docTitle}.txt`,
+            content: docText.trim(),
+            fileType: "doc",
+            size: `${(docText.length / 1024).toFixed(1)} KB`,
+            webViewLink: `https://docs.google.com/document/d/${fileId}/edit`,
+          };
+        }
+      }
+    } catch (docErr) {
+      console.warn("Direct Google Docs API fallback failed:", docErr);
+    }
+
     const errText = await metaRes.text();
     throw new Error(`Failed to retrieve file metadata (${metaRes.status}): ${errText}`);
   }
-
-  const meta = await metaRes.json();
-  const { name, mimeType, webViewLink } = meta;
 
   // 2. Extract content based on mimeType
   if (mimeType === "application/vnd.google-apps.document") {
