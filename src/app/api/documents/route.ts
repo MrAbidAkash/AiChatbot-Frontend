@@ -4,6 +4,7 @@ import { saveDocument, getDocuments } from "@/lib/knowledge";
 import { getDb } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { getValidGoogleToken, uploadFileToGoogleDrive } from "@/lib/google-drive";
 
 export const MAX_DOCUMENTS_LIMIT = 10;
 
@@ -168,6 +169,30 @@ export async function POST(request: NextRequest) {
       const sizeKb = (file.size / 1024).toFixed(1);
       const sizeStr = file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${sizeKb} KB`;
 
+      // Check if user has connected Google Drive to automatically backup/upload copy
+      let googleDriveMeta: Record<string, any> | undefined = undefined;
+      try {
+        const googleToken = await getValidGoogleToken(userId);
+        if (googleToken) {
+          const gdriveFile = await uploadFileToGoogleDrive(googleToken, {
+            fileName,
+            mimeType: file.type || (fileType === "pdf" ? "application/pdf" : "text/plain"),
+            contentBuffer: buffer,
+            description: `Uploaded from ChatTime AI Knowledge Base on ${new Date().toLocaleDateString("en-GB")}`,
+          });
+          if (gdriveFile?.id) {
+            googleDriveMeta = {
+              source: "google_drive",
+              googleFileId: gdriveFile.id,
+              webViewLink: gdriveFile.webViewLink,
+              backedUpToDrive: true,
+            };
+          }
+        }
+      } catch (gdriveErr) {
+        console.warn("Auto-backup to Google Drive skipped or failed:", gdriveErr);
+      }
+
       const doc = await saveDocument({
         userId,
         pageId: finalPageId,
@@ -177,6 +202,7 @@ export async function POST(request: NextRequest) {
         size: sizeStr,
         content: extractedText.trim(),
         replaceExisting,
+        metadata: googleDriveMeta,
       });
 
       return NextResponse.json({ success: true, document: doc });

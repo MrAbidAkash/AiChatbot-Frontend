@@ -878,3 +878,157 @@ export async function syncGoogleDocument(
   return updatedDoc;
 }
 
+/**
+ * Create a new Inventory Google Sheet directly in the user's Google Drive
+ * Pre-filled with standard inventory columns and sample rows
+ */
+export async function createGoogleSpreadsheet(
+  accessToken: string,
+  customTitle?: string,
+): Promise<{
+  spreadsheetId: string;
+  spreadsheetUrl: string;
+  title: string;
+  structuredContent: string;
+}> {
+  const title = customTitle?.trim() || `ChatTime AI - Inventory & Price List (${new Date().toLocaleDateString("en-GB")})`;
+
+  const sampleRows = [
+    ["Product Name", "Price", "Stock", "Category", "Status"],
+    ["প্রিমিয়াম কাতান শাড়ি (Katan Saree)", "3500", "12", "Saree", "In Stock"],
+    ["ডিজাইনার কটন পাঞ্জাবি (Cotton Panjabi)", "1450", "20", "Panjabi", "In Stock"],
+    ["লেদার ওয়ালেট (Leather Wallet)", "850", "30", "Accessories", "In Stock"],
+    ["প্রিমিয়াম স্নিকার্স (Sneakers)", "2200", "8", "Footwear", "In Stock"],
+  ];
+
+  const payload = {
+    properties: {
+      title,
+    },
+    sheets: [
+      {
+        properties: {
+          title: "Products",
+          gridProperties: {
+            frozenRowCount: 1,
+          },
+        },
+        data: [
+          {
+            startRow: 0,
+            startColumn: 0,
+            rowData: sampleRows.map((row) => ({
+              values: row.map((cell) => ({
+                userEnteredValue: {
+                  stringValue: cell,
+                },
+              })),
+            })),
+          },
+        ],
+      },
+    ],
+  };
+
+  const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to create Google Spreadsheet (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  const spreadsheetId = data.spreadsheetId;
+  const spreadsheetUrl = data.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+
+  // Format CSV for AI indexing
+  const csvRows = sampleRows.map((r) =>
+    r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","),
+  );
+  const csvText = csvRows.join("\n");
+  const structuredContent = formatCsvForAI(csvText, title);
+
+  return {
+    spreadsheetId,
+    spreadsheetUrl,
+    title,
+    structuredContent,
+  };
+}
+
+/**
+ * Upload any local file (PDF, TXT, CSV, etc.) to the user's Google Drive
+ * Creates the file under the app's drive.file authorization
+ */
+export async function uploadFileToGoogleDrive(
+  accessToken: string,
+  options: {
+    fileName: string;
+    mimeType: string;
+    contentBuffer: Buffer;
+    description?: string;
+  },
+): Promise<{
+  id: string;
+  name: string;
+  mimeType: string;
+  webViewLink?: string;
+}> {
+  const { fileName, mimeType, contentBuffer, description } = options;
+
+  const boundary = `-------ChatTimeAIBoundary${Date.now()}`;
+  const metadata = {
+    name: fileName,
+    description: description || "Uploaded from ChatTime AI Knowledge Base",
+  };
+
+  const metadataPart =
+    `--${boundary}\r\n` +
+    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+    `${JSON.stringify(metadata)}\r\n`;
+
+  const mediaPartHeader =
+    `--${boundary}\r\n` +
+    `Content-Type: ${mimeType || "application/octet-stream"}\r\n\r\n`;
+
+  const closingPart = `\r\n--${boundary}--`;
+
+  const metadataBuffer = Buffer.from(metadataPart, "utf-8");
+  const mediaHeaderBuffer = Buffer.from(mediaPartHeader, "utf-8");
+  const closingBuffer = Buffer.from(closingPart, "utf-8");
+
+  const multipartBody = Buffer.concat([
+    metadataBuffer,
+    mediaHeaderBuffer,
+    contentBuffer,
+    closingBuffer,
+  ]);
+
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+        "Content-Length": String(multipartBody.length),
+      },
+      body: multipartBody,
+    },
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Google Drive file upload failed (${res.status}): ${errText}`);
+  }
+
+  return await res.json();
+}
+

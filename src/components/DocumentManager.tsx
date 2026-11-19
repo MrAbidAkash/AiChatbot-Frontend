@@ -154,6 +154,7 @@ export default function DocumentManager() {
   const [googleTargetPageId, setGoogleTargetPageId] = useState<string>("all");
   const [isImportingGoogle, setIsImportingGoogle] = useState(false);
   const [isSyncingDocId, setIsSyncingDocId] = useState<string | null>(null);
+  const [isCreatingSheet, setIsCreatingSheet] = useState(false);
 
   // Google OAuth Connection State
   const [googleConnected, setGoogleConnected] = useState(false);
@@ -510,6 +511,56 @@ export default function DocumentManager() {
       toast.error(err.message || "ইমপোর্ট করতে সমস্যা হয়েছে");
     } finally {
       setIsImportingGoogle(false);
+    }
+  };
+
+  // Create a brand new formatted Google Sheet directly in user's connected Drive
+  const handleCreateInventorySheet = async () => {
+    if (isLimitReached) {
+      toast.error(
+        `সর্বোচ্চ ${MAX_DOCUMENTS_LIMIT}টি ফাইল বা শিট সংরক্ষণ করা সম্ভব। নতুন শিট তৈরি করতে পূর্বের কোনো ফাইল ডিলিট করুন।`
+      );
+      return;
+    }
+    if (!googleConnected) {
+      toast.error("অনুগ্রহ করে প্রথমে আপনার Google Drive একাউন্ট কানেক্ট করুন।");
+      return;
+    }
+
+    try {
+      setIsCreatingSheet(true);
+      const res = await fetch("/api/integrations/google/create-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `ChatTime AI - Inventory & Price List (${new Date().toLocaleDateString("en-GB")})`,
+          pageId: googleTargetPageId !== "all" ? googleTargetPageId : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "গুগল শিট তৈরি করতে ব্যর্থ হয়েছে");
+      }
+
+      toast.success(
+        `'${data.title}' সফলভাবে আপনার গুগল ড্রাইভে তৈরি হয়েছে!`,
+        {
+          action: {
+            label: "শিট ওপেন করুন",
+            onClick: () => window.open(data.url, "_blank"),
+          },
+          duration: 9000,
+        }
+      );
+
+      fetchDocuments();
+      fetchGoogleFiles();
+      setGoogleTab("drive");
+    } catch (err: any) {
+      toast.error(err.message || "গুগল ড্রাইভে শিট তৈরি করতে সমস্যা হয়েছে");
+    } finally {
+      setIsCreatingSheet(false);
     }
   };
 
@@ -1003,6 +1054,11 @@ export default function DocumentManager() {
                               Google Drive (Read-only)
                             </Badge>
                           )}
+                          {doc.metadata?.backedUpToDrive && (
+                            <Badge variant="outline" className="text-[9px] bg-sky-500/10 text-sky-600 border-sky-500/20 px-1 py-0 h-4">
+                              Drive-এ ব্যাকআপ সংরক্ষিত
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
@@ -1212,6 +1268,17 @@ export default function DocumentManager() {
                     <li>General access অপশনে <strong>&quot;Anyone with the link&quot;</strong> নির্বাচন করুন (Viewer হিসেবে)।</li>
                     <li><strong>&quot;Copy link&quot;</strong> এ ক্লিক করে উপরের বক্সে পেস্ট করুন।</li>
                     <li>Google Sheet-এর ক্ষেত্রে কলাম হেডারে <strong>Product Name, Price, Stock, Category</strong> রাখলে AI সবচেয়ে নিখুঁত উত্তর দিতে পারে!</li>
+                    <li className="pt-1">
+                      💡 <strong>আপনার কি কোনো রেডি ইনভেন্টরি শিট নেই?</strong>{" "}
+                      <button
+                        type="button"
+                        onClick={handleCreateInventorySheet}
+                        disabled={isCreatingSheet || isLimitReached}
+                        className="text-primary font-semibold underline hover:text-primary/80 inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        {isCreatingSheet ? "শিট তৈরি হচ্ছে..." : "+ ১-ক্লিকে ড্রাইভে নতুন ইনভেন্টরি শিট তৈরি করুন"}
+                      </button>
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -1299,6 +1366,41 @@ export default function DocumentManager() {
                     </Button>
                   </div>
 
+                  {/* Create New Sheet Action Banner */}
+                  <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-7 w-7 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+                        <GoogleSheetsIcon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 truncate">
+                          ইনভেন্টরি ও প্রোডাক্ট শিট তৈরি করুন
+                        </p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          ১-ক্লিকে আপনার গুগল ড্রাইভে রেডিমেড শিট তৈরি হয়ে যাবে
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={handleCreateInventorySheet}
+                      disabled={isCreatingSheet || isLimitReached}
+                      className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0 shadow-2xs"
+                    >
+                      {isCreatingSheet ? (
+                        <>
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                          <span>তৈরি হচ্ছে...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-3 w-3" />
+                          <span>+ নতুন শিট তৈরি করুন</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
                   {/* Filter & Search Bar */}
                   <div className="flex flex-col sm:flex-row items-center gap-2">
                     <div className="relative flex-1 w-full">
@@ -1359,26 +1461,40 @@ export default function DocumentManager() {
                         <Skeleton className="h-8 w-full" />
                       </div>
                     ) : googleFiles.length === 0 ? (
-                      <div className="p-6 text-center space-y-2.5">
+                      <div className="p-6 text-center space-y-3">
                         <div className="mx-auto h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
                           <GoogleDriveIcon className="h-5 w-5" />
                         </div>
-                        <p className="text-xs font-semibold text-foreground">
-                          ড্রাইভ ব্রাউজারে কোনো ফাইল পাওয়া যায়নি
-                        </p>
-                        <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                          Google-এর সিকিউরিটি পলিসি (drive.file) অনুযায়ী পূর্বে তৈরি যেকোনো Google Sheet বা Doc সরাসরি কানেক্ট করতে লিঙ্ক দিয়ে ইমপোর্ট করুন।
-                        </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setGoogleTab("url")}
-                          className="text-xs h-7 gap-1.5 border-primary/40 text-primary hover:bg-primary/10 mt-1"
-                        >
-                          <Link2 className="h-3 w-3" />
-                          <span>🔗 লিঙ্ক দিয়ে সরাসরি শিট ইমপোর্ট করুন</span>
-                        </Button>
+                        <div>
+                          <p className="text-xs font-semibold text-foreground">
+                            ড্রাইভ ব্রাউজারে কোনো ফাইল পাওয়া যায়নি
+                          </p>
+                          <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed mt-0.5">
+                            Google-এর সিকিউরিটি পলিসি (drive.file) অনুযায়ী আপনার গুগল ড্রাইভে নতুন শিট তৈরি করতে পারেন অথবা পূর্বে তৈরি শিটের লিঙ্ক দিয়ে আনতে পারেন।
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleCreateInventorySheet}
+                            disabled={isCreatingSheet || isLimitReached}
+                            className="text-xs h-7 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <Plus className="h-3 w-3" />
+                            <span>{isCreatingSheet ? "তৈরি হচ্ছে..." : "+ ড্রাইভে নতুন শিট তৈরি করুন"}</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setGoogleTab("url")}
+                            className="text-xs h-7 gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                          >
+                            <Link2 className="h-3 w-3" />
+                            <span>🔗 লিঙ্ক দিয়ে সরাসরি শিট আনুন</span>
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       googleFiles.map((file) => {
